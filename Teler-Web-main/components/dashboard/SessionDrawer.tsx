@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Session, classifyScore, AppSwitch, EmployeeMemory, RiskLevel, TrendDirection } from '../../types';
 import { SessionTimelineBar, TaskAnalysis } from './SessionTimeline';
+import { apiFetch } from '../../services/apiConfig';
 import { EvidencePanel } from './EvidencePanel';
 import { ScoreComparison } from './Charts';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
@@ -638,7 +639,7 @@ const IntelligenceTab: React.FC<{ session: Session }> = ({ session }) => {
     setMemLoading(true);
     setMemError(false);
     setMemory(null);
-    fetch(`http://localhost:7001/api/memory/${encodeURIComponent(empKey)}`)
+    apiFetch(`/api/memory/${encodeURIComponent(empKey)}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then((data: EmployeeMemory) => setMemory(data))
       .catch(() => setMemError(true))

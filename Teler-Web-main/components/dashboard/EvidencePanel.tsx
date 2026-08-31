@@ -3,6 +3,7 @@ import { ProductivitySignalsPanel } from './ProductivitySignalsPanel';
 import { BehaviorInsightPanel } from './AiInsightPanel';
 import { Session, SessionAnalytics, HourlyMetric, MicroWindow, HourBlock, DailySummary } from '../../types';
 import { FocusTimeline } from './FocusTimeline';
+import { screenshotUrl } from '../../services/apiConfig';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, LineChart, Line,
@@ -525,7 +526,7 @@ const ScreenshotsGrid: React.FC<{ session: Session }> = ({ session }) => {
               >
                 {hasUrl ? (
                   <img
-                    src={`http://localhost:7001/screenshots?path=${encodeURIComponent(url as string)}`}
+                    src={screenshotUrl(url as string)}
                     className="w-full h-full object-cover"
                     alt={`Screenshot ${i + 1}`}
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}

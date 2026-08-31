@@ -1,0 +1,33 @@
+# TELER API reverse proxy.
+#
+# TELER_DOMAIN is set in /etc/default/caddy and is the sslip.io name for this
+# instance's public IP — 130.61.12.34 becomes 130-61-12-34.sslip.io.
+#
+# Caddy obtains and renews a real Let's Encrypt certificate automatically. That
+# requires inbound port 80 to reach this host, so do not close 80 after setup —
+# it is used for the HTTP-01 renewal challenge every ~60 days.
+
+{$TELER_DOMAIN} {
+	encode gzip
+
+	# Screenshot uploads from high-DPI displays run large; match the 100 MB
+	# cap the Express route already enforces.
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy 127.0.0.1:7001 {
+		# A cold /api/sessions walks the whole data tree and can be slow.
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+
+	log {
+		output file /var/log/caddy/teler-api.log {
+			roll_size 20MB
+			roll_keep 5
+		}
+	}
+}

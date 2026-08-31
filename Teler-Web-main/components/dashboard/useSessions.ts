@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Session, TimelineSegment, TaskBreakdownItem, KeystrokeMinute } from '../../types';
+import { apiUrl, authHeaders } from '../../services/apiConfig';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function ks(n: number): KeystrokeMinute[] {
@@ -758,10 +759,13 @@ export function useSessions(employeeName?: string) {
 
     try {
       const url = employeeName
-        ? `http://localhost:7001/api/employee/${encodeURIComponent(employeeName)}`
-        : 'http://localhost:7001/api/sessions';
+        ? apiUrl(`/api/employee/${encodeURIComponent(employeeName)}`)
+        : apiUrl('/api/sessions');
 
-      const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      const res = await fetch(url, {
+        headers: authHeaders(),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status} from TELER API`);
 
       const data: unknown = await res.json();

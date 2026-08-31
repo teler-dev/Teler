@@ -31,12 +31,31 @@ const cors    = require('cors');
 const fs      = require('fs');
 const path    = require('path');
 const os      = require('os');
+const crypto  = require('crypto');
 
 const { classifyWindow } = require('./classifier');
 
 const app  = express();
-const PORT = 7001;
-const BASE = 'C:\\Users\\essaz\\OneDrive\\Documents\\AI-Timer\\data';
+// ── Configuration (env-driven; defaults keep local Windows dev working) ────────
+const PORT = Number(process.env.PORT) || 7001;
+
+// Data root. On the Ubuntu server this is set via the systemd EnvironmentFile.
+const BASE = process.env.DATA_ROOT ||
+  (process.platform === 'win32'
+    ? 'C:\\Users\\essaz\\OneDrive\\Documents\\AI-Timer\\data'
+    : '/opt/teler/data');
+
+// Shared secret. Reads and syncs both require it when set. Leaving it empty
+// disables auth entirely — fine on localhost, never in production.
+const API_TOKEN  = (process.env.API_TOKEN  || '').trim();
+// Separate secret for the write endpoint; falls back to API_TOKEN if unset.
+const SYNC_TOKEN = (process.env.SYNC_TOKEN || '').trim() || API_TOKEN;
+
+// Comma-separated browser origins allowed to call the API (the Vercel domain).
+// '*' keeps the old wide-open behavior for local development.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '*')
+  .split(',').map(o => o.trim()).filter(Boolean);
+
 const MACHINE_USER = os.userInfo().username;  // fallback for sessions without meta.user_name
 
 const COMPANY_ID = 'COMP_DEV_001';
@@ -51,8 +70,48 @@ function resolveEmployeeId(role) {
   return ROLE_TO_EMP[(role || '').toLowerCase()] || 'EMP_UNKNOWN';
 }
 
-app.use(cors());
+app.use(cors({
+  origin: ALLOWED_ORIGINS.includes('*') ? true : ALLOWED_ORIGINS,
+  // Authorization has to survive preflight for the bearer token to work.
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Sync-Path'],
+}));
 app.use(express.json());
+
+// ── Auth ───────────────────────────────────────────────────────────────────────
+
+function presentedToken(req) {
+  const header = req.headers.authorization || '';
+  if (header.startsWith('Bearer ')) return header.slice(7).trim();
+  // <img src> cannot set headers, so /screenshots also accepts ?token=
+  if (typeof req.query.token === 'string') return req.query.token.trim();
+  return '';
+}
+
+// Constant-time compare so a wrong token can't be recovered by timing responses.
+function tokenMatches(presented, expected) {
+  const a = Buffer.from(presented);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+function requireToken(expected) {
+  return (req, res, next) => {
+    if (!expected) return next();            // auth disabled (local dev)
+    if (tokenMatches(presentedToken(req), expected)) return next();
+    return res.status(401).json({ error: 'Unauthorized' });
+  };
+}
+
+const requireApiToken  = requireToken(API_TOKEN);
+const requireSyncToken = requireToken(SYNC_TOKEN);
+
+// /health stays open so uptime checks and the deploy script can probe it.
+app.use((req, res, next) => {
+  if (req.path === '/health') return next();
+  if (req.path === '/api/sync/file') return requireSyncToken(req, res, next);
+  return requireApiToken(req, res, next);
+});
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -2173,10 +2232,13 @@ app.get('/api/memory', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', port: PORT, base: BASE, sessions: discoverSessions().length });
+  res.json({ status: 'ok', sessions: discoverSessions().length, auth: Boolean(API_TOKEN) });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n  TELER API  →  http://localhost:${PORT}`);
-  console.log(`  Data root  →  ${BASE}\n`);
+app.listen(PORT, '127.0.0.1', () => {
+  // Bound to loopback only — Caddy terminates TLS and proxies in front of it.
+  console.log(`\n  TELER API  →  http://127.0.0.1:${PORT}`);
+  console.log(`  Data root  →  ${BASE}`);
+  console.log(`  Auth       →  ${API_TOKEN ? 'enabled' : 'DISABLED (no API_TOKEN set)'}`);
+  console.log(`  Origins    →  ${ALLOWED_ORIGINS.join(', ')}\n`);
 });

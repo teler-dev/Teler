@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local env (real tokens live here — never commit)
+.env
+.env.local
+.env.*.local

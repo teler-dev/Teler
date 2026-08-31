@@ -63,3 +63,6 @@ desktop.ini
 *.sln
 *.njsproj
 *.ntvs*
+
+# ---------- Sync agent state ----------
+tools/.teler-sync-manifest.json
