@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/teler.ico" />
+
+    <!-- Primary Meta Tags -->
+    <title>TELER | AI Workforce Telemetry & Verified Work Intelligence</title>
+    <meta
+      name="title"
+      content="TELER | AI Workforce Telemetry & Verified Work Intelligence"
+    />
+    <meta
+      name="description"
+      content="TELER provides objective productivity intelligence using AI telemetry. Validate professional work hours and role alignment without screenshots or manual time tracking."
+    />
+    <meta
+      name="keywords"
+      content="AI workforce telemetry, productivity intelligence, time tracking alternatives, freelancer monitoring, verified work hours, remote work validation"
+    />
+    <meta name="author" content="TELER Inc." />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://teler.ai/" />
+    <meta property="og:title" content="TELER | AI Workforce Telemetry" />
+    <meta
+      property="og:description"
+      content="Objectively validate professional contribution with AI-driven work signals. Privacy-first telemetry for modern teams."
+    />
+    <meta property="og:image" content="https://teler.ai/og-image.jpg" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://teler.ai/" />
+    <meta property="twitter:title" content="TELER | AI Workforce Telemetry" />
+    <meta
+      property="twitter:description"
+      content="Objectively validate professional contribution with AI-driven work signals. Privacy-first telemetry for modern teams."
+    />
+    <meta property="twitter:image" content="https://teler.ai/og-image.jpg" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Structured Data (Schema.org) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "TELER",
+        "operatingSystem": "Web, Windows, macOS, Linux",
+        "applicationCategory": "BusinessApplication, ProductivitySoftware",
+        "description": "AI-driven workforce telemetry platform that validates professional work hours through signal analysis instead of manual time tracking.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0.00",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "TELER Inc.",
+        "url": "https://teler.ai",
+        "logo": "https://teler.ai/logo.png",
+        "sameAs": [
+          "https://twitter.com/telerai",
+          "https://linkedin.com/company/teler"
+        ]
+      }
+    </script>
+
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #0a0f1a;
+        color: #ffffff;
+        overflow-x: hidden;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-family: "Space Grotesk", sans-serif;
+      }
+      .glow-text {
+        text-shadow: 0 0 20px rgba(19, 214, 255, 0.5);
+      }
+      .grid-bg {
+        background-image: linear-gradient(
+            rgba(19, 214, 255, 0.03) 1px,
+            transparent 1px
+          ),
+          linear-gradient(90deg, rgba(19, 214, 255, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0a0f1a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1e293b;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #13d6ff;
+      }
+
+      /* ── Light theme overrides ─────────────────────────────── */
+      .theme-light { background-color: #f0f4f8 !important; color: #1e293b !important; }
+      .theme-light header { background: rgba(240,244,248,0.92) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
+      .theme-light .bg-navy-900  { background-color: #f0f4f8 !important; }
+      .theme-light .bg-navy-800  { background-color: #ffffff !important; }
+      .theme-light .bg-navy-700  { background-color: #f8fafc !important; }
+      .theme-light .bg-navy-800\/40 { background-color: rgba(255,255,255,0.85) !important; }
+      .theme-light .bg-navy-800\/60 { background-color: rgba(255,255,255,0.90) !important; }
+      .theme-light .bg-navy-800\/95 { background-color: rgba(255,255,255,0.95) !important; }
+      .theme-light .bg-navy-700\/60 { background-color: rgba(241,245,249,0.9) !important; }
+      .theme-light .bg-white\/3  { background-color: rgba(0,0,0,0.02) !important; }
+      .theme-light .bg-white\/5  { background-color: rgba(0,0,0,0.04) !important; }
+      .theme-light .bg-white\/8  { background-color: rgba(0,0,0,0.05) !important; }
+      .theme-light .bg-white\/10 { background-color: rgba(0,0,0,0.06) !important; }
+      .theme-light .bg-white\/12 { background-color: rgba(0,0,0,0.07) !important; }
+      .theme-light .text-white   { color: #1e293b !important; }
+      .theme-light .text-gray-300 { color: #374151 !important; }
+      .theme-light .text-gray-400 { color: #4b5563 !important; }
+      .theme-light .text-gray-500 { color: #6b7280 !important; }
+      .theme-light .text-gray-600 { color: #94a3b8 !important; }
+      .theme-light .text-gray-700 { color: #cbd5e1 !important; }
+      .theme-light .border-white\/5  { border-color: rgba(0,0,0,0.06) !important; }
+      .theme-light .border-white\/8  { border-color: rgba(0,0,0,0.08) !important; }
+      .theme-light .border-white\/10 { border-color: rgba(0,0,0,0.10) !important; }
+      .theme-light .border-white\/15 { border-color: rgba(0,0,0,0.12) !important; }
+      .theme-light ::-webkit-scrollbar-track { background: #f0f4f8; }
+      .theme-light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+      /* ── Duplicate frame placeholder ──────────────────────── */
+      .duplicate-frame {
+        border: 2px dashed rgba(255, 255, 255, 0.10) !important;
+        background-color: #161b27 !important;
+        cursor: default !important;
+      }
+      .duplicate-frame:hover {
+        transform: none !important;
+        box-shadow: none !important;
+        z-index: auto !important;
+      }
+      .duplicate-frame-badge {
+        background: rgba(75, 85, 99, 0.85);
+        color: #9ca3af;
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 2px 5px;
+        border-radius: 999px;
+        line-height: 1;
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      /* ── Skeleton shimmer ──────────────────────────────────── */
+      .skeleton-shimmer {
+        background: linear-gradient(
+          90deg,
+          rgba(255,255,255,0.03) 25%,
+          rgba(255,255,255,0.07) 50%,
+          rgba(255,255,255,0.03) 75%
+        );
+        background-size: 200% 100%;
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              navy: {
+                900: "#0A0F1A",
+                800: "#111827",
+                700: "#1A2235",
+              },
+              cyan: {
+                400: "#3DF2FF",
+                500: "#13D6FF",
+              },
+            },
+            animation: {
+              "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              "spin-slow": "spin 12s linear infinite",
+              float: "float 6s ease-in-out infinite",
+              "signal-sweep": "signal-sweep 1.5s ease-out 1",
+              "data-flow": "data-flow 30s linear infinite",
+              "signal-wave": "signal-wave 25s ease-in-out infinite",
+              "orb-float-1": "orb-float-1 25s ease-in-out infinite",
+              "orb-float-2": "orb-float-2 30s ease-in-out infinite",
+              "orb-float-3": "orb-float-3 20s ease-in-out infinite",
+              "shimmer": "shimmer 1.8s linear infinite",
+            },
+            keyframes: {
+              float: {
+                "0%, 100%": { transform: "translateY(0)" },
+                "50%": { transform: "translateY(-10px)" },
+              },
+              "signal-sweep": {
+                "0%": {
+                  stroke: "#13D6FF",
+                  filter: "drop-shadow(0 0 0 rgba(19,214,255,0))",
+                },
+                "50%": {
+                  stroke: "#ffffff",
+                  filter: "drop-shadow(0 0 5px rgba(255,255,255,0.8))",
+                },
+                "100%": {
+                  stroke: "#13D6FF",
+                  filter: "drop-shadow(0 0 0 rgba(19,214,255,0))",
+                },
+              },
+              "data-flow": {
+                "0%": { transform: "translateY(100%)" },
+                "100%": { transform: "translateY(-100%)" },
+              },
+              "signal-wave": {
+                "0%, 100%": {
+                  transform: "translateX(-10%) scaleY(1)",
+                  opacity: 0.1,
+                },
+                "50%": {
+                  transform: "translateX(10%) scaleY(1.2)",
+                  opacity: 0.2,
+                },
+              },
+              "orb-float-1": {
+                "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+                "33%": { transform: "translate(10%, 15%) scale(1.1)" },
+                "66%": { transform: "translate(-5%, 10%) scale(0.9)" },
+              },
+              "orb-float-2": {
+                "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+                "33%": { transform: "translate(-15%, -10%) scale(0.95)" },
+                "66%": { transform: "translate(10%, -15%) scale(1.05)" },
+              },
+              "orb-float-3": {
+                "0%, 100%": { transform: "translate(0, 0) scale(1)" },
+                "50%": { transform: "translate(20%, 5%) scale(1.2)" },
+              },
+              "shimmer": {
+                "0%":   { backgroundPosition: "-200% 0" },
+                "100%": { backgroundPosition:  "200% 0" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "recharts": "https://esm.sh/recharts@^3.5.1",
+          "react/": "https://esm.sh/react@^19.2.3/",
+          "react": "https://esm.sh/react@^19.2.3",
+          "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+          "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

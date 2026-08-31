@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TELER Employee States</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #05080d; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif; }
+
+  /* ── Palette ── */
+  :root {
+    --bg:       #0c1118;
+    --bar:      #111820;
+    --field:    #161f2c;
+    --line:     #1e2d3d;
+    --cyan:     #13D6FF;
+    --cyan-bg:  rgba(19,214,255,0.07);
+    --amber:    #f5a524;
+    --amber-bg: rgba(245,165,36,0.07);
+    --red:      #e84040;
+    --red-bg:   rgba(232,64,64,0.08);
+    --green:    #24b964;
+    --hi:       #d8e4f0;
+    --mid:      #4a607a;
+    --lo:       #2c3d50;
+    --mono:     "SF Mono","Cascadia Code","Fira Code","Consolas",monospace;
+  }
+
+  /* ── Layout: 5 windows in a row ── */
+  .row {
+    display: flex;
+    gap: 20px;
+    padding: 24px;
+    align-items: flex-start;
+  }
+
+  .label {
+    color: #3a4f66;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* ── Window shell ── */
+  .win {
+    width: 480px;
+    height: 600px;
+    overflow: hidden;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    color: var(--hi);
+    user-select: none;
+    flex-shrink: 0;
+    outline: 1px solid var(--line);
+  }
+
+  /* ── Title bar ── */
+  .titlebar {
+    height: 44px;
+    flex-shrink: 0;
+    background: var(--bar);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+
+  .wordmark {
+    color: var(--cyan);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 3px;
+  }
+
+  .titlebar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+  }
+  .pill-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+  .pill-idle    { color: var(--mid); border: 1px solid rgba(74,96,122,0.22); background: rgba(74,96,122,0.06); }
+  .pill-running { color: var(--green); border: 1px solid rgba(36,185,100,0.22); background: rgba(36,185,100,0.06); }
+  .pill-break   { color: var(--amber); border: 1px solid rgba(245,165,36,0.22); background: rgba(245,165,36,0.06); }
+
+  .username {
+    font-size: 11px;
+    color: var(--mid);
+    font-weight: 500;
+  }
+
+  /* ── Main area ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 16px 20px 8px;
+  }
+
+  .badge-row { height: 22px; display: flex; align-items: center; }
+  .break-badge {
+    font-size: 11px;
+    color: var(--amber);
+    font-family: var(--mono);
+    background: var(--amber-bg);
+    border: 1px solid rgba(245,165,36,0.28);
+    padding: 2px 10px;
+    border-radius: 3px;
+  }
+
+  /* ── Circular button ── */
+  .circle-btn {
+    width: 172px;
+    height: 172px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .circle-btn.idle {
+    border-color: var(--cyan);
+    background: var(--cyan-bg);
+    box-shadow: 0 0 22px rgba(19,214,255,0.20);
+  }
+  .circle-btn.running {
+    border-color: var(--cyan);
+    background: var(--cyan-bg);
+  }
+  .circle-btn.break-hover {
+    border-color: var(--amber);
+    background: var(--amber-bg);
+  }
+  .circle-btn.break {
+    border-color: var(--amber);
+    background: var(--amber-bg);
+  }
+
+  .btn-label { line-height: 1; font-weight: 700; }
+  .btn-label.idle     { font-size: 20px; color: var(--cyan);  letter-spacing: 3px; }
+  .btn-label.running  { font-size: 28px; color: var(--hi);    letter-spacing: 0;   font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .btn-label.hover    { font-size: 18px; color: var(--amber); letter-spacing: 3px; }
+  .btn-label.break    { font-size: 18px; color: var(--amber); letter-spacing: 3px; }
+
+  .btn-sub {
+    margin-top: 5px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.6px;
+  }
+  .btn-sub.running { color: rgba(216,228,240,0.4); }
+  .btn-sub.break   { color: rgba(245,165,36,0.5);  }
+  .btn-sub.hover   { color: rgba(245,165,36,0.5);  }
+
+  /* ── Action row ── */
+  .action-row { height: 34px; display: flex; align-items: center; }
+
+  .idle-hint { font-size: 11px; color: var(--lo); letter-spacing: 0.2px; }
+
+  .stop-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(232,64,64,0.40);
+    background: var(--red-bg);
+    color: var(--red);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    cursor: pointer;
+  }
+  .stop-square { width: 7px; height: 7px; background: var(--red); border-radius: 1px; flex-shrink: 0; }
+
+  /* ── Inputs ── */
+  .inputs {
+    flex-shrink: 0;
+    border-top: 1px solid var(--line);
+    padding: 13px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .input-row { display: flex; gap: 9px; }
+  .input-group { display: flex; flex-direction: column; }
+  .task-group  { flex: 3; }
+  .client-group { flex: 2; }
+
+  .field-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    color: var(--mid);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .field {
+    width: 100%;
+    background: var(--field);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 7px 10px;
+    color: var(--hi);
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--lo);
+  }
+  .field.has-value { color: var(--hi); }
+
+  /* ── Status bar ── */
+  .statusbar {
+    height: 36px;
+    flex-shrink: 0;
+    background: var(--bar);
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+  .stat { font-size: 11px; color: var(--lo); }
+  .stat span { color: var(--mid); }
+</style>
+</head>
+<body>
+<div class="row">
+
+  <!-- ── STATE 1: LOGIN ─────────────────────────────────────────────────── -->
+  <div>
+    <div style="width:480px; height:600px; overflow:hidden; background:#0c1118; display:flex; align-items:center; justify-content:center; outline:1px solid #1e2d3d;">
+      <form style="width:300px; background:#111820; border:1px solid #1e2d3d; border-radius:6px; padding:32px 28px 28px;">
+        <div style="margin-bottom:26px; display:flex; align-items:baseline; gap:8px;">
+          <span style="color:#13D6FF; font-size:16px; font-weight:800; letter-spacing:3px;">TELER</span>
+          <span style="color:#2c3d50; font-size:11px;">Employee</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:11px;">
+          <div>
+            <div style="font-size:10px; font-weight:600; letter-spacing:0.8px; color:#4a607a; margin-bottom:4px; text-transform:uppercase;">Email</div>
+            <div style="width:100%; background:#161f2c; border:1px solid #1e2d3d; border-radius:4px; padding:7px 10px; font-size:12px; color:#2c3d50;">you@company.com</div>
+          </div>
+          <div>
+            <div style="font-size:10px; font-weight:600; letter-spacing:0.8px; color:#4a607a; margin-bottom:4px; text-transform:uppercase;">Password</div>
+            <div style="width:100%; background:#161f2c; border:1px solid #1e2d3d; border-radius:4px; padding:7px 10px; font-size:12px; color:#2c3d50;">••••••••</div>
+          </div>
+          <button style="margin-top:4px; padding:9px; border-radius:4px; border:none; background:#13D6FF; color:#0c1118; font-size:13px; font-weight:700; letter-spacing:0.4px; box-shadow:0 0 22px rgba(19,214,255,0.20); width:100%; cursor:pointer;">Sign In</button>
+        </div>
+        <p style="margin-top:18px; font-size:10px; color:#2c3d50; text-align:center;">TELER Employee · v2</p>
+      </form>
+    </div>
+    <div class="label">Login</div>
+  </div>
+
+  <!-- ── STATE 2: IDLE ──────────────────────────────────────────────────── -->
+  <div>
+    <div class="win">
+      <div class="titlebar">
+        <span class="wordmark">TELER</span>
+        <div class="titlebar-right">
+          <div class="pill pill-idle"><div class="pill-dot" style="background:#2c3d50;"></div>Idle</div>
+          <span class="username">Essaz</span>
+        </div>
+      </div>
+      <div class="main">
+        <div class="badge-row"></div>
+        <div class="circle-btn idle">
+          <span class="btn-label idle">START</span>
+        </div>
+        <div class="action-row">
+          <span class="idle-hint">Press Start to begin</span>
+        </div>
+      </div>
+      <div class="inputs">
+        <div class="input-row">
+          <div class="input-group task-group">
+            <div class="field-label">Task</div>
+            <div class="field">What are you working on?</div>
+          </div>
+          <div class="input-group client-group">
+            <div class="field-label">Client</div>
+            <div class="field">Select…</div>
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="field-label">Description</div>
+          <div class="field">Optional notes…</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span class="stat">Last session: <span>2h 14m</span></span>
+        <span class="stat">MTD: <span>38h 22m</span></span>
+      </div>
+    </div>
+    <div class="label">Idle</div>
+  </div>
+
+  <!-- ── STATE 3: RUNNING ───────────────────────────────────────────────── -->
+  <div>
+    <div class="win">
+      <div class="titlebar">
+        <span class="wordmark">TELER</span>
+        <div class="titlebar-right">
+          <div class="pill pill-running"><div class="pill-dot" style="background:#24b964;"></div>Running</div>
+          <span class="username">Essaz</span>
+        </div>
+      </div>
+      <div class="main">
+        <div class="badge-row"></div>
+        <div class="circle-btn running">
+          <span class="btn-label running">47:22</span>
+          <span class="btn-sub running">RUNNING</span>
+        </div>
+        <div class="action-row">
+          <div class="stop-btn"><div class="stop-square"></div>STOP SESSION</div>
+        </div>
+      </div>
+      <div class="inputs">
+        <div class="input-row">
+          <div class="input-group task-group">
+            <div class="field-label">Task</div>
+            <div class="field has-value">Dashboard UI integration</div>
+          </div>
+          <div class="input-group client-group">
+            <div class="field-label">Client</div>
+            <div class="field has-value">ABC LLC</div>
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="field-label">Description</div>
+          <div class="field has-value">Intelligence tab + anomaly panel</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span class="stat">Last session: <span>2h 14m</span></span>
+        <span class="stat">MTD: <span>38h 22m</span></span>
+      </div>
+    </div>
+    <div class="label">Running</div>
+  </div>
+
+  <!-- ── STATE 4: BREAK HOVER ───────────────────────────────────────────── -->
+  <div>
+    <div class="win">
+      <div class="titlebar">
+        <span class="wordmark">TELER</span>
+        <div class="titlebar-right">
+          <div class="pill pill-running"><div class="pill-dot" style="background:#24b964;"></div>Running</div>
+          <span class="username">Essaz</span>
+        </div>
+      </div>
+      <div class="main">
+        <div class="badge-row"></div>
+        <div class="circle-btn break-hover">
+          <span class="btn-label hover">BREAK</span>
+        </div>
+        <div class="action-row">
+          <div class="stop-btn"><div class="stop-square"></div>STOP SESSION</div>
+        </div>
+      </div>
+      <div class="inputs">
+        <div class="input-row">
+          <div class="input-group task-group">
+            <div class="field-label">Task</div>
+            <div class="field has-value">Dashboard UI integration</div>
+          </div>
+          <div class="input-group client-group">
+            <div class="field-label">Client</div>
+            <div class="field has-value">ABC LLC</div>
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="field-label">Description</div>
+          <div class="field has-value">Intelligence tab + anomaly panel</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span class="stat">Last session: <span>2h 14m</span></span>
+        <span class="stat">MTD: <span>38h 22m</span></span>
+      </div>
+    </div>
+    <div class="label">Hover → Break</div>
+  </div>
+
+  <!-- ── STATE 5: ON BREAK ──────────────────────────────────────────────── -->
+  <div>
+    <div class="win">
+      <div class="titlebar">
+        <span class="wordmark">TELER</span>
+        <div class="titlebar-right">
+          <div class="pill pill-break"><div class="pill-dot" style="background:#f5a524;"></div>On Break</div>
+          <span class="username">Essaz</span>
+        </div>
+      </div>
+      <div class="main">
+        <div class="badge-row">
+          <span class="break-badge">Break 03:41</span>
+        </div>
+        <div class="circle-btn break">
+          <span class="btn-label break">RESUME</span>
+          <span class="btn-sub break">ON BREAK</span>
+        </div>
+        <div class="action-row">
+          <div class="stop-btn"><div class="stop-square"></div>STOP SESSION</div>
+        </div>
+      </div>
+      <div class="inputs">
+        <div class="input-row">
+          <div class="input-group task-group">
+            <div class="field-label">Task</div>
+            <div class="field has-value">Dashboard UI integration</div>
+          </div>
+          <div class="input-group client-group">
+            <div class="field-label">Client</div>
+            <div class="field has-value">ABC LLC</div>
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="field-label">Description</div>
+          <div class="field has-value">Intelligence tab + anomaly panel</div>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span class="stat">Last session: <span>2h 14m</span></span>
+        <span class="stat">MTD: <span>38h 22m</span></span>
+      </div>
+    </div>
+    <div class="label">On Break</div>
+  </div>
+
+</div>
+</body>
+</html>
