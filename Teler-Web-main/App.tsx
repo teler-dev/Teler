@@ -26,6 +26,7 @@ import { HowItWorksPage } from './components/HowItWorksPage';
 import { LegalPage } from './components/LegalPages';
 import { IntegrationsPage, SecurityPage } from './components/ProductPages';
 import { AboutPage, CareersPage, ContactPage } from './components/CompanyPages';
+import { getCurrentUser, login, logout } from './services/authService';
 
 export type View = 'landing' | 'login' | 'overview' | 'dashboard' | 'employees' | 'alerts' | 'how-it-works' | 'privacy' | 'terms' | 'gdpr' | 'integrations' | 'security' | 'about' | 'careers' | 'contact';
 
@@ -122,18 +123,18 @@ const LoginPage: React.FC<{ onBack: () => void; onDashboard: (user: string) => v
     return heights[index % 3];
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      if (username === 'essazahid' && password === '12345678') {
-        onDashboard(username);
-      } else {
-        setError('Invalid username or password.');
-        setLoading(false);
-      }
-    }, 600);
+    try {
+      const user = await login(username.trim(), password);
+      onDashboard(user.username);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Unable to sign in.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -164,7 +165,7 @@ const LoginPage: React.FC<{ onBack: () => void; onDashboard: (user: string) => v
                   autoComplete="username"
                   value={username}
                   onChange={(e) => { setUsername(e.target.value); setError(''); }}
-                  placeholder="essazahid"
+                  placeholder="Your username"
                   className="w-full bg-navy-900 border border-white/10 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 outline-none rounded-xl py-3.5 pl-11 pr-4 text-white placeholder:text-gray-700 transition-all"
                 />
               </div>
@@ -507,12 +508,45 @@ const TypingHeadline: React.FC = () => {
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('landing');
+  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'anonymous'>('checking');
   const [activeFeatureTab, setActiveFeatureTab] = useState(0);
   const [loggedInUser, setLoggedInUser] = useState('');
   const [activeEmployee, setActiveEmployee] = useState<Employee | null>(null);
   const [showAiChat, setShowAiChat]         = useState(false);
   const [showAiSettings, setShowAiSettings] = useState(false);
-  const { sessions: globalSessions } = useSessions();
+  const { sessions: globalSessions } = useSessions(undefined, authStatus === 'authenticated');
+
+  useEffect(() => {
+    let active = true;
+    getCurrentUser()
+      .then((user) => {
+        if (!active) return;
+        if (user) {
+          setLoggedInUser(user.username);
+          setView('overview');
+          setAuthStatus('authenticated');
+        } else {
+          setAuthStatus('anonymous');
+        }
+      })
+      .catch(() => {
+        if (active) setAuthStatus('anonymous');
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setLoggedInUser('');
+      setActiveEmployee(null);
+      setShowAiChat(false);
+      setShowAiSettings(false);
+      setAuthStatus('anonymous');
+      setView('login');
+    };
+    window.addEventListener('teler:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('teler:unauthorized', handleUnauthorized);
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -537,8 +571,27 @@ const App: React.FC = () => {
   }, [view]);
 
   const onHomeClick = () => setView('landing');
-  const onLoginClick = () => setView('login');
-  const onDashboardClick = (user: string) => { setLoggedInUser(user); setActiveEmployee(null); setView('overview'); };
+  const onLoginClick = () => setView(authStatus === 'authenticated' ? 'overview' : 'login');
+  const onDashboardClick = (user: string) => {
+    setLoggedInUser(user);
+    setActiveEmployee(null);
+    setAuthStatus('authenticated');
+    setView('overview');
+  };
+  const onLogout = async () => {
+    try {
+      await logout();
+    } catch (logoutError) {
+      console.error('TELER logout failed', logoutError);
+      return;
+    }
+    setLoggedInUser('');
+    setActiveEmployee(null);
+    setShowAiChat(false);
+    setShowAiSettings(false);
+    setAuthStatus('anonymous');
+    setView('landing');
+  };
   const onEmployeeClick  = (emp: Employee) => { setActiveEmployee(emp); setView('dashboard'); };
   const onBackToOverview = () => { setActiveEmployee(null); setView('overview'); };
   const onSectionNavigate = (section: NavSection) => {
@@ -565,6 +618,18 @@ const App: React.FC = () => {
   const navHandlers = { onHomeClick, onHowItWorksClick, onPrivacyClick, onTermsClick, onGdprClick, onFeaturesClick, onIntegrationsClick, onSecurityClick, onAboutClick, onCareersClick, onContactClick };
 
   const isAuthenticated = ['overview', 'employees', 'alerts', 'dashboard'].includes(view);
+
+  if (authStatus === 'checking') {
+    return (
+      <div className="min-h-screen bg-navy-900 text-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4" role="status" aria-live="polite">
+          <Logo />
+          <div className="w-8 h-8 rounded-full border-2 border-cyan-400/20 border-t-cyan-400 animate-spin" />
+          <span className="text-sm text-gray-400">Restoring secure session…</span>
+        </div>
+      </div>
+    );
+  }
 
   const GlobalAiOverlay = isAuthenticated ? (
     <>
@@ -616,7 +681,7 @@ const App: React.FC = () => {
   if (view === 'overview') return (
     <>
       <EmployerOverview
-        onLogout={onHomeClick}
+        onLogout={onLogout}
         onEmployeeClick={onEmployeeClick}
         onSectionNavigate={onSectionNavigate}
         clientName={loggedInUser}
@@ -627,7 +692,7 @@ const App: React.FC = () => {
   if (view === 'employees') return (
     <>
       <EmployeesPage
-        onLogout={onHomeClick}
+        onLogout={onLogout}
         onEmployeeClick={onEmployeeClick}
         onSectionNavigate={onSectionNavigate}
         clientName={loggedInUser}
@@ -638,7 +703,7 @@ const App: React.FC = () => {
   if (view === 'alerts') return (
     <>
       <AlertsPage
-        onLogout={onHomeClick}
+        onLogout={onLogout}
         onEmployeeClick={onEmployeeClick}
         onSectionNavigate={onSectionNavigate}
         clientName={loggedInUser}
@@ -649,7 +714,7 @@ const App: React.FC = () => {
   if (view === 'dashboard') return (
     <>
       <Dashboard
-        onLogout={onHomeClick}
+        onLogout={onLogout}
         userName={loggedInUser}
         initialEmployee={activeEmployee ?? undefined}
         onBack={onBackToOverview}

@@ -2,9 +2,8 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Note: VITE_API_BASE / VITE_API_TOKEN are read through import.meta.env in
-// services/apiConfig.ts — Vite exposes VITE_-prefixed vars automatically, so
-// they need no `define` entry here.
+// VITE_API_BASE is an optional local-development override. Production secrets
+// are read only by Vercel Functions and are never exposed through import.meta.env.
 export default defineConfig({
   server: {
     port: 3000,

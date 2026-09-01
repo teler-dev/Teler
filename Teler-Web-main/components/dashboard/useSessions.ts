@@ -744,14 +744,18 @@ const USE_MOCK_DATA = false;
 const POLL_INTERVAL_MS  = 60_000; // 60-second live refresh
 const FETCH_TIMEOUT_MS  = 10_000; // abort if no response within 10s
 
-export function useSessions(employeeName?: string) {
+export function useSessions(employeeName?: string, enabled = true) {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading]   = useState(enabled);
   const [usingMock, setUsingMock] = useState(USE_MOCK_DATA);
   const [error, setError]       = useState<string | null>(null);
 
   // showLoading=false performs a silent background refresh (no spinner flicker)
   const fetchSessions = useCallback(async (showLoading = true) => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     // Dev mock mode: bypass API entirely. Never triggered automatically.
     if (USE_MOCK_DATA) {
       const mockData = employeeName
@@ -774,8 +778,12 @@ export function useSessions(employeeName?: string) {
 
       const res = await fetch(url, {
         headers: authHeaders(),
+        credentials: 'same-origin',
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
+      if (res.status === 401) {
+        window.dispatchEvent(new Event('teler:unauthorized'));
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status} from TELER API`);
 
       const data: unknown = await res.json();
@@ -793,17 +801,24 @@ export function useSessions(employeeName?: string) {
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [employeeName]);
+  }, [employeeName, enabled]);
 
   // Initial load (shows spinner)
-  useEffect(() => { fetchSessions(true); }, [fetchSessions]);
+  useEffect(() => {
+    if (!enabled) {
+      setSessions([]);
+      setLoading(false);
+      return;
+    }
+    fetchSessions(true);
+  }, [enabled, fetchSessions]);
 
   // Polling — silent refresh picks up new micro/hour/daily analysis files
   useEffect(() => {
-    if (USE_MOCK_DATA) return; // no polling needed in dev mock mode
+    if (USE_MOCK_DATA || !enabled) return; // no polling needed in dev mock mode
     const id = setInterval(() => fetchSessions(false), POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [fetchSessions]);
+  }, [enabled, fetchSessions]);
 
   return { sessions, loading, usingMock, error, refetch: fetchSessions };
 }

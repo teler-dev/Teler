@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Session } from '../../types';
-import { aiAgentHandler } from '../../api/ai-agent';
+import { aiAgentHandler } from '../../services/aiAgentHandler';
 import { getAiSettings, getActiveApiKey, getModelLabel } from '../../services/aiAgentService';
 import { AiSettingsPanel } from '../settings/AiSettingsPanel';
 import { TelerIcon } from '../ui/TelerIcon';

@@ -174,10 +174,10 @@ $(grep -E '^(API_TOKEN|SYNC_TOKEN)=' "$ENV_FILE" | sed 's/^/    /')
        list for TCP 80 and TCP 443 from 0.0.0.0/0. TLS cannot be issued without
        port 80 reachable from the internet.
     2. Confirm from your laptop:  curl https://$TELER_DOMAIN/health
-    3. Set VITE_API_BASE=https://$TELER_DOMAIN and VITE_API_TOKEN=<API_TOKEN>
-       in the Vercel project, then redeploy.
-    4. Put your Vercel URL in ALLOWED_ORIGINS in $ENV_FILE and:
-       sudo systemctl restart teler-api
+    3. In Vercel, set server-side TELER_API_BASE=https://$TELER_DOMAIN and
+       TELER_API_TOKEN=<API_TOKEN>. Do not prefix either value with VITE_.
+    4. Generate TELER_DASHBOARD_USERNAME, TELER_DASHBOARD_PASSWORD_HASH and
+       TELER_SESSION_SECRET with the frontend's npm run auth:generate command.
     5. On the Windows tracker machine, run the sync agent with
        TELER_SYNC_TOKEN=<SYNC_TOKEN>
 

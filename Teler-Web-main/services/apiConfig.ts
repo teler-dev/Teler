@@ -1,52 +1,51 @@
 /**
  * Central configuration for the TELER backend API.
  *
- * Both values come from Vite env vars, injected at build time:
- *   VITE_API_BASE   e.g. https://130-61-12-34.sslip.io   (no trailing slash)
- *   VITE_API_TOKEN  the shared bearer token the server expects
+ * Production requests go through the same-origin /api/teler Vercel Function.
+ * That function validates the HttpOnly dashboard session and adds the Oracle
+ * bearer token server-side, so no infrastructure credential is shipped in the
+ * browser bundle or screenshot URL.
  *
- * Locally, with no .env.local present, these fall back to the dev server on
- * 127.0.0.1:7001 with no token — which matches a backend started without
- * API_TOKEN set.
- *
- * Note on the token: it is bundled into the client JavaScript, so it is not a
- * secret from anyone who opens devtools. It stops drive-by access to the API,
- * nothing more. Real per-user auth is the follow-up.
+ * For local UI development only, VITE_API_BASE can point directly at an API
+ * started without API_TOKEN. Use `vercel dev` to exercise production auth and
+ * proxy behavior locally.
  */
 
-const rawBase = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:7001';
+const localDirectBase = import.meta.env.DEV
+  ? ((import.meta.env.VITE_API_BASE as string | undefined) ?? '').trim().replace(/\/+$/, '')
+  : '';
 
-/** Base URL with any trailing slash removed, so `${API_BASE}/api/x` is always well-formed. */
-export const API_BASE = rawBase.replace(/\/+$/, '');
-
-export const API_TOKEN = ((import.meta.env.VITE_API_TOKEN as string | undefined) ?? '').trim();
-
-/** Authorization header for fetch calls; empty object when no token is configured. */
+/** Retained for existing call sites; production authentication is cookie-based. */
 export function authHeaders(): Record<string, string> {
-  return API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {};
+  return {};
 }
 
 /** Build an API URL from a root-relative path, e.g. apiUrl('/api/sessions'). */
 export function apiUrl(path: string): string {
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  const target = path.startsWith('/') ? path : `/${path}`;
+  if (localDirectBase) return `${localDirectBase}${target}`;
+  return `/api/teler?target=${encodeURIComponent(target)}`;
 }
 
 /**
  * URL for a screenshot at an absolute server-side path.
  *
- * <img src> cannot send an Authorization header, so the token rides in the
- * query string here — the server accepts it either way.
+ * The browser automatically sends the same-origin HttpOnly session cookie.
  */
 export function screenshotUrl(absolutePath: string): string {
   const params = new URLSearchParams({ path: absolutePath });
-  if (API_TOKEN) params.set('token', API_TOKEN);
-  return `${API_BASE}/screenshots?${params.toString()}`;
+  return apiUrl(`/screenshots?${params.toString()}`);
 }
 
-/** fetch() against the API with the bearer token applied. */
-export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(apiUrl(path), {
+/** fetch() against the authenticated same-origin API proxy. */
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const response = await fetch(apiUrl(path), {
     ...init,
+    credentials: localDirectBase ? 'omit' : 'same-origin',
     headers: { ...authHeaders(), ...(init.headers ?? {}) },
   });
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('teler:unauthorized'));
+  }
+  return response;
 }
