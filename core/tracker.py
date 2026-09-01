@@ -2,7 +2,7 @@
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget,
-    QComboBox, QTextEdit, QHBoxLayout
+    QComboBox, QTextEdit, QHBoxLayout, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
@@ -32,7 +32,7 @@ def _make_logo_label(height_px: int) -> QLabel | None:
 class MainWindow(QMainWindow):
     logout_requested = pyqtSignal()
 
-    def __init__(self, username="", organization_name=""):
+    def __init__(self, username="", organization_name="", job_role="general"):
         super().__init__()
 
         # ==== Window Setup ====
@@ -50,8 +50,9 @@ class MainWindow(QMainWindow):
 
         # ==== Widgets ====
         self.role_dropdown = QComboBox()
-        self.role_dropdown.addItems(["General", "Developer", "Designer", "Manager", "Accountant"])
-        self.role_dropdown.setToolTip("Select Role")
+        self.role_dropdown.addItem(str(job_role or "general").replace("_", " ").title())
+        self.role_dropdown.setEnabled(False)
+        self.role_dropdown.setToolTip("Role is assigned to your account and can only be changed by an administrator")
 
         self.start_button = QPushButton("Start Tracking")
         self.stop_button = QPushButton("Stop Tracking")
@@ -96,7 +97,7 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(brand_row)
 
-        layout.addWidget(QLabel("Role:"))
+        layout.addWidget(QLabel("Assigned role:"))
         layout.addWidget(self.role_dropdown)
 
         button_layout = QHBoxLayout()
@@ -125,13 +126,25 @@ class MainWindow(QMainWindow):
     # ==== Functions ====
     def start_tracking(self):
         role = self.role_dropdown.currentText()
+        try:
+            self.tracker.set_metadata(role, "")
+            self.tracker.start()
+        except Exception as error:
+            self.status_label.setText("Status: Could not start")
+            self.start_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
+            self.report_area.append(f"Tracking start failed: {error}\n")
+            QMessageBox.critical(
+                self,
+                "TELER tracking error",
+                f"Tracking could not start.\n\n{error}",
+            )
+            return
+
         self.status_label.setText(f"Status: Tracking ({role})")
         self.report_area.append(f"Started tracking with role: {role}\n")
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
-
-        self.tracker.set_metadata(role, "")
-        self.tracker.start()
         self.timer.start(1000)  # update every second
 
     def stop_tracking(self):

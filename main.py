@@ -5,7 +5,7 @@ import sys
 from PyQt6.QtCore import QObject, QTimer, Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
-    QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QApplication, QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QScrollArea, QVBoxLayout, QWidget,
 )
 
@@ -59,6 +59,8 @@ class AuthDialog(QDialog):
             QLineEdit { background: #0F172A; border: 1px solid #334155; border-radius: 9px;
                         padding: 10px 12px; color: #F8FAFC; font-size: 13px; }
             QLineEdit:focus { border-color: #6366F1; }
+            QComboBox { background: #0F172A; border: 1px solid #334155; border-radius: 9px;
+                        padding: 8px 12px; color: #F8FAFC; font-size: 13px; }
             QPushButton#primary { background: #4F46E5; border: 0; border-radius: 9px;
                                   padding: 11px; color: white; font-weight: 700; }
             QPushButton#primary:hover { background: #6366F1; }
@@ -96,6 +98,17 @@ class AuthDialog(QDialog):
 
         self.name_label, self.name = self._field(form, "Full name", "Abdul Quddus")
         self.workspace_label, self.workspace = self._field(form, "Workspace", "My company")
+        self.role_label = QLabel("Job role", objectName="field")
+        self.role = QComboBox()
+        self.role.setMinimumHeight(42)
+        for label, value in (
+            ("General", "general"), ("Developer", "developer"),
+            ("Designer", "designer"), ("Manager", "manager"),
+            ("Accountant", "accountant"), ("QA", "qa"),
+        ):
+            self.role.addItem(label, value)
+        form.addWidget(self.role_label)
+        form.addWidget(self.role)
         self.email_label, self.email = self._field(form, "Email", "name@company.com")
         self.password_label, self.password = self._field(form, "Password", "Minimum 8 characters")
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
@@ -136,6 +149,7 @@ class AuthDialog(QDialog):
         self.mode = mode
         signup = mode == "signup"
         for widget in (self.name_label, self.name, self.workspace_label, self.workspace,
+                       self.role_label, self.role,
                        self.confirm_label, self.confirm):
             widget.setVisible(signup)
         self.submit.setText("Create account" if signup else "Sign in")
@@ -167,7 +181,7 @@ class AuthDialog(QDialog):
             if len(password) < 8:
                 return self._show_error("Password must contain at least 8 characters.")
             self._set_busy(True, "Creating account…")
-            self.client.signup(name, email, password, workspace)
+            self.client.signup(name, email, password, workspace, self.role.currentData())
         else:
             self._set_busy(True, "Signing in…")
             self.client.login(email, password)
@@ -223,7 +237,11 @@ class ApplicationController(QObject):
         account = dialog.account or self.client.saved_account() or {}
         display_name = account.get("displayName") or account.get("email") or "TELER User"
         organization = account.get("organization") or {}
-        self.window = MainWindow(username=display_name, organization_name=organization.get("name", ""))
+        self.window = MainWindow(
+            username=display_name,
+            organization_name=organization.get("name", ""),
+            job_role=account.get("jobRole") or "general",
+        )
         self.window.logout_requested.connect(self.logout)
         self.window.show()
 

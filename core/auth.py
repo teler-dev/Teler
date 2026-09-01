@@ -51,11 +51,11 @@ class AuthClient(QObject):
     def login(self, email, password):
         self._request("POST", "/api/auth/login", {"email": email, "password": password}, "auth")
 
-    def signup(self, display_name, email, password, organization_name):
+    def signup(self, display_name, email, password, organization_name, job_role):
         self._request(
             "POST", "/api/auth/signup",
             {"displayName": display_name, "email": email, "password": password,
-             "organizationName": organization_name},
+             "organizationName": organization_name, "jobRole": job_role},
             "auth",
         )
 

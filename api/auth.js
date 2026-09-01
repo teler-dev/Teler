@@ -4,6 +4,7 @@ const { promisify } = require('util');
 
 const scrypt = promisify(crypto.scrypt);
 const SESSION_DAYS = Math.max(1, Number(process.env.AUTH_SESSION_DAYS) || 30);
+const JOB_ROLES = new Set(['general', 'developer', 'designer', 'manager', 'accountant', 'qa']);
 const attempts = new Map();
 
 function authRateLimit(req, res, next) {
@@ -67,6 +68,7 @@ function publicAccount(row) {
     authUserId: row.auth_user_id,
     email: row.email_normalized,
     displayName: row.display_name,
+    jobRole: row.job_role,
     organization: {
       id: row.organization_id,
       name: row.organization_name,
@@ -91,13 +93,16 @@ async function issueSession(client, userProfileId, req) {
 const ACCOUNT_QUERY = `
   select p.id as user_profile_id, p.auth_user_id, p.display_name,
          c.email_normalized, m.organization_id, m.role as member_role,
-         o.name as organization_name, o.slug as organization_slug
+         o.name as organization_name, o.slug as organization_slug,
+         e.job_role
     from app.user_profiles p
     join app.user_credentials c on c.user_profile_id = p.id
     join app.organization_memberships m on m.user_profile_id = p.id
       and m.status = 'active'
     join app.organizations o on o.id = m.organization_id
       and o.status = 'active'
+    join app.employees e on e.organization_id = m.organization_id
+      and e.external_key = p.id::text
    where p.id = $1
    order by m.joined_at asc
    limit 1`;
@@ -115,6 +120,7 @@ function createAuthRouter(pool) {
     const email = normalizeEmail(req.body?.email);
     const password = String(req.body?.password || '');
     const organizationName = String(req.body?.organizationName || `${displayName}'s workspace`).trim();
+    const jobRole = String(req.body?.jobRole || '').trim().toLowerCase();
 
     if (displayName.length < 2 || displayName.length > 100) {
       return res.status(400).json({ error: 'Name must be between 2 and 100 characters' });
@@ -126,9 +132,13 @@ function createAuthRouter(pool) {
     if (organizationName.length < 2 || organizationName.length > 160) {
       return res.status(400).json({ error: 'Workspace name must be between 2 and 160 characters' });
     }
+    if (!JOB_ROLES.has(jobRole)) {
+      return res.status(400).json({ error: 'Select a valid job role' });
+    }
 
-    const client = await pool.connect();
+    let client;
     try {
+      client = await pool.connect();
       await client.query('begin');
       const passwordHash = await hashPassword(password);
       const authUserId = `teler:${crypto.randomUUID()}`;
@@ -156,10 +166,10 @@ function createAuthRouter(pool) {
         [organization.id, profileId]
       );
       await client.query(
-        `insert into app.employees
+         `insert into app.employees
            (organization_id, external_key, display_name, email_normalized, job_role)
-         values ($1, $2, $3, $4, 'general')`,
-        [organization.id, profileId, displayName, email]
+         values ($1, $2, $3, $4, $5)`,
+        [organization.id, profileId, displayName, email, jobRole]
       );
 
       const session = await issueSession(client, profileId, req);
@@ -171,16 +181,17 @@ function createAuthRouter(pool) {
           authUserId,
           email,
           displayName,
+          jobRole,
           organization: { id: organization.id, name: organization.name, slug: organization.slug, role: 'owner' },
         },
       });
     } catch (error) {
-      await client.query('rollback');
+      if (client) await client.query('rollback');
       if (error.code === '23505') return res.status(409).json({ error: 'An account with this email already exists' });
       console.error('[auth/signup]', error);
       return res.status(500).json({ error: 'Could not create account' });
     } finally {
-      client.release();
+      if (client) client.release();
     }
   });
 
@@ -189,8 +200,9 @@ function createAuthRouter(pool) {
     const password = String(req.body?.password || '');
     if (!validEmail(email) || !password) return res.status(400).json({ error: 'Email and password are required' });
 
-    const client = await pool.connect();
+    let client;
     try {
+      client = await pool.connect();
       const credentials = await client.query(
         `select user_profile_id, password_hash from app.user_credentials
           where email_normalized = $1 and disabled_at is null`,
@@ -212,7 +224,7 @@ function createAuthRouter(pool) {
       console.error('[auth/login]', error);
       return res.status(500).json({ error: 'Could not sign in' });
     } finally {
-      client.release();
+      if (client) client.release();
     }
   });
 

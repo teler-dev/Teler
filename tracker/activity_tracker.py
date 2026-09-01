@@ -20,7 +20,7 @@ pyautogui.PAUSE = 0
 # Override via environment variable TELER_DATA_BASE if deploying elsewhere.
 DATA_BASE = os.environ.get(
     "TELER_DATA_BASE",
-    r"C:\Users\essaz\OneDrive\Documents\AI-Timer\data"
+    os.path.join(os.path.expanduser("~"), "Documents", "TELER", "data")
 )
 
 # ── Temporary identity layer (replaced when multi-tenant auth ships) ──────────
@@ -30,6 +30,7 @@ ROLE_TO_EMPLOYEE_ID = {
     "developer":  "EMP_DEV",
     "designer":   "EMP_DES",
     "manager":    "EMP_MGR",
+    "accountant": "EMP_ACC",
     "qa":         "EMP_QA",
     "general":    "EMP_GEN",
 }
