@@ -11,7 +11,17 @@ function ks(n: number): KeystrokeMinute[] {
 }
 
 function seg(startMin: number, endMin: number, type: TimelineSegment['type'], app: string, label: string): TimelineSegment {
-  return { startMin, endMin, type, app, label };
+  return {
+    startMin,
+    endMin,
+    durationMin: endMin - startMin,
+    wallStart: '',
+    type,
+    app,
+    label,
+    url: '',
+    classifiedBy: 'fallback',
+  };
 }
 
 function tb(start: string, end: string, activity: string, app: string, type: TaskBreakdownItem['type']): TaskBreakdownItem {

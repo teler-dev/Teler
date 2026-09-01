@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
   AiSettings,
   DEFAULT_SETTINGS,
+  CUSTOM_MODEL_VALUE,
   OPENROUTER_MODELS,
+  OPENROUTER_RERANK_MODELS,
   OPENAI_MODELS,
   getAiSettings,
   saveAiSettings,
   getActiveApiKey,
+  getActiveModel,
+  getActiveRerankModel,
   askAiAgent,
 } from '../../services/aiAgentService';
 import { Eye, EyeOff, X, Save, RotateCcw, Zap, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
@@ -59,15 +63,16 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
   const [testing, setTesting]     = useState(false);
 
   // Reset connection status when model or provider changes
-  const prevModel    = React.useRef(settings.model);
+  const prevModel    = React.useRef(getActiveModel(settings));
   const prevProvider = React.useRef(settings.provider);
   useEffect(() => {
-    if (settings.model !== prevModel.current || settings.provider !== prevProvider.current) {
+    const activeModel = getActiveModel(settings);
+    if (activeModel !== prevModel.current || settings.provider !== prevProvider.current) {
       setConn('idle');
-      prevModel.current    = settings.model;
+      prevModel.current    = activeModel;
       prevProvider.current = settings.provider;
     }
-  }, [settings.model, settings.provider]);
+  }, [settings.model, settings.customModel, settings.provider]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -80,6 +85,14 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
     setSettings(s => ({ ...s, [key]: value }));
 
   const handleSave = () => {
+    if (!getActiveModel(settings)) {
+      setToast({ type: 'error', message: 'Enter a model ID before saving.' });
+      return;
+    }
+    if (settings.provider === 'openrouter' && settings.useReranking && !getActiveRerankModel(settings)) {
+      setToast({ type: 'error', message: 'Enter a rerank model ID before saving.' });
+      return;
+    }
     saveAiSettings(settings);
     setToast({ type: 'success', message: 'Settings saved.' });
   };
@@ -93,6 +106,11 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
     const apiKey = getActiveApiKey(settings);
     if (!apiKey.trim() && settings.provider !== 'local') {
       setToast({ type: 'error', message: 'Connection failed. Check API key.' });
+      setConn('error');
+      return;
+    }
+    if (!getActiveModel(settings)) {
+      setToast({ type: 'error', message: 'Enter a model ID first.' });
       setConn('error');
       return;
     }
@@ -111,7 +129,27 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
   };
 
   const modelOptions = settings.provider === 'openai' ? OPENAI_MODELS : OPENROUTER_MODELS;
+  const selectedModel = settings.customModel.trim() ? CUSTOM_MODEL_VALUE : settings.model;
+  const selectedRerankModel = settings.customRerankModel.trim()
+    ? CUSTOM_MODEL_VALUE
+    : settings.rerankModel;
   const sc = STATUS_CFG[connStatus];
+
+  const handleModelChange = (value: string) => {
+    setSettings(current => ({
+      ...current,
+      model: value,
+      customModel: value === CUSTOM_MODEL_VALUE ? current.customModel : '',
+    }));
+  };
+
+  const handleRerankModelChange = (value: string) => {
+    setSettings(current => ({
+      ...current,
+      rerankModel: value,
+      customRerankModel: value === CUSTOM_MODEL_VALUE ? current.customRerankModel : '',
+    }));
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -191,13 +229,14 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Model</label>
           <select
-            value={settings.model}
-            onChange={e => update('model', e.target.value)}
+            value={selectedModel}
+            onChange={e => handleModelChange(e.target.value)}
             className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500/50 appearance-none"
           >
             {modelOptions.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
+            <option value={CUSTOM_MODEL_VALUE}>Custom model ID…</option>
           </select>
           {/* Connection status dot */}
           <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${sc.text}`}>
@@ -206,20 +245,65 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
           </div>
         </div>
 
-        {/* Custom Model */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-            Custom Model Name{' '}
-            <span className="text-gray-600 normal-case font-normal">(overrides above)</span>
-          </label>
-          <input
-            type="text"
-            value={settings.customModel}
-            onChange={e => update('customModel', e.target.value)}
-            placeholder="e.g. mistralai/mistral-large"
-            className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
-          />
-        </div>
+        {/* Custom chat model */}
+        {selectedModel === CUSTOM_MODEL_VALUE && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              Custom chat model ID
+            </label>
+            <input
+              type="text"
+              value={settings.customModel}
+              onChange={e => update('customModel', e.target.value)}
+              placeholder="e.g. mistralai/mistral-large"
+              className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+            />
+            <p className="text-[10px] text-gray-600">Paste an exact model ID supported by the selected provider.</p>
+          </div>
+        )}
+
+        {/* OpenRouter retrieval reranking */}
+        {settings.provider === 'openrouter' && (
+          <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span>
+                <span className="block text-xs font-bold text-gray-300 uppercase tracking-widest">Context reranking</span>
+                <span className="block text-[10px] text-gray-600 mt-1">Selects the most relevant sessions before Gemma answers.</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.useReranking}
+                onChange={e => update('useReranking', e.target.checked)}
+                className="w-4 h-4 accent-cyan-500"
+              />
+            </label>
+
+            {settings.useReranking && (
+              <>
+                <select
+                  value={selectedRerankModel}
+                  onChange={e => handleRerankModelChange(e.target.value)}
+                  className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500/50 appearance-none"
+                >
+                  {OPENROUTER_RERANK_MODELS.map(model => (
+                    <option key={model.value} value={model.value}>{model.label}</option>
+                  ))}
+                  <option value={CUSTOM_MODEL_VALUE}>Custom rerank model ID…</option>
+                </select>
+
+                {selectedRerankModel === CUSTOM_MODEL_VALUE && (
+                  <input
+                    type="text"
+                    value={settings.customRerankModel}
+                    onChange={e => update('customRerankModel', e.target.value)}
+                    placeholder="e.g. provider/rerank-model"
+                    className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Temperature */}
         <div className="space-y-1.5">
