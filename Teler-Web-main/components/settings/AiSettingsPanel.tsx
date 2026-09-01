@@ -104,7 +104,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
 
   const handleTest = async () => {
     const apiKey = getActiveApiKey(settings);
-    if (!apiKey.trim() && settings.provider !== 'local') {
+    if (!apiKey.trim() && settings.provider !== 'local' && settings.provider !== 'openrouter') {
       setToast({ type: 'error', message: 'Connection failed. Check API key.' });
       setConn('error');
       return;
@@ -120,9 +120,12 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
       await askAiAgent('Respond with "TELER AI connected successfully".', {}, settings);
       setConn('connected');
       setToast({ type: 'success', message: 'AI model connected.' });
-    } catch {
+    } catch (error) {
       setConn('error');
-      setToast({ type: 'error', message: 'Connection failed. Check API key.' });
+      setToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'AI connection failed.',
+      });
     } finally {
       setTesting(false);
     }
@@ -205,14 +208,17 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
         </div>
 
         {/* API Keys */}
-        {settings.provider !== 'local' && (
+        {settings.provider === 'openrouter' && (
+          <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5">
+            <p className="text-xs font-bold text-cyan-300">Managed securely by TELER</p>
+            <p className="text-[10px] text-gray-500 mt-1">
+              The OpenRouter key is stored server-side in Vercel and is never exposed to this browser.
+            </p>
+          </div>
+        )}
+
+        {settings.provider === 'openai' && (
           <>
-            <KeyField
-              label="OpenRouter API Key"
-              value={settings.openRouterApiKey}
-              placeholder="sk-or-v1-..."
-              onChange={v => update('openRouterApiKey', v)}
-            />
             <KeyField
               label="OpenAI API Key"
               value={settings.openAiApiKey}
@@ -220,7 +226,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
               onChange={v => update('openAiApiKey', v)}
             />
             <p className="text-[10px] text-gray-600 -mt-3">
-              Stored in localStorage only — never sent to TELER servers.
+              Stored in this browser only.
             </p>
           </>
         )}

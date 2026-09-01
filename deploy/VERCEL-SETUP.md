@@ -37,6 +37,7 @@ any Preview environment that should be usable:
 | `TELER_DASHBOARD_USERNAME` | generated/chosen dashboard username |
 | `TELER_DASHBOARD_PASSWORD_HASH` | complete generated `scrypt$...` value |
 | `TELER_SESSION_SECRET` | generated 64-character secret |
+| `OPENROUTER_API_KEY` | a new OpenRouter key for server-side TELER AI calls |
 | `PUPPETEER_SKIP_DOWNLOAD` | `true` |
 
 These are server-only variables. Do **not** use `VITE_API_TOKEN`; every `VITE_*`

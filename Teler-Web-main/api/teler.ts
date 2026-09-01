@@ -38,7 +38,10 @@ export default {
 
       const apiBase = process.env.TELER_API_BASE?.trim().replace(/\/+$/, '');
       const apiToken = process.env.TELER_API_TOKEN?.trim();
-      if (!apiBase || !apiToken) throw new Error('TELER_API_BASE or TELER_API_TOKEN is missing');
+      if (!apiBase || !apiToken) {
+        console.error('TELER proxy configuration error: TELER_API_BASE or TELER_API_TOKEN is missing');
+        return noStoreJson({ error: 'Oracle API connection is not configured in Vercel' }, 503);
+      }
 
       const upstreamUrl = new URL(`${target.pathname}${target.search}`, `${apiBase}/`);
       const upstream = await fetch(upstreamUrl, {

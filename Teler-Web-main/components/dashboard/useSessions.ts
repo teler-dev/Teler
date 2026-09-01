@@ -784,7 +784,13 @@ export function useSessions(employeeName?: string, enabled = true) {
       if (res.status === 401) {
         window.dispatchEvent(new Event('teler:unauthorized'));
       }
-      if (!res.ok) throw new Error(`HTTP ${res.status} from TELER API`);
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null) as { error?: unknown } | null;
+        const detail = typeof payload?.error === 'string'
+          ? payload.error
+          : `HTTP ${res.status} from TELER API`;
+        throw new Error(detail);
+      }
 
       const data: unknown = await res.json();
       if (!Array.isArray(data)) throw new Error('API returned unexpected format (expected array)');
