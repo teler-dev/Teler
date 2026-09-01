@@ -106,6 +106,11 @@ SYNC_TOKEN=$SYNC_TOKEN
 
 # Browser origins allowed to call the API. Add your Vercel URL(s), comma-separated.
 ALLOWED_ORIGINS=https://teler.vercel.app
+
+# Required for desktop email/password login. Paste the pooled Neon connection
+# string here, then restart teler-api. Never expose this value to Vercel/Vite.
+DATABASE_URL=
+AUTH_SESSION_DAYS=30
 EOF
 fi
 chmod 640 "$ENV_FILE"

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget,
     QComboBox, QTextEdit, QHBoxLayout
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
 from tracker.activity_tracker import ActivityTracker
 
@@ -30,7 +30,9 @@ def _make_logo_label(height_px: int) -> QLabel | None:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, username=""):
+    logout_requested = pyqtSignal()
+
+    def __init__(self, username="", organization_name=""):
         super().__init__()
 
         # ==== Window Setup ====
@@ -81,10 +83,16 @@ class MainWindow(QMainWindow):
         brand_row.addStretch()
 
         if username:
-            user_label = QLabel(f"Logged in as: {username}")
+            identity = f"{username} · {organization_name}" if organization_name else username
+            user_label = QLabel(f"Logged in as: {identity}")
             user_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             user_label.setStyleSheet("color: #6366F1; font-size: 12px; padding: 2px 6px;")
             brand_row.addWidget(user_label)
+
+            logout_button = QPushButton("Logout")
+            logout_button.setToolTip("Sign out of TELER on this computer")
+            logout_button.clicked.connect(self._logout)
+            brand_row.addWidget(logout_button)
 
         layout.addLayout(brand_row)
 
@@ -141,3 +149,14 @@ class MainWindow(QMainWindow):
             f"Keys: {stats['keys']}, Clicks: {stats['clicks']}, "
             f"Idle: {stats['idle_seconds']}s, Active Window: {stats['active_window']}"
         )
+
+    def _logout(self):
+        if self.tracker.running:
+            self.stop_tracking()
+        self.logout_requested.emit()
+
+    def closeEvent(self, event):
+        if self.tracker.running:
+            self.tracker.stop()
+        self.timer.stop()
+        event.accept()

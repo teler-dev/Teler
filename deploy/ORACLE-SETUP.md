@@ -167,6 +167,21 @@ sudo bash deploy/setup-server.sh
 **Config lives in** `/etc/teler/teler.env` — tokens, `DATA_ROOT`, and
 `ALLOWED_ORIGINS`. Restart the service after editing it.
 
+### Desktop login/signup
+
+Run `database/003_desktop_auth.sql` in the Neon SQL Editor after the initial
+schema. Then add the pooled Neon connection string to `/etc/teler/teler.env`:
+
+```bash
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
+AUTH_SESSION_DAYS=30
+```
+
+Restart with `sudo systemctl restart teler-api`. The desktop application can
+then create accounts at `/api/auth/signup`, restore sessions at `/api/auth/me`,
+and revoke them at `/api/auth/logout`. Passwords and the database URL never
+reach the desktop client.
+
 ---
 
 ## Troubleshooting

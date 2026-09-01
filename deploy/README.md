@@ -50,6 +50,8 @@ service after editing: `sudo systemctl restart teler-api`.
 | `API_TOKEN` | Read token; also compiled into the Vercel frontend bundle |
 | `SYNC_TOKEN` | Write token for `/api/sync/file`; used only by the sync agent |
 | `ALLOWED_ORIGINS` | Comma-separated browser origins permitted to call the API |
+| `DATABASE_URL` | Neon pooled PostgreSQL connection string used by desktop authentication |
+| `AUTH_SESSION_DAYS` | Desktop login lifetime; defaults to 30 days |
 
 Leaving `API_TOKEN` empty disables auth entirely. That is fine on localhost and
 should never be the case on the server.

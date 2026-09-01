@@ -32,10 +32,14 @@ const fs      = require('fs');
 const path    = require('path');
 const os      = require('os');
 const crypto  = require('crypto');
+const { Pool } = require('pg');
 
 const { classifyWindow } = require('./classifier');
+const { createAuthRouter } = require('./auth');
 
 const app  = express();
+// Caddy is the only public reverse proxy in the supported deployment.
+app.set('trust proxy', 'loopback');
 // ── Configuration (env-driven; defaults keep local Windows dev working) ────────
 const PORT = Number(process.env.PORT) || 7001;
 
@@ -55,6 +59,12 @@ const SYNC_TOKEN = (process.env.SYNC_TOKEN || '').trim() || API_TOKEN;
 // '*' keeps the old wide-open behavior for local development.
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '*')
   .split(',').map(o => o.trim()).filter(Boolean);
+
+const DATABASE_URL = (process.env.DATABASE_URL || '').trim();
+const authPool = DATABASE_URL ? new Pool({ connectionString: DATABASE_URL }) : null;
+if (authPool) {
+  authPool.on('error', error => console.error('[database/pool]', error));
+}
 
 const MACHINE_USER = os.userInfo().username;  // fallback for sessions without meta.user_name
 
@@ -76,6 +86,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Sync-Path'],
 }));
 app.use(express.json());
+
+// User authentication has its own bearer sessions and must be mounted before
+// the legacy shared API-token middleware below.
+app.use('/api/auth', createAuthRouter(authPool));
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 
@@ -109,6 +123,7 @@ const requireSyncToken = requireToken(SYNC_TOKEN);
 // /health stays open so uptime checks and the deploy script can probe it.
 app.use((req, res, next) => {
   if (req.path === '/health') return next();
+  if (req.path.startsWith('/api/auth/')) return next();
   if (req.path === '/api/sync/file') return requireSyncToken(req, res, next);
   return requireApiToken(req, res, next);
 });
