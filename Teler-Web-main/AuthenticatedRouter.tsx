@@ -21,6 +21,7 @@ const routeForSection: Record<NavSection, string> = {
   dashboard: '/dashboard', employees: '/employees', sessions: '/employees', reports: '/reports',
   alerts: '/alerts', settings: '/settings/ai', 'ai-settings': '/settings/ai', workspace: '/analytics',
 };
+
 function resolveEmployee(route: AppRoute, sessions: ReturnType<typeof useSessions>['sessions']): Employee | null {
   if (route.kind !== 'employee' && route.kind !== 'session') return null;
   const match = sessions.find(session => employeeSlug(session.userName || session.role || '') === route.employeeId);
@@ -34,7 +35,7 @@ const AiSettingsRoute: React.FC<{ onLogout: () => void; clientName: string; onNa
     <DashboardSidebar activeSection="ai-settings" onNavigate={onNavigate} alertCount={alertCount} onLogout={onLogout} clientName={clientName} />
     <div className="flex-1 ml-56 min-w-0 min-h-screen">
       <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle"><div className="px-4 md:px-6 py-4 flex items-center gap-3"><a href="/dashboard" onClick={event => { if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();navigate('/dashboard');} }} aria-label="Back to dashboard" className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></a><div><h1 className="text-xl md:text-2xl font-bold">AI Settings</h1><p className="text-sm text-secondary mt-1">Provider, models, retrieval, response behavior, privacy, diagnostics and usage configuration.</p></div></div></header>
-      <main className="p-4 md:p-6 max-w-5xl"><div className="bg-surface-card border border-subtle rounded-2xl overflow-hidden min-h-[680px]"><AiSettingsPanel onClose={() => navigate('/dashboard')} /></div></main>
+      <main className="p-4 md:p-6 max-w-5xl"><div className="teler-ai-settings-panel theme-form-surface bg-surface-card border border-subtle rounded-2xl overflow-hidden min-h-[680px] shadow-card"><AiSettingsPanel onClose={() => navigate('/dashboard')} /></div></main>
     </div>
   </div>;
 };
@@ -54,6 +55,7 @@ export const AuthenticatedRouter: React.FC = () => {
     window.addEventListener('teler:open-ai', openAi);
     return () => { window.removeEventListener('popstate', sync); window.removeEventListener('teler:open-ai', openAi); };
   }, []);
+
   useEffect(() => {
     document.title = routeTitle(route);
     window.scrollTo(0, 0);
@@ -66,6 +68,7 @@ export const AuthenticatedRouter: React.FC = () => {
       }
     }
   }, [route]);
+
   useEffect(() => {
     let active = true;
     getCurrentUser().then(user => {
@@ -94,9 +97,9 @@ export const AuthenticatedRouter: React.FC = () => {
   else if (route.kind === 'ai-settings') page = <AiSettingsRoute onLogout={doLogout} clientName={username} onNavigate={onSectionNavigate} />;
   else navigate('/dashboard', { replace: true });
 
-  return <>
+  return <div className="teler-auth-surface contents">
     {page}
     <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />
     {showAiChat && <AiChatPanel sessions={globalSessions} onClose={() => setShowAiChat(false)} />}
-  </>;
+  </div>;
 };

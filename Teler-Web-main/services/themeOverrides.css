@@ -1,0 +1,166 @@
+:root[data-theme] .teler-auth-surface input,
+:root[data-theme] .teler-auth-surface select,
+:root[data-theme] .teler-auth-surface textarea {
+  background-color: rgb(var(--surface-input)) !important;
+  color: rgb(var(--text-primary)) !important;
+  border-color: rgb(var(--border-subtle)) !important;
+}
+
+:root[data-theme] .teler-auth-surface input::placeholder,
+:root[data-theme] .teler-auth-surface textarea::placeholder {
+  color: rgb(var(--text-muted)) !important;
+}
+
+:root[data-theme] .teler-auth-surface input:hover:not(:disabled),
+:root[data-theme] .teler-auth-surface select:hover:not(:disabled),
+:root[data-theme] .teler-auth-surface textarea:hover:not(:disabled) {
+  border-color: rgb(var(--border-strong)) !important;
+}
+
+:root[data-theme] .teler-auth-surface input:disabled,
+:root[data-theme] .teler-auth-surface select:disabled,
+:root[data-theme] .teler-auth-surface textarea:disabled,
+:root[data-theme] .teler-auth-surface button:disabled {
+  color: rgb(var(--text-muted)) !important;
+  background-color: rgb(var(--surface-raised)) !important;
+  border-color: rgb(var(--border-subtle)) !important;
+  opacity: .72 !important;
+  cursor: not-allowed;
+}
+
+:root[data-theme] .teler-auth-surface select option {
+  background: rgb(var(--surface-card));
+  color: rgb(var(--text-primary));
+}
+
+:root[data-theme] .teler-auth-surface input[type="checkbox"] {
+  accent-color: rgb(var(--accent));
+}
+
+:root[data-theme] .teler-auth-surface input[type="range"] {
+  background: transparent !important;
+}
+
+[data-theme="light"] .teler-ai-settings-panel .bg-cyan-500\/15,
+[data-theme="light"] .teler-ai-settings-panel .bg-cyan-500\/10,
+[data-theme="light"] .teler-ai-settings-panel .bg-cyan-500\/5 {
+  background-color: rgb(var(--accent-soft)) !important;
+}
+
+[data-theme="light"] .teler-ai-settings-panel .text-cyan-300,
+[data-theme="light"] .teler-ai-settings-panel .text-cyan-400,
+[data-theme="light"] .teler-ai-settings-panel .text-cyan-500 {
+  color: rgb(var(--accent-hover)) !important;
+}
+
+[data-theme="light"] .teler-ai-settings-panel .border-cyan-500\/20,
+[data-theme="light"] .teler-ai-settings-panel .border-cyan-500\/30,
+[data-theme="light"] .teler-ai-settings-panel .border-cyan-500\/40,
+[data-theme="light"] .teler-ai-settings-panel .border-cyan-500\/50 {
+  border-color: rgb(var(--accent)) !important;
+}
+
+.teler-ai-settings-panel > div > div.border-b > button {
+  display: none !important;
+}
+
+.teler-ai-settings-panel > div > div.border-b {
+  background: rgb(var(--surface-card));
+  border-color: rgb(var(--border-subtle)) !important;
+}
+
+.teler-ai-settings-panel > div > div.border-t {
+  background: rgb(var(--surface-card));
+  border-color: rgb(var(--border-subtle)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .recharts-cartesian-grid line {
+  stroke: rgb(var(--border-subtle)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .recharts-cartesian-axis-tick-value {
+  fill: rgb(var(--text-muted)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .recharts-tooltip-wrapper > div {
+  background: rgb(var(--surface-card)) !important;
+  color: rgb(var(--text-primary)) !important;
+  border-color: rgb(var(--border-subtle)) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .recharts-default-tooltip,
+[data-theme="light"] .teler-auth-surface .recharts-tooltip-item,
+[data-theme="light"] .teler-auth-surface .recharts-tooltip-label {
+  color: rgb(var(--text-primary)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .bg-black\/45,
+[data-theme="light"] .teler-auth-surface .bg-black\/40 {
+  background-color: rgba(15, 23, 42, .28) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .shadow-2xl,
+[data-theme="light"] .teler-auth-surface .shadow-xl {
+  box-shadow: var(--shadow-card) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .animate-pulse,
+[data-theme="light"] .teler-auth-surface .animate-shimmer {
+  filter: none !important;
+}
+
+[data-theme="light"] .teler-auth-surface [class*="blur-["] {
+  opacity: .25;
+}
+
+[data-theme="light"] .teler-auth-surface .bg-red-500\/10,
+[data-theme="light"] .teler-auth-surface .bg-red-500\/8,
+[data-theme="light"] .teler-auth-surface .bg-red-500\/5 {
+  background-color: rgb(var(--danger-soft)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .text-red-300,
+[data-theme="light"] .teler-auth-surface .text-red-400 {
+  color: rgb(var(--danger)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .bg-amber-500\/15,
+[data-theme="light"] .teler-auth-surface .bg-amber-500\/10,
+[data-theme="light"] .teler-auth-surface .bg-amber-500\/5 {
+  background-color: rgb(var(--warning-soft)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .text-amber-300,
+[data-theme="light"] .teler-auth-surface .text-amber-400 {
+  color: rgb(var(--warning)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .bg-green-500\/15,
+[data-theme="light"] .teler-auth-surface .bg-green-500\/10,
+[data-theme="light"] .teler-auth-surface .bg-green-500\/5 {
+  background-color: rgb(var(--success-soft)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .text-green-300,
+[data-theme="light"] .teler-auth-surface .text-green-400 {
+  color: rgb(var(--success)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .bg-blue-500\/10,
+[data-theme="light"] .teler-auth-surface .bg-cyan-500\/10,
+[data-theme="light"] .teler-auth-surface .bg-cyan-500\/15 {
+  background-color: rgb(var(--info-soft)) !important;
+}
+
+[data-theme="light"] .teler-auth-surface .text-blue-400,
+[data-theme="light"] .teler-auth-surface .text-cyan-300,
+[data-theme="light"] .teler-auth-surface .text-cyan-400 {
+  color: rgb(var(--info)) !important;
+}
+
+@media (max-width: 767px) {
+  .teler-ai-settings-panel {
+    min-height: 0 !important;
+  }
+}

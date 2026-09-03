@@ -2,6 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AuthenticatedRouter } from './AuthenticatedRouter';
+import { applyTheme } from './services/themeService';
+import './services/themeOverrides.css';
+
+applyTheme();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Could not find root element to mount to');
