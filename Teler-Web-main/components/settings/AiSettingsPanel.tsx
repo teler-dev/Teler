@@ -40,6 +40,8 @@ function KeyField({
         <button
           type="button"
           onClick={() => setShow(v => !v)}
+          aria-label={show ? `Hide ${label}` : `Show ${label}`}
+          title={show ? `Hide ${label}` : `Show ${label}`}
           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
         >
           {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -61,6 +63,8 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
   const [connStatus, setConn]     = useState<ConnStatus>('idle');
   const [toast, setToast]         = useState<Toast | null>(null);
   const [testing, setTesting]     = useState(false);
+  const savedSettings = React.useRef(JSON.stringify(getAiSettings()));
+  const isDirty = JSON.stringify(settings) !== savedSettings.current;
 
   // Reset connection status when model or provider changes
   const prevModel    = React.useRef(getActiveModel(settings));
@@ -81,8 +85,23 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
     return () => clearTimeout(t);
   }, [toast]);
 
+  useEffect(() => {
+    const guard = (event: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [isDirty]);
+
   const update = <K extends keyof AiSettings>(key: K, value: AiSettings[K]) =>
     setSettings(s => ({ ...s, [key]: value }));
+
+  const handleClose = () => {
+    if (isDirty && !window.confirm('Discard unsaved AI settings changes?')) return;
+    onClose();
+  };
 
   const handleSave = () => {
     if (!getActiveModel(settings)) {
@@ -94,6 +113,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
       return;
     }
     saveAiSettings(settings);
+    savedSettings.current = JSON.stringify(settings);
     setToast({ type: 'success', message: 'Settings saved.' });
   };
 
@@ -179,7 +199,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
           <h3 className="text-white font-black text-sm tracking-tight">AI Settings</h3>
           <p className="text-gray-500 text-xs mt-0.5">Configure model, keys &amp; behaviour</p>
         </div>
-        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+        <button type="button" onClick={handleClose} aria-label="Close AI settings" title="Close AI settings" className="text-gray-500 hover:text-white transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>
