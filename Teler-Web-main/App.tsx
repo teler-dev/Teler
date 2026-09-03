@@ -7,8 +7,10 @@ import { Dashboard } from './components/dashboard/Dashboard';
 import { EmployerOverview } from './components/dashboard/EmployerOverview';
 import { EmployeesPage } from './components/dashboard/EmployeesPage';
 import { AlertsPage } from './components/dashboard/AlertsPage';
+import { AdvancedWorkspacePage } from './components/dashboard/AdvancedWorkspacePage';
 import { NavSection } from './components/dashboard/DashboardSidebar';
 import { AiChatPanel } from './components/dashboard/AiChatPanel';
+import { GlobalCommandBar } from './components/dashboard/GlobalCommandBar';
 import { AiSettingsPanel } from './components/settings/AiSettingsPanel';
 import { useSessions } from './components/dashboard/useSessions';
 import { Button } from './components/ui/Button';
@@ -27,8 +29,9 @@ import { LegalPage } from './components/LegalPages';
 import { IntegrationsPage, SecurityPage } from './components/ProductPages';
 import { AboutPage, CareersPage, ContactPage } from './components/CompanyPages';
 import { getCurrentUser, login, logout } from './services/authService';
+import { applyTheme } from './services/themeService';
 
-export type View = 'landing' | 'login' | 'overview' | 'dashboard' | 'employees' | 'alerts' | 'how-it-works' | 'privacy' | 'terms' | 'gdpr' | 'integrations' | 'security' | 'about' | 'careers' | 'contact';
+export type View = 'landing' | 'login' | 'overview' | 'dashboard' | 'employees' | 'alerts' | 'workspace' | 'how-it-works' | 'privacy' | 'terms' | 'gdpr' | 'integrations' | 'security' | 'about' | 'careers' | 'contact';
 
 const Navbar: React.FC<{ 
   onLoginClick: () => void, 
@@ -517,6 +520,32 @@ const App: React.FC = () => {
   const { sessions: globalSessions } = useSessions(undefined, authStatus === 'authenticated');
 
   useEffect(() => {
+    applyTheme();
+    const openAi = () => setShowAiChat(true);
+    const openEmployee = (event: Event) => {
+      const employee = (event as CustomEvent<Employee>).detail;
+      if (!employee?.name) return;
+      setActiveEmployee(employee);
+      setView('dashboard');
+    };
+    const navigateSection = (event: Event) => {
+      const section = (event as CustomEvent<NavSection>).detail;
+      if (section === 'dashboard') setView('overview');
+      else if (section === 'employees') setView('employees');
+      else if (section === 'alerts') setView('alerts');
+      else if (section === 'ai-settings') setShowAiSettings(true);
+    };
+    window.addEventListener('teler:open-ai', openAi);
+    window.addEventListener('teler:open-employee', openEmployee);
+    window.addEventListener('teler:navigate-section', navigateSection);
+    return () => {
+      window.removeEventListener('teler:open-ai', openAi);
+      window.removeEventListener('teler:open-employee', openEmployee);
+      window.removeEventListener('teler:navigate-section', navigateSection);
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
     getCurrentUser()
       .then((user) => {
@@ -557,6 +586,7 @@ const App: React.FC = () => {
       dashboard: "Employee Detail | TELER",
       employees: "Employees | TELER Workforce",
       alerts: "Active Alerts | TELER Workforce",
+      workspace: "Control Center | TELER Workforce",
       'how-it-works': "The Process of Validating Professional Performance | TELER",
       privacy: "Privacy Standard | TELER Workforce Intelligence",
       terms: "Terms of Service | TELER",
@@ -598,6 +628,7 @@ const App: React.FC = () => {
     if (section === 'dashboard') setView('overview');
     else if (section === 'employees') setView('employees');
     else if (section === 'alerts') setView('alerts');
+    else if (section === 'workspace') setView('workspace');
     else if (section === 'ai-settings') setShowAiSettings(true);
   };
   const onHowItWorksClick = () => setView('how-it-works');

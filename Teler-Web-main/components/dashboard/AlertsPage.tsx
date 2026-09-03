@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { useSessions } from './useSessions';
 import { DashboardSidebar, NavSection } from './DashboardSidebar';
+import { AlertWorkflowPanel } from './AlertWorkflowPanel';
 import {
   generateAlerts, Alert, ALERT_LABEL, ALERT_DESCRIPTION,
   SEVERITY_CONFIG, SEVERITY_ORDER, AlertSeverity,
@@ -81,7 +82,7 @@ const AlertDetailDrawer: React.FC<{
               <p className="text-gray-500 text-xs mt-0.5">{alert.employeeName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white shrink-0">
+          <button type="button" onClick={onClose} aria-label="Close alert details" title="Close alert details" className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white shrink-0">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -123,6 +124,8 @@ const AlertDetailDrawer: React.FC<{
               {alert.alertType === 'suspicious_inactivity' && 'This session shows high idle time over a long period. Review the session timeline for more context before reaching conclusions.'}
             </p>
           </div>
+
+          <AlertWorkflowPanel alertId={alert.id} />
         </div>
 
         <div className="px-6 py-4 border-t border-white/5 shrink-0">
@@ -244,7 +247,7 @@ export const AlertsPage: React.FC<Props> = ({
                   Live API
                 </div>
               )}
-              <button onClick={() => refetch(true)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white">
+              <button type="button" onClick={() => refetch(true)} aria-label="Refresh alerts" title="Refresh alerts" className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white">
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
