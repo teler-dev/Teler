@@ -2,6 +2,15 @@ export type AuthenticatedUser = {
   username: string;
 };
 
+function isPublicAuthShell(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname === '/' || window.location.pathname === '/login';
+}
+
+function handoffToRoutedDashboard(): void {
+  if (isPublicAuthShell()) window.location.replace('/dashboard');
+}
+
 async function readJson(response: Response): Promise<Record<string, unknown>> {
   try {
     return await response.json() as Record<string, unknown>;
@@ -22,7 +31,10 @@ export async function login(username: string, password: string): Promise<Authent
   if (!response.ok || typeof body.username !== 'string') {
     throw new Error(typeof body.error === 'string' ? body.error : 'Unable to sign in');
   }
-  return { username: body.username };
+
+  const user = { username: body.username };
+  handoffToRoutedDashboard();
+  return user;
 }
 
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
@@ -34,7 +46,10 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
 
   const body = await readJson(response);
   if (!response.ok || typeof body.username !== 'string') return null;
-  return { username: body.username };
+
+  const user = { username: body.username };
+  handoffToRoutedDashboard();
+  return user;
 }
 
 export async function logout(): Promise<void> {
