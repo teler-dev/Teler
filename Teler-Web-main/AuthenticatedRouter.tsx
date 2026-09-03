@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Employee } from './types';
 import { EmployerOverview } from './components/dashboard/EmployerOverview';
@@ -17,9 +17,17 @@ import { getCurrentUser, logout } from './services/authService';
 import { applyTheme } from './services/themeService';
 import { AppRoute, employeePath, employeeSlug, navigate, parseRoute, routeTitle } from './services/routerService';
 
+declare const __TELER_BUILD_ID__: string;
+
 const routeForSection: Record<NavSection, string> = {
-  dashboard: '/dashboard', employees: '/employees', sessions: '/employees', reports: '/reports',
-  alerts: '/alerts', settings: '/settings/ai', 'ai-settings': '/settings/ai', workspace: '/analytics',
+  dashboard: '/dashboard',
+  employees: '/employees',
+  sessions: '/employees',
+  reports: '/reports',
+  alerts: '/alerts',
+  settings: '/settings/ai',
+  'ai-settings': '/settings/ai',
+  workspace: '/analytics',
 };
 
 function resolveEmployee(route: AppRoute, sessions: ReturnType<typeof useSessions>['sessions']): Employee | null {
@@ -34,7 +42,12 @@ const AiSettingsRoute: React.FC<{ onLogout: () => void; clientName: string; onNa
   return <div className="min-h-screen bg-surface-page text-primary flex">
     <DashboardSidebar activeSection="ai-settings" onNavigate={onNavigate} alertCount={alertCount} onLogout={onLogout} clientName={clientName} />
     <div className="flex-1 ml-56 min-w-0 min-h-screen">
-      <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle"><div className="px-4 md:px-6 py-4 flex items-center gap-3"><a href="/dashboard" onClick={event => { if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();navigate('/dashboard');} }} aria-label="Back to dashboard" className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></a><div><h1 className="text-xl md:text-2xl font-bold">AI Settings</h1><p className="text-sm text-secondary mt-1">Provider, models, retrieval, response behavior, privacy, diagnostics and usage configuration.</p></div></div></header>
+      <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle">
+        <div className="px-4 md:px-6 py-4 flex items-center gap-3">
+          <a href="/dashboard" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/dashboard'); } }} aria-label="Back to dashboard" className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></a>
+          <div><h1 className="text-xl md:text-2xl font-bold">AI Settings</h1><p className="text-sm text-secondary mt-1">Provider, models, retrieval, response behavior, privacy, diagnostics and usage configuration.</p></div>
+        </div>
+      </header>
       <main className="p-4 md:p-6 max-w-5xl"><div className="teler-ai-settings-panel theme-form-surface bg-surface-card border border-subtle rounded-2xl overflow-hidden min-h-[680px] shadow-card"><AiSettingsPanel onClose={() => navigate('/dashboard')} /></div></main>
     </div>
   </div>;
@@ -45,7 +58,19 @@ export const AuthenticatedRouter: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated'>('checking');
   const [username, setUsername] = useState('');
   const [showAiChat, setShowAiChat] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const { sessions: globalSessions } = useSessions(undefined, authStatus === 'authenticated');
+
+  const checkBuildVersion = useCallback(async () => {
+    try {
+      const response = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const remote = await response.json() as { buildId?: string };
+      if (remote.buildId && remote.buildId !== __TELER_BUILD_ID__) setUpdateAvailable(true);
+    } catch {
+      // A temporary network failure must never interrupt the active manager workflow.
+    }
+  }, []);
 
   useEffect(() => {
     applyTheme();
@@ -57,8 +82,18 @@ export const AuthenticatedRouter: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const onFocus = () => void checkBuildVersion();
+    const onVisibility = () => { if (document.visibilityState === 'visible') void checkBuildVersion(); };
+    void checkBuildVersion();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVisibility); };
+  }, [checkBuildVersion]);
+
+  useEffect(() => {
     document.title = routeTitle(route);
     window.scrollTo(0, 0);
+    void checkBuildVersion();
     if (route.kind === 'dashboard') {
       const url = new URL(window.location.href);
       if (!url.searchParams.has('days')) {
@@ -67,14 +102,15 @@ export const AuthenticatedRouter: React.FC = () => {
         window.dispatchEvent(new PopStateEvent('popstate'));
       }
     }
-  }, [route]);
+  }, [route, checkBuildVersion]);
 
   useEffect(() => {
     let active = true;
     getCurrentUser().then(user => {
       if (!active) return;
       if (!user) { window.location.replace('/login'); return; }
-      setUsername(user.username); setAuthStatus('authenticated');
+      setUsername(user.username);
+      setAuthStatus('authenticated');
     }).catch(() => window.location.replace('/login'));
     return () => { active = false; };
   }, []);
@@ -92,13 +128,17 @@ export const AuthenticatedRouter: React.FC = () => {
   else if (route.kind === 'employee' || route.kind === 'session') page = employee ? <Dashboard onLogout={doLogout} userName={username} initialEmployee={employee} onBack={() => navigate('/employees')} /> : <div className="min-h-screen bg-surface-page text-primary flex items-center justify-center"><p className="text-sm text-secondary">Resolving employee telemetry…</p></div>;
   else if (route.kind === 'alerts') page = <AlertsPage onLogout={doLogout} onEmployeeClick={onEmployeeClick} onSectionNavigate={onSectionNavigate} clientName={username} />;
   else if (route.kind === 'alert') page = <FullAlertPage alertId={route.alertId} onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
-  else if (['analytics','compare','reports','custom-dashboard','saved-views','notifications','security-admin'].includes(route.kind)) page = <RoutedWorkspacePage kind={route.kind as WorkspaceRouteKind} onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
+  else if (['analytics', 'compare', 'reports', 'custom-dashboard', 'saved-views', 'notifications', 'security-admin'].includes(route.kind)) page = <RoutedWorkspacePage kind={route.kind as WorkspaceRouteKind} onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
   else if (route.kind === 'ai') page = <FullAiPage onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
   else if (route.kind === 'ai-settings') page = <AiSettingsRoute onLogout={doLogout} clientName={username} onNavigate={onSectionNavigate} />;
   else navigate('/dashboard', { replace: true });
 
   return <div className="teler-auth-surface contents">
     {page}
+    {updateAvailable && <div role="status" aria-live="polite" className="fixed left-1/2 -translate-x-1/2 bottom-4 z-[120] max-w-[calc(100vw-2rem)] flex items-center gap-3 rounded-xl border border-subtle bg-surface-card shadow-card px-4 py-3 text-sm text-primary">
+      <span>A new TELER version is available.</span>
+      <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-accent px-3 py-1.5 text-white font-semibold focus-visible:outline-none">Reload</button>
+    </div>}
     <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />
     {showAiChat && <AiChatPanel sessions={globalSessions} onClose={() => setShowAiChat(false)} />}
   </div>;
