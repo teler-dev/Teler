@@ -167,11 +167,16 @@ export async function fetchAndMergeV1Sessions(legacy:Session[],employeeName?:str
   }
 
   const legacyById=new Map(legacy.map(session=>[session.id,session]));
-  return rows.map(row=>{
+  const matchedLegacyIds=new Set<string>();
+  const mergedRows=rows.map(row=>{
     const base=legacyById.get(row.external_session_id)||legacyById.get(row.id);
+    if(base)matchedLegacyIds.add(base.id);
     const owner=employees.find(item=>item.id===row.employee_id);
     const merged=base?mergeAuthoritative(base,row,owner):minimalSession(row,owner);
     merged.persisted_alerts=alertsBySessionId.get(row.id)??[];
     return merged;
   });
+
+  return [...mergedRows,...legacy.filter(session=>!matchedLegacyIds.has(session.id))]
+    .sort((a,b)=>new Date(b.created_at||b.session_start).getTime()-new Date(a.created_at||a.session_start).getTime());
 }
