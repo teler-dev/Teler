@@ -15,7 +15,7 @@ const SEMANTIC_CSS = `
 }
 :root[data-theme="light"]{
   --surface-page:248 250 252;--surface-sidebar:255 255 255;--surface-card:255 255 255;--surface-raised:241 245 249;--surface-input:255 255 255;--surface-hover:238 244 248;
-  --text-primary:15 23 42;--text-secondary:71 85 105;--text-muted:100 116 139;
+  --text-primary:15 23 42;--text-secondary:51 65 85;--text-muted:71 85 105;
   --border-subtle:219 227 238;--border-strong:148 163 184;
   --accent:15 118 110;--accent-hover:13 100 94;--accent-soft:204 251 241;--focus-ring:13 148 136;
   --success:21 128 61;--success-soft:220 252 231;--warning:161 98 7;--warning-soft:254 243 199;--danger:185 28 28;--danger-soft:254 226 226;--info:3 105 161;--info-soft:224 242 254;
