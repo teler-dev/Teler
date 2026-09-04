@@ -1,7 +1,7 @@
 [Unit]
-Description=TELER API server
+Description=TELER background analytics worker
 Documentation=https://github.com/teler-dev/Teler
-After=network-online.target
+After=network-online.target teler-api.service
 Wants=network-online.target
 
 [Service]
@@ -10,17 +10,14 @@ User=teler
 Group=teler
 WorkingDirectory=/opt/teler/app/api
 EnvironmentFile=/etc/teler/teler.env
-ExecStart=/usr/bin/node server-entry.js
-
-Restart=always
+ExecStart=/usr/bin/node index-worker.js
+Restart=on-failure
 RestartSec=5
-
+MemoryMax=256M
+CPUQuota=40%
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=teler-api
-
-# Hardening. The API reads code, serves raw evidence through the legacy fallback,
-# and writes structured ingest archives under the data root.
+SyslogIdentifier=teler-worker
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
