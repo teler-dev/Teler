@@ -9,6 +9,27 @@ const ALLOWED_PATHS = [
   /^\/api\/memory$/,
   /^\/api\/memory\/.+$/,
   /^\/screenshots$/,
+
+  // Read-only modular backend routes. The browser never receives Oracle tokens,
+  // and mutation/ingest routes intentionally remain unavailable through this proxy.
+  /^\/api\/v1\/health$/,
+  /^\/api\/v1\/companies$/,
+  /^\/api\/v1\/companies\/[^/]+\/employees$/,
+  /^\/api\/v1\/companies\/[^/]+\/devices$/,
+  /^\/api\/v1\/employees\/[^/]+$/,
+  /^\/api\/v1\/devices\/[^/]+$/,
+  /^\/api\/v1\/sessions$/,
+  /^\/api\/v1\/sessions\/[^/]+$/,
+  /^\/api\/v1\/analytics\/company\/[^/]+\/daily$/,
+  /^\/api\/v1\/analytics\/employee\/[^/]+\/trends$/,
+  /^\/api\/v1\/alerts$/,
+  /^\/api\/v1\/alerts\/[^/]+$/,
+  /^\/api\/v1\/alert-rules$/,
+  /^\/api\/v1\/tasks$/,
+  /^\/api\/v1\/tasks\/[^/]+$/,
+  /^\/api\/v1\/reports$/,
+  /^\/api\/v1\/reports\/[^/]+$/,
+  /^\/api\/v1\/settings\/retention$/,
 ];
 
 type JsonRecord = Record<string, unknown>;
