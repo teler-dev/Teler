@@ -43,15 +43,15 @@ export const AlertsPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionNavi
 
   return <div className="min-h-screen bg-surface-page text-primary flex">
     <style>{`
-      :root[data-theme="light"] .teler-alert-summary{box-shadow:0 1px 2px rgba(15,23,42,.03)}
-      :root[data-theme="light"] .teler-alert-summary-critical{background:#fff1f2!important;border-color:#fecdd3!important}
-      :root[data-theme="light"] .teler-alert-summary-critical :is(p,span){color:#dc2626!important}
-      :root[data-theme="light"] .teler-alert-summary-high{background:#fff7ed!important;border-color:#fed7aa!important}
-      :root[data-theme="light"] .teler-alert-summary-high :is(p,span){color:#ea580c!important}
-      :root[data-theme="light"] .teler-alert-summary-medium{background:#fefce8!important;border-color:#fde68a!important}
-      :root[data-theme="light"] .teler-alert-summary-medium :is(p,span){color:#ca8a04!important}
-      :root[data-theme="light"] .teler-alert-summary-low{background:#f0fdf4!important;border-color:#bbf7d0!important}
-      :root[data-theme="light"] .teler-alert-summary-low :is(p,span){color:#16a34a!important}
+      :root[data-theme="light"] .teler-alert-summary{box-shadow:0 6px 18px rgba(15,23,42,.06)}
+      :root[data-theme="light"] .teler-alert-summary-critical{background:#ffe4e6!important;border-color:#fda4af!important}
+      :root[data-theme="light"] .teler-alert-summary-critical :is(p,span){color:#be123c!important}
+      :root[data-theme="light"] .teler-alert-summary-high{background:#ffedd5!important;border-color:#fdba74!important}
+      :root[data-theme="light"] .teler-alert-summary-high :is(p,span){color:#c2410c!important}
+      :root[data-theme="light"] .teler-alert-summary-medium{background:#fef3c7!important;border-color:#facc15!important}
+      :root[data-theme="light"] .teler-alert-summary-medium :is(p,span){color:#a16207!important}
+      :root[data-theme="light"] .teler-alert-summary-low{background:#dcfce7!important;border-color:#86efac!important}
+      :root[data-theme="light"] .teler-alert-summary-low :is(p,span){color:#15803d!important}
       :root[data-theme="light"] .teler-alert-filter{background:#f8fafc!important;border-color:#cbd5e1!important;color:#475569!important}
       :root[data-theme="light"] .teler-alert-filter:hover{background:#f1f5f9!important;border-color:#94a3b8!important;color:#0f172a!important}
       :root[data-theme="light"] .teler-alert-filter.is-active{background:#ecfdf5!important;border-color:#0f766e!important;color:#0f766e!important}
