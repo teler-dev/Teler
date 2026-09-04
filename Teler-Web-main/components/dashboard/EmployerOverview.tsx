@@ -248,7 +248,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
         </section>
 
         <section className="grid xl:grid-cols-[1.35fr_.65fr] gap-4">
-          <article className="bg-surface-card border border-accent rounded-2xl p-5 shadow-card">
+          <article className="bg-surface-card rounded-2xl p-5 shadow-card">
             <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><BrainCircuit className="w-5 h-5 text-accent"/><div><h3 className="font-semibold text-primary">AI Workforce Intelligence</h3><p className="text-xs text-muted mt-0.5">Deterministic summary from normalized telemetry</p></div></div>{alerts.length > 0 && <button type="button" onClick={() => onSectionNavigate('alerts')} className="text-sm text-danger hover:underline">View alerts →</button>}</div>
             <div className="grid md:grid-cols-3 gap-3 mt-5">{insights.map(item => <div key={item.title} className="bg-surface-raised border border-subtle rounded-xl p-4"><div className={`flex items-center gap-2 font-semibold text-sm ${item.tone}`}>{item.icon}{item.title}</div><p className="text-sm text-secondary leading-6 mt-2">{item.body}</p></div>)}</div>
           </article>
