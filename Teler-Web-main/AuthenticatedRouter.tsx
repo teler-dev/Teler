@@ -139,7 +139,7 @@ export const AuthenticatedRouter: React.FC = () => {
       <span>A new TELER version is available.</span>
       <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-accent px-3 py-1.5 text-white font-semibold focus-visible:outline-none">Reload</button>
     </div>}
-    <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />
+    {route.kind !== 'dashboard' && <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />}
     {showAiChat && <AiChatPanel sessions={globalSessions} onClose={() => setShowAiChat(false)} />}
   </div>;
 };
