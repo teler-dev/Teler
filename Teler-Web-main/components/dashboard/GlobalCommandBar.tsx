@@ -77,7 +77,7 @@ export const GlobalCommandBar: React.FC<Props> = ({ sessions, onNavigate, onEmpl
   };
 
   return <>
-    <button type="button" onClick={() => setOpen(true)} aria-label="Open command bar" className="fixed top-3 left-[calc(50%+7rem)] -translate-x-1/2 z-30 h-9 px-3.5 rounded-xl border border-subtle bg-surface-raised text-secondary hover:text-primary hidden lg:flex items-center gap-2 shadow-sm transition-colors">
+    <button type="button" onClick={() => setOpen(true)} aria-label="Open command bar" className="fixed top-3 left-[calc(50%+7rem)] -translate-x-1/2 z-30 h-9 w-64 px-4 rounded-xl border border-subtle bg-surface-raised text-secondary hover:text-primary hidden lg:flex items-center justify-between gap-3 shadow-sm transition-colors">
       <span className="text-xs font-medium">Search</span><kbd className="hidden xl:inline text-[10px] border border-subtle rounded px-1.5 py-0.5">⌘K</kbd>
     </button>
 
