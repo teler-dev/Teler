@@ -47,6 +47,23 @@ input[type="range"]::-moz-range-track{height:6px;border-radius:999px;background:
 .theme-form-surface :where(input,select,textarea){background:rgb(var(--surface-input))!important;color:rgb(var(--text-primary))!important;border-color:rgb(var(--border-subtle))!important}
 .theme-form-surface :where(input,select,textarea)::placeholder{color:rgb(var(--text-muted))!important}
 .theme-form-surface .theme-provider-selected{background:rgb(var(--accent-soft))!important;border-color:rgb(var(--accent))!important;color:rgb(var(--accent-hover))!important}
+:root[data-theme="light"] .teler-ai-settings-panel{color:rgb(var(--text-primary))}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.text-white){color:rgb(var(--text-primary))!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.text-gray-300,.text-gray-400,.text-gray-500){color:rgb(var(--text-secondary))!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.text-gray-600){color:rgb(var(--text-muted))!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.bg-navy-900\\/60){background:rgb(var(--surface-input))!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.bg-white\\/3,.bg-white\\/\\[0\\.02\\]){background:rgb(var(--surface-raised))!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.border-white\\/8,.border-white\\/10){border-color:rgb(var(--border-subtle))!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.bg-cyan-500\\/15){background:#cffafe!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.bg-cyan-500\\/5){background:#ecfeff!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.border-cyan-500\\/40){border-color:#22d3ee!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.border-cyan-500\\/20){border-color:#a5f3fc!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(.text-cyan-300,.text-cyan-400){color:#0e7490!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(button){color:rgb(var(--text-secondary))}
+:root[data-theme="light"] .teler-ai-settings-panel :where(button:hover){color:rgb(var(--text-primary))}
+:root[data-theme="light"] .teler-ai-settings-panel :where(input,select,textarea){background:#fff!important;color:rgb(var(--text-primary))!important;border-color:#cbd5e1!important}
+:root[data-theme="light"] .teler-ai-settings-panel :where(input,textarea)::placeholder{color:rgb(var(--text-muted))!important}
+:root[data-theme="light"] .teler-ai-settings-panel input[type="range"]{background:transparent!important;border-color:transparent!important}
 @media (max-height:560px) and (min-width:768px){.teler-sidebar-nav{padding-top:.5rem!important;padding-bottom:.5rem!important}.teler-sidebar-nav>a{padding-top:.45rem!important;padding-bottom:.45rem!important}.teler-sidebar-actions{max-height:44vh;overflow-y:auto}.teler-sidebar-brand{padding-top:.5rem!important;padding-bottom:.5rem!important}}
 `;
 
