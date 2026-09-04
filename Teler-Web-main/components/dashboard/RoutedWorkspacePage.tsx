@@ -77,9 +77,10 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
     <DashboardSidebar activeSection={sidebarSection} onNavigate={onSectionNavigate} alertCount={alerts.length} onLogout={onLogout} clientName={clientName} />
     <div className="flex-1 ml-56 min-w-0 min-h-screen">
       <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle">
-        <div className="px-4 md:px-6 py-4">
-          <h1 className="text-xl md:text-2xl font-bold">{meta.title}</h1>
-          <p className="text-sm text-secondary mt-1">{meta.description}</p>
+        <div className="px-4 md:px-6 py-3">
+          {kind === 'analytics' && <p className="text-xs text-muted">Workforce Intelligence</p>}
+          <h1 className="font-semibold text-primary">{meta.title}</h1>
+          <p className="text-xs text-muted mt-1">{meta.description}</p>
         </div>
       </header>
       <main className="p-4 md:p-6 space-y-5 min-w-0">
