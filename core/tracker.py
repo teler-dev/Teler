@@ -4,6 +4,7 @@ from datetime import datetime
 
 from PyQt6.QtCore import (
     QEasingCurve,
+    QEvent,
     QParallelAnimationGroup,
     QPropertyAnimation,
     QRect,
@@ -129,21 +130,22 @@ class MainWindow(QMainWindow):
             QLabel#muted {{ color: {MUTED}; font-size: 11px; }}
             QLabel#avatar {{ background: rgba(91,95,239,0.16); color: #C7C9FF; border: 1px solid rgba(91,95,239,0.35); border-radius: 14px; min-width: 28px; min-height: 28px; max-width: 28px; max-height: 28px; font-size: 11px; font-weight: 800; }}
             QLabel#identity {{ color: #D8DBE8; font-size: 11px; font-weight: 600; }}
-            QWidget#statusPill {{ background: rgba(138,144,166,0.10); border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; }}
+            QWidget#statusPill {{ background: rgba(138,144,166,0.08); border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; }}
             QLabel#statusDot {{ color: #8A90A6; background: transparent; border: 0; font-size: 10px; }}
             QLabel#statusText {{ color: #B1B6C8; background: transparent; border: 0; font-size: 11px; font-weight: 650; }}
-            QLabel#timer {{ color: {TEXT}; font-size: 36px; font-weight: 750; letter-spacing: 1px; background: transparent; border: 0; }}
+            QLabel#timer {{ color: {TEXT}; font-size: 38px; font-weight: 700; letter-spacing: 1.6px; background: transparent; border: 0; }}
             QLabel#stateHint {{ color: {MUTED}; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; background: transparent; border: 0; }}
-            QWidget#timerPanel {{ background: #0D101C; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; }}
+            QWidget#timerPanel {{ background: #090C16; border: 1px solid rgba(255,255,255,0.10); border-radius: 18px; }}
             QLabel#error {{ color: #F6A6AE; font-size: 10px; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 8px; padding: 6px 8px; }}
             QComboBox {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; padding: 9px 12px; color: {TEXT}; font-size: 12px; }}
             QComboBox:disabled {{ color: #A4A9B8; background: #10131E; }}
-            QPushButton#primary {{ background: {ACCENT}; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 11px 16px; color: white; font-size: 12px; font-weight: 750; }}
-            QPushButton#primary:hover {{ background: {ACCENT_HOVER}; }}
-            QPushButton#primary:pressed {{ background: #4F53E8; padding-top: 12px; padding-bottom: 10px; }}
+            QPushButton#primary {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #6A6EFF, stop:1 #5155E8); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 11px 16px; color: white; font-size: 12px; font-weight: 750; }}
+            QPushButton#primary:hover {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #777BFF, stop:1 #5B5FEF); border-color: rgba(255,255,255,0.24); }}
+            QPushButton#primary:pressed {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #5559EC, stop:1 #474BD3); padding-top: 12px; padding-bottom: 10px; }}
             QPushButton#primary:disabled {{ background: #34384E; color: #777D93; }}
             QPushButton#secondary {{ background: transparent; border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; padding: 10px 15px; color: #D6D9E6; font-size: 12px; font-weight: 650; }}
             QPushButton#secondary:hover {{ border-color: rgba(112,116,255,0.7); color: white; background: rgba(91,95,239,0.07); }}
+            QPushButton#secondary:pressed {{ background: rgba(91,95,239,0.12); border-color: rgba(112,116,255,0.85); padding-top: 11px; padding-bottom: 9px; }}
             QPushButton#secondary:disabled {{ border-color: rgba(255,255,255,0.06); color: #565B70; background: rgba(255,255,255,0.015); }}
             QScrollArea#reports {{ background: transparent; border: 0; }}
             QWidget#reportViewport {{ background: transparent; }}
@@ -162,23 +164,37 @@ class MainWindow(QMainWindow):
         self.start_button = QPushButton("▶  Start Tracking", objectName="primary")
         self.pause_button = QPushButton("Ⅱ  Pause", objectName="secondary")
         self.stop_button = QPushButton("■  Stop Tracking", objectName="secondary")
+        self._button_effects = {}
         for button in (self.start_button, self.pause_button, self.stop_button):
-            button.setMinimumHeight(42)
+            button.setMinimumHeight(44)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
+            effect = QGraphicsDropShadowEffect(button)
+            effect.setOffset(0, 4)
+            effect.setBlurRadius(12)
+            effect.setColor(QColor(15, 18, 36, 120))
+            button.setGraphicsEffect(effect)
+            button.installEventFilter(self)
+            self._button_effects[button] = effect
         self.pause_button.hide()
         self.stop_button.setEnabled(False)
 
         self.timer_label = QLabel("00:00:00", objectName="timer")
         timer_font = QFont("SF Mono")
         timer_font.setStyleHint(QFont.StyleHint.Monospace)
-        timer_font.setPointSize(27)
+        timer_font.setPointSize(29)
         timer_font.setWeight(QFont.Weight.Bold)
         self.timer_label.setFont(timer_font)
         self.timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.timer_label.setMinimumHeight(54)
+        self.timer_label.setMinimumHeight(66)
+        self.timer_text_effect = QGraphicsOpacityEffect(self.timer_label)
+        self.timer_text_effect.setOpacity(1.0)
+        self.timer_label.setGraphicsEffect(self.timer_text_effect)
 
         self.state_hint = QLabel("Ready to track", objectName="stateHint")
         self.state_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.state_hint_effect = QGraphicsOpacityEffect(self.state_hint)
+        self.state_hint_effect.setOpacity(1.0)
+        self.state_hint.setGraphicsEffect(self.state_hint_effect)
 
         self.status_pill = QWidget(objectName="statusPill")
         self.status_pill.setFixedHeight(28)
@@ -211,6 +227,11 @@ class MainWindow(QMainWindow):
         master_card = QWidget(objectName="card")
         master_card.setMinimumWidth(660)
         master_card.setMaximumWidth(760)
+        self.master_card_effect = QGraphicsDropShadowEffect(master_card)
+        self.master_card_effect.setOffset(0, 12)
+        self.master_card_effect.setBlurRadius(42)
+        self.master_card_effect.setColor(QColor(0, 0, 0, 105))
+        master_card.setGraphicsEffect(self.master_card_effect)
         master_layout = QVBoxLayout(master_card)
         master_layout.setContentsMargins(20, 18, 20, 20)
         master_layout.setSpacing(14)
@@ -274,9 +295,15 @@ class MainWindow(QMainWindow):
         controls_module_layout.setSpacing(10)
 
         timer_panel = QWidget(objectName="timerPanel")
+        self.timer_panel = timer_panel
+        self.timer_panel_effect = QGraphicsDropShadowEffect(timer_panel)
+        self.timer_panel_effect.setOffset(0, 2)
+        self.timer_panel_effect.setBlurRadius(22)
+        self.timer_panel_effect.setColor(QColor(91, 95, 239, 32))
+        timer_panel.setGraphicsEffect(self.timer_panel_effect)
         timer_panel_layout = QVBoxLayout(timer_panel)
-        timer_panel_layout.setContentsMargins(16, 12, 16, 12)
-        timer_panel_layout.setSpacing(2)
+        timer_panel_layout.setContentsMargins(20, 16, 20, 16)
+        timer_panel_layout.setSpacing(4)
         timer_panel_layout.addWidget(self.timer_label)
         timer_panel_layout.addWidget(self.state_hint)
         controls_module_layout.addWidget(timer_panel)
@@ -347,6 +374,19 @@ class MainWindow(QMainWindow):
         self.main_layout = master_layout
         self.setCentralWidget(root)
 
+        self._entrance_animations = []
+        for delay, section in ((0, role_section), (70, control_section), (140, self.report_card)):
+            section_effect = QGraphicsOpacityEffect(section)
+            section_effect.setOpacity(0.0)
+            section.setGraphicsEffect(section_effect)
+            animation = QPropertyAnimation(section_effect, b"opacity", self)
+            animation.setDuration(260)
+            animation.setStartValue(0.0)
+            animation.setEndValue(1.0)
+            animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self._entrance_animations.append(animation)
+            QTimer.singleShot(delay, animation.start)
+
         self.tracker = ActivityTracker(username=username, organization_id=organization_id, employee_id=employee_id)
         self.session_client = SessionClient(auth_client, self) if auth_client is not None else None
         if self.session_client:
@@ -385,6 +425,13 @@ class MainWindow(QMainWindow):
         glow.setEasingCurve(QEasingCurve.Type.InOutSine)
         self._status_pulse_group.addAnimation(dot_scale)
         self._status_pulse_group.addAnimation(glow)
+        timer_glow = QPropertyAnimation(self.timer_panel_effect, b"blurRadius", self)
+        timer_glow.setDuration(1200)
+        timer_glow.setKeyValueAt(0.0, 20.0)
+        timer_glow.setKeyValueAt(0.5, 30.0)
+        timer_glow.setKeyValueAt(1.0, 20.0)
+        timer_glow.setEasingCurve(QEasingCurve.Type.InOutSine)
+        self._status_pulse_group.addAnimation(timer_glow)
         self._status_pulse_group.setLoopCount(-1)
 
         self.start_button.clicked.connect(self.start_tracking)
@@ -402,6 +449,26 @@ class MainWindow(QMainWindow):
         card_layout.setSpacing(8)
         return card, card_layout
 
+    def eventFilter(self, obj, event):
+        effect = self._button_effects.get(obj) if hasattr(self, "_button_effects") else None
+        if effect is not None and obj.isEnabled():
+            if event.type() == QEvent.Type.Enter:
+                effect.setBlurRadius(18)
+                effect.setOffset(0, 6)
+                effect.setColor(QColor(52, 55, 110, 135))
+            elif event.type() == QEvent.Type.Leave:
+                effect.setBlurRadius(12)
+                effect.setOffset(0, 4)
+                effect.setColor(QColor(15, 18, 36, 120))
+            elif event.type() == QEvent.Type.MouseButtonPress:
+                effect.setBlurRadius(6)
+                effect.setOffset(0, 2)
+            elif event.type() == QEvent.Type.MouseButtonRelease:
+                effect.setBlurRadius(16)
+                effect.setOffset(0, 5)
+                QTimer.singleShot(110, lambda e=effect: (e.setBlurRadius(12), e.setOffset(0, 4)))
+        return super().eventFilter(obj, event)
+
     def _fade_controls(self):
         effect = self.timer_label.graphicsEffect()
         if not isinstance(effect, QGraphicsOpacityEffect):
@@ -409,35 +476,64 @@ class MainWindow(QMainWindow):
             self.timer_label.setGraphicsEffect(effect)
         effect.setOpacity(0.7)
         self._fade_animation = QPropertyAnimation(effect, b"opacity", self)
-        self._fade_animation.setDuration(180)
+        self._fade_animation.setDuration(200)
         self._fade_animation.setStartValue(0.7)
         self._fade_animation.setEndValue(1.0)
         self._fade_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._fade_animation.start()
 
+    def _crossfade_label(self, label, effect, text):
+        if label.text() == text:
+            return
+        fade_out = QPropertyAnimation(effect, b"opacity", self)
+        fade_out.setDuration(80)
+        fade_out.setStartValue(effect.opacity())
+        fade_out.setEndValue(0.25)
+        fade_out.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        def swap_text():
+            label.setText(text)
+            fade_in = QPropertyAnimation(effect, b"opacity", self)
+            fade_in.setDuration(120)
+            fade_in.setStartValue(0.25)
+            fade_in.setEndValue(1.0)
+            fade_in.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self._label_fade_in = fade_in
+            fade_in.start()
+
+        fade_out.finished.connect(swap_text)
+        self._label_fade_out = fade_out
+        fade_out.start()
+
     def _stop_status_pulse(self):
         self._status_pulse_group.stop()
         self.status_dot.setGeometry(2, 2, 10, 10)
         self.status_dot_effect.setBlurRadius(4)
+        self.timer_panel_effect.setBlurRadius(22)
 
     def _style_status(self, state):
         self._stop_status_pulse()
         if state == "running":
             bg, border, text, dot, label = "rgba(85,201,140,0.10)", "rgba(85,201,140,0.22)", "#78D8A6", GREEN, "Running"
             self.status_dot_effect.setColor(QColor(85, 201, 140, 150))
+            self.timer_panel_effect.setColor(QColor(85, 201, 140, 70))
             self._status_pulse_group.start()
         elif state == "paused":
             bg, border, text, dot, label = "rgba(230,174,85,0.10)", "rgba(230,174,85,0.22)", "#E8BD76", AMBER, "Paused"
             self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
+            self.timer_panel_effect.setColor(QColor(230, 174, 85, 32))
         elif state == "saved":
             bg, border, text, dot, label = "rgba(138,144,166,0.10)", "rgba(255,255,255,0.08)", "#C6CAD8", "#8A90A6", "✓ Saved"
             self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
+            self.timer_panel_effect.setColor(QColor(138, 144, 166, 24))
         elif state == "warning":
             bg, border, text, dot, label = "rgba(239,68,68,0.08)", "rgba(239,68,68,0.18)", "#F6A6AE", "#EF6A78", "Out of sync"
             self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
+            self.timer_panel_effect.setColor(QColor(239, 106, 120, 28))
         else:
             bg, border, text, dot, label = "rgba(138,144,166,0.10)", "rgba(255,255,255,0.08)", "#B1B6C8", "#8A90A6", "Idle"
             self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
+            self.timer_panel_effect.setColor(QColor(91, 95, 239, 28))
         self.status_pill.setStyleSheet(f"QWidget#statusPill {{ background:{bg}; border:1px solid {border}; border-radius:13px; }}")
         self.status_text.setStyleSheet(f"color:{text}; background:transparent; border:0; font-size:11px; font-weight:650;")
         self.status_dot.setStyleSheet(f"color:{dot}; background:transparent; border:0; font-size:10px;")
@@ -455,7 +551,7 @@ class MainWindow(QMainWindow):
             self.pause_button.setEnabled(not active_request)
             self.stop_button.setEnabled(not active_request)
             self.timer_label.setStyleSheet(f"color:{TEXT}; background:transparent; border:0;")
-            self.state_hint.setText("Tracking in progress")
+            self._crossfade_label(self.state_hint, self.state_hint_effect, "Running")
             self.state_hint.setStyleSheet(f"color:{GREEN}; background:transparent; border:0; font-size:10px; font-weight:600;")
         elif state == "paused":
             self.start_button.hide()
@@ -465,7 +561,7 @@ class MainWindow(QMainWindow):
             self.pause_button.setEnabled(not active_request)
             self.stop_button.setEnabled(not active_request)
             self.timer_label.setStyleSheet(f"color:{MUTED}; background:transparent; border:0;")
-            self.state_hint.setText("Paused · timer frozen")
+            self._crossfade_label(self.state_hint, self.state_hint_effect, "Paused")
             self.state_hint.setStyleSheet(f"color:{AMBER}; background:transparent; border:0; font-size:10px; font-weight:600;")
         else:
             self.pause_button.hide()
@@ -477,10 +573,10 @@ class MainWindow(QMainWindow):
             if state in ("idle", "saved"):
                 self.timer_label.setText("00:00:00")
             if state == "saved":
-                self.state_hint.setText("Session saved successfully")
+                self._crossfade_label(self.state_hint, self.state_hint_effect, "Session saved")
                 self.state_hint.setStyleSheet(f"color:{MUTED}; background:transparent; border:0; font-size:10px; font-weight:600;")
             else:
-                self.state_hint.setText("Ready to track")
+                self._crossfade_label(self.state_hint, self.state_hint_effect, "Ready to track")
                 self.state_hint.setStyleSheet(f"color:{MUTED}; background:transparent; border:0; font-size:10px; font-weight:600;")
         for button in (self.start_button, self.pause_button, self.stop_button):
             button.style().unpolish(button)

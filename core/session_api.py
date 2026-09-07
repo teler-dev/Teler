@@ -62,6 +62,11 @@ class SessionClient(QObject):
         message = body.get("error") if isinstance(body, dict) else None
         if not message:
             message = reply.errorString() or "Tracking request failed"
+        if status == 401 and self.auth_client.token:
+            if str(message).strip().lower() == "unauthorized":
+                message = "Tracking API rejected the signed-in session. The server may still be running the legacy shared-token auth path."
+            elif str(message).strip().lower() in {"session expired", "authentication required"}:
+                message = "Your TELER session expired. Sign in again, then retry tracking."
         self.failed.emit(action, str(message), status)
         reply.deleteLater()
 

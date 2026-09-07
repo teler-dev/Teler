@@ -35,7 +35,8 @@ const crypto  = require('crypto');
 const { Pool } = require('pg');
 
 const { classifyWindow } = require('./classifier');
-const { createAuthRouter } = require('./auth');
+const { createAuthRouter, createUserSessionMiddleware } = require('./auth');
+const { createTrackingSessionsRouter } = require('./modules/v1-sessions');
 
 const app  = express();
 // Caddy is the only public reverse proxy in the supported deployment.
@@ -90,6 +91,9 @@ app.use(express.json());
 // User authentication has its own bearer sessions and must be mounted before
 // the legacy shared API-token middleware below.
 app.use('/api/auth', createAuthRouter(authPool));
+if (authPool) {
+  app.use('/api/v1/tracking-sessions', createUserSessionMiddleware(authPool), createTrackingSessionsRouter(express));
+}
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 
