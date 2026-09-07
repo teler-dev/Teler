@@ -1,19 +1,37 @@
-# ui/main_window.py
 import os
-from PyQt6.QtWidgets import (
-    QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget,
-    QComboBox, QTextEdit, QHBoxLayout, QMessageBox
-)
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
+
+from PyQt6.QtCore import QThread, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
 from tracker.activity_tracker import ActivityTracker
 
 _ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
-_LOGO_PATH  = os.path.join(_ASSETS_DIR, "logo.png")
-_ICO_PATH   = os.path.join(_ASSETS_DIR, "teler.ico")
+_LOGO_PATH = os.path.join(_ASSETS_DIR, "logo.png")
+_ICO_PATH = os.path.join(_ASSETS_DIR, "teler.ico")
+
+PAGE = "#0B0D14"
+SURFACE = "#151826"
+INPUT = "#0F1220"
+TEXT = "#F7F8FC"
+MUTED = "#8A90A6"
+ACCENT = "#5B5FEF"
+ACCENT_HOVER = "#7074FF"
+
 
 def _make_logo_label(height_px: int) -> QLabel | None:
-    """Return a QLabel containing the scaled logo, or None if asset is missing."""
     try:
         pm = QPixmap(_LOGO_PATH)
         if pm.isNull():
@@ -51,13 +69,14 @@ class MainWindow(QMainWindow):
         self._stop_worker = None
         self._after_stop = None
         self._stop_error = None
+        self._pulse_on = False
+        self._username = username or "TELER User"
+        self._organization_name = organization_name
 
-        # ==== Window Setup ====
-        title = f"AI Timer App  —  {username}" if username else "AI Timer App"
-        self.setWindowTitle(title)
-        self.setGeometry(200, 200, 500, 500)
+        self.setWindowTitle(f"TELER — {self._username}")
+        self.resize(900, 650)
+        self.setMinimumSize(760, 560)
 
-        # Window icon — use .ico for correct Windows taskbar/title bar rendering
         try:
             icon = QIcon(_ICO_PATH) if os.path.isfile(_ICO_PATH) else QIcon(QPixmap(_LOGO_PATH))
             if not icon.isNull():
@@ -65,113 +84,206 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-        # ==== Widgets ====
+        self.setStyleSheet(f"""
+            QMainWindow {{ background: {PAGE}; color: {TEXT}; }}
+            QWidget#root {{ background: {PAGE}; }}
+            QWidget#card {{ background: {SURFACE}; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }}
+            QLabel#brand {{ color: {TEXT}; font-size: 16px; font-weight: 800; letter-spacing: 1px; }}
+            QLabel#sectionTitle {{ color: {TEXT}; font-size: 14px; font-weight: 700; }}
+            QLabel#muted {{ color: {MUTED}; font-size: 11px; }}
+            QLabel#avatar {{ background: rgba(91,95,239,0.16); color: #C7C9FF; border: 1px solid rgba(91,95,239,0.35); border-radius: 14px; min-width: 28px; min-height: 28px; max-width: 28px; max-height: 28px; font-size: 11px; font-weight: 800; }}
+            QLabel#identity {{ color: #D8DBE8; font-size: 11px; font-weight: 600; }}
+            QLabel#status {{ background: rgba(138,144,166,0.10); color: #B1B6C8; border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; padding: 5px 10px; font-size: 11px; font-weight: 650; }}
+            QComboBox {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; padding: 9px 12px; color: {TEXT}; font-size: 12px; }}
+            QComboBox:focus {{ border: 1px solid {ACCENT}; background: #111528; }}
+            QComboBox:disabled {{ color: #A4A9B8; background: #10131E; }}
+            QPushButton#primary {{ background: {ACCENT}; border: 0; border-radius: 10px; padding: 10px 15px; color: white; font-size: 12px; font-weight: 700; }}
+            QPushButton#primary:hover {{ background: {ACCENT_HOVER}; }}
+            QPushButton#primary:disabled {{ background: #34384E; color: #777D93; }}
+            QPushButton#secondary {{ background: transparent; border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; padding: 10px 15px; color: #D6D9E6; font-size: 12px; font-weight: 650; }}
+            QPushButton#secondary:hover {{ border-color: rgba(112,116,255,0.7); color: white; background: rgba(91,95,239,0.07); }}
+            QPushButton#secondary:disabled {{ border-color: rgba(255,255,255,0.06); color: #565B70; background: rgba(255,255,255,0.015); }}
+            QTextEdit {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; color: #D9DCE8; padding: 12px; font-size: 11px; selection-background-color: {ACCENT}; }}
+            QFrame#divider {{ background: rgba(255,255,255,0.07); max-height: 1px; border: 0; }}
+        """)
+
         self.role_dropdown = QComboBox()
         self.role_dropdown.addItem(str(job_role or "general").replace("_", " ").title())
         self.role_dropdown.setEnabled(False)
         self.role_dropdown.setToolTip("Role is assigned to your account and can only be changed by an administrator")
+        self.role_dropdown.setMinimumHeight(42)
 
-        self.start_button = QPushButton("Start Tracking")
-        self.stop_button = QPushButton("Stop Tracking")
+        self.start_button = QPushButton("▶  Start Tracking", objectName="primary")
+        self.start_button.setMinimumHeight(42)
+        self.stop_button = QPushButton("■  Stop Tracking", objectName="secondary")
+        self.stop_button.setMinimumHeight(42)
         self.stop_button.setEnabled(False)
 
-        self.status_label = QLabel("Status: Idle")
+        self.status_label = QLabel("●  Idle", objectName="status")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setFixedHeight(28)
 
         self.report_area = QTextEdit()
         self.report_area.setReadOnly(True)
         self.report_area.document().setMaximumBlockCount(300)
-        self.report_area.setPlaceholderText("Reports will appear here...")
+        self.report_area.setPlaceholderText("No activity yet. Start tracking to see timestamped activity reports here.")
 
-        # ==== Layout ====
-        layout = QVBoxLayout()
+        root = QWidget(objectName="root")
+        layout = QVBoxLayout(root)
+        layout.setContentsMargins(28, 24, 28, 28)
+        layout.setSpacing(18)
 
-        # Branding row: logo + app name (replaces OS title bar branding in content area)
-        brand_row = QHBoxLayout()
-        brand_row.setSpacing(8)
-        brand_row.setContentsMargins(0, 0, 0, 0)
+        divider = QFrame(objectName="divider")
+        divider.setFixedHeight(1)
+        layout.addWidget(divider)
 
-        brand_logo = _make_logo_label(20)  # 20px height keeps it compact
-        if brand_logo is not None:
-            brand_row.addWidget(brand_logo)
+        header = QHBoxLayout()
+        header.setSpacing(10)
+        logo = _make_logo_label(24)
+        if logo is not None:
+            header.addWidget(logo)
+        header.addWidget(QLabel("TELER", objectName="brand"))
+        header.addStretch()
 
-        brand_text = QLabel("TELER")
-        brand_text.setStyleSheet("color: #6366F1; font-size: 14px; font-weight: bold;")
-        brand_text.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
-        brand_row.addWidget(brand_text)
-        brand_row.addStretch()
+        avatar_text = "".join(part[0] for part in self._username.split()[:2] if part)[:2].upper() or "T"
+        avatar = QLabel(avatar_text, objectName="avatar")
+        avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.addWidget(avatar)
 
-        if username:
-            identity = f"{username} · {organization_name}" if organization_name else username
-            user_label = QLabel(f"Logged in as: {identity}")
-            user_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            user_label.setStyleSheet("color: #6366F1; font-size: 12px; padding: 2px 6px;")
-            brand_row.addWidget(user_label)
+        identity_text = self._username
+        if self._organization_name:
+            identity_text += f"  ·  {self._organization_name}"
+        identity = QLabel(identity_text, objectName="identity")
+        header.addWidget(identity)
 
-            logout_button = QPushButton("Logout")
-            logout_button.setToolTip("Sign out of TELER on this computer")
-            logout_button.clicked.connect(self._logout)
-            brand_row.addWidget(logout_button)
+        logout_button = QPushButton("↗  Logout", objectName="secondary")
+        logout_button.setMinimumHeight(34)
+        logout_button.setToolTip("Sign out of TELER on this computer")
+        logout_button.clicked.connect(self._logout)
+        header.addWidget(logout_button)
+        layout.addLayout(header)
 
-        layout.addLayout(brand_row)
+        role_card, role_layout = self._make_card()
+        role_layout.addWidget(QLabel("Assigned role", objectName="sectionTitle"))
+        role_layout.addWidget(QLabel("Your role is managed by your TELER workspace administrator.", objectName="muted"))
+        role_layout.addSpacing(6)
+        role_layout.addWidget(self.role_dropdown)
+        layout.addWidget(role_card)
 
-        layout.addWidget(QLabel("Assigned role:"))
-        layout.addWidget(self.role_dropdown)
+        control_card, control_layout = self._make_card()
+        control_header = QHBoxLayout()
+        control_copy = QVBoxLayout()
+        control_copy.setSpacing(2)
+        control_copy.addWidget(QLabel("Tracking controls", objectName="sectionTitle"))
+        control_copy.addWidget(QLabel("Start a secure activity session when you begin work.", objectName="muted"))
+        control_header.addLayout(control_copy)
+        control_header.addStretch()
+        control_header.addWidget(self.status_label)
+        control_layout.addLayout(control_header)
+        control_layout.addSpacing(10)
 
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
         button_layout.addWidget(self.start_button)
         button_layout.addWidget(self.stop_button)
-        layout.addLayout(button_layout)
+        button_layout.addStretch()
+        control_layout.addLayout(button_layout)
+        layout.addWidget(control_card)
 
-        layout.addWidget(self.status_label)
-        layout.addWidget(self.report_area)
+        report_card, report_layout = self._make_card(stretch=True)
+        report_header = QHBoxLayout()
+        report_title_box = QVBoxLayout()
+        report_title_box.setSpacing(2)
+        report_title_box.addWidget(QLabel("Activity Reports", objectName="sectionTitle"))
+        report_title_box.addWidget(QLabel("Live session telemetry and saved activity updates.", objectName="muted"))
+        report_header.addLayout(report_title_box)
+        report_header.addStretch()
+        empty_icon = QLabel("◌")
+        empty_icon.setStyleSheet(f"color:{MUTED}; font-size:18px;")
+        report_header.addWidget(empty_icon)
+        report_layout.addLayout(report_header)
+        report_layout.addSpacing(8)
+        report_layout.addWidget(self.report_area, 1)
+        layout.addWidget(report_card, 1)
 
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
+        self.setCentralWidget(root)
 
-        # ==== Tracker backend ====
         self.tracker = ActivityTracker(username=username, organization_id=organization_id, employee_id=employee_id)
-
-        # Timer for UI updates
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_stats)
+        self.pulse_timer = QTimer()
+        self.pulse_timer.setInterval(650)
+        self.pulse_timer.timeout.connect(self._pulse_status)
 
-        # ==== Connections ====
         self.start_button.clicked.connect(self.start_tracking)
         self.stop_button.clicked.connect(self.stop_tracking)
 
-    # ==== Functions ====
+    def _make_card(self, stretch=False):
+        card = QWidget(objectName="card")
+        if stretch:
+            card.setMinimumHeight(210)
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(18, 16, 18, 18)
+        card_layout.setSpacing(6)
+        shadow = QGraphicsDropShadowEffect(card)
+        shadow.setBlurRadius(26)
+        shadow.setOffset(0, 8)
+        shadow.setColor(Qt.GlobalColor.transparent)
+        card.setGraphicsEffect(shadow)
+        return card, card_layout
+
+    def _set_status(self, text, active=False, warning=False):
+        if active:
+            self.status_label.setText(f"●  {text}")
+            self.status_label.setStyleSheet(
+                "QLabel#status { background: rgba(85,201,140,0.10); color: #78D8A6; border: 1px solid rgba(85,201,140,0.22); border-radius: 13px; padding: 5px 10px; font-size: 11px; font-weight: 650; }"
+            )
+        elif warning:
+            self.status_label.setText(f"●  {text}")
+            self.status_label.setStyleSheet(
+                "QLabel#status { background: rgba(230,174,85,0.10); color: #E8BD76; border: 1px solid rgba(230,174,85,0.22); border-radius: 13px; padding: 5px 10px; font-size: 11px; font-weight: 650; }"
+            )
+        else:
+            self.status_label.setText(f"●  {text}")
+            self.status_label.setStyleSheet(
+                "QLabel#status { background: rgba(138,144,166,0.10); color: #B1B6C8; border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; padding: 5px 10px; font-size: 11px; font-weight: 650; }"
+            )
+
+    def _pulse_status(self):
+        if not self.tracker.running:
+            return
+        self._pulse_on = not self._pulse_on
+        dot = "●" if self._pulse_on else "◉"
+        self.status_label.setText(f"{dot}  Active tracking")
+
     def start_tracking(self):
         role = self.role_dropdown.currentText()
         try:
             self.tracker.set_metadata(role, "")
             self.tracker.start()
         except Exception as error:
-            self.status_label.setText("Status: Could not start")
+            self._set_status("Could not start", warning=True)
             self.start_button.setEnabled(True)
             self.stop_button.setEnabled(False)
             self.report_area.append(f"Tracking start failed: {error}\n")
-            QMessageBox.critical(
-                self,
-                "TELER tracking error",
-                f"Tracking could not start.\n\n{error}",
-            )
+            QMessageBox.critical(self, "TELER tracking error", f"Tracking could not start.\n\n{error}")
             return
 
-        self.status_label.setText(f"Status: Tracking ({role})")
+        self._set_status("Active tracking", active=True)
         self.report_area.append(f"Started tracking with role: {role}\n")
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
-        self.timer.start(1000)  # update every second
+        self.timer.start(1000)
+        self.pulse_timer.start()
 
     def stop_tracking(self):
         if self._stop_worker is not None:
             return
-        self.status_label.setText("Status: Saving session…")
+        self._set_status("Saving session…", warning=True)
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(False)
         self.timer.stop()
+        self.pulse_timer.stop()
         self._stop_worker = StopWorker(self.tracker, self)
         self._stop_error = None
         self._stop_worker.failed.connect(self._tracking_stop_failed)
@@ -185,10 +297,11 @@ class MainWindow(QMainWindow):
     def _tracking_stopped(self):
         self._stop_worker.deleteLater()
         self._stop_worker = None
-        self.status_label.setText("Status: Save failed" if self._stop_error else "Status: Stopped")
+        self._set_status("Save failed", warning=True) if self._stop_error else self._set_status("Idle")
         if not self._stop_error:
             self.report_area.append("Session saved.\n")
         self.start_button.setEnabled(True)
+        self.stop_button.setEnabled(False)
         action, self._after_stop = self._after_stop, None
         if action:
             action()
@@ -214,4 +327,5 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         self.timer.stop()
+        self.pulse_timer.stop()
         event.accept()

@@ -1,0 +1,67 @@
+{
+  "contracts": {
+    "change_scope": {
+      "data": {
+        "allowed_shared_files": [
+          "main.py",
+          "core/tracker.py"
+        ],
+        "route": "/desktop-app",
+        "route_files": [],
+        "route_subtrees": [
+          "app/desktop-app",
+          "src/app/desktop-app",
+          "pages/desktop-app",
+          "src/pages/desktop-app",
+          "components/desktop-app",
+          "src/components/desktop-app",
+          "features/desktop-app",
+          "src/features/desktop-app",
+          "lib/desktop-app",
+          "src/lib/desktop-app"
+        ],
+        "shared_change_justification": "These two files exclusively own the requested desktop auth and tracking dashboard UI; no web or backend files are needed.",
+        "task_summary": "Reapply the already-approved TELER PyQt6 desktop UI redesign to the fresh Git checkout so it can be pushed to main."
+      },
+      "project_id": "teler-deploy",
+      "project_path": "/app/data/projects/teler-deploy",
+      "status": "confirmed",
+      "updated_at": "2026-09-07T07:04:03.540354+00:00"
+    },
+    "github_source": {
+      "data": {
+        "authentication": "token",
+        "branch": "main",
+        "commit_sha": "fcf34287cc885568d7bacfb4e64d541d437a2b11",
+        "depth": 1,
+        "evidence": {
+          "action": "github_repository_cloned",
+          "claim_status": "verified",
+          "limitations": [
+            "Repository contents have not yet been inspected for task correctness."
+          ],
+          "may_claim_action_complete": true,
+          "observed_at": "2026-09-07T07:03:11.653751+00:00",
+          "sources": [
+            "git_clone_exit_code",
+            "local_git_branch",
+            "local_git_commit"
+          ],
+          "target": "https://github.com/teler-dev/Teler"
+        },
+        "next_action": "Call repo_list, then repo_read for the files needed by the task.",
+        "project_id": "teler-deploy",
+        "project_path": "/app/data/projects/teler-deploy",
+        "repository_url": "https://github.com/teler-dev/Teler",
+        "status": "cloned"
+      },
+      "project_id": "teler-deploy",
+      "project_path": "/app/data/projects/teler-deploy",
+      "status": "complete",
+      "updated_at": "2026-09-07T07:03:11.655158+00:00"
+    }
+  },
+  "credentials_collected": [],
+  "project_id": "teler-deploy",
+  "project_path": "/app/data/projects/teler-deploy"
+}
