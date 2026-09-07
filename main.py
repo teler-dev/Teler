@@ -122,6 +122,7 @@ class AuthDialog(QDialog):
 
         card = QWidget(objectName="card")
         card.setMinimumWidth(420)
+        card.setMaximumWidth(460)
         shadow = QGraphicsDropShadowEffect(card)
         shadow.setBlurRadius(44)
         shadow.setOffset(0, 14)
@@ -236,7 +237,15 @@ class AuthDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setWidget(card)
+
+        scroll_content = QWidget()
+        scroll_content.setStyleSheet("background: transparent;")
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(0)
+        scroll_layout.addWidget(card, 0, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        scroll_layout.addStretch()
+        scroll.setWidget(scroll_content)
         outer.addWidget(scroll)
         self._set_mode("login", animate=False)
 
