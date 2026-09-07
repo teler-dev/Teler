@@ -235,7 +235,9 @@ class MainWindow(QMainWindow):
         role_layout.addWidget(QLabel("Your role is managed by your TELER workspace administrator.", objectName="muted"))
         role_layout.addSpacing(8)
         role_layout.addWidget(self.role_dropdown)
-        layout.addWidget(role_card)
+        role_card.setMinimumWidth(660)
+        role_card.setMaximumWidth(760)
+        layout.addWidget(role_card, 0, Qt.AlignmentFlag.AlignHCenter)
 
         control_card, control_layout = self._make_card()
         control_header = QHBoxLayout()
@@ -321,7 +323,9 @@ class MainWindow(QMainWindow):
         self.report_list.addStretch()
         self.report_scroll.setWidget(self.report_viewport)
         report_layout.addWidget(self.report_scroll, 1)
-        layout.addWidget(self.report_card, 0)
+        self.report_card.setMinimumWidth(660)
+        self.report_card.setMaximumWidth(760)
+        layout.addWidget(self.report_card, 0, Qt.AlignmentFlag.AlignHCenter)
         self.main_layout = layout
         self.setCentralWidget(root)
 
