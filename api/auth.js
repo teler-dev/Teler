@@ -65,6 +65,7 @@ function tokenHash(token) {
 function publicAccount(row) {
   return {
     id: row.user_profile_id,
+    employeeId: row.employee_id,
     authUserId: row.auth_user_id,
     email: row.email_normalized,
     displayName: row.display_name,
@@ -94,7 +95,7 @@ const ACCOUNT_QUERY = `
   select p.id as user_profile_id, p.auth_user_id, p.display_name,
          c.email_normalized, m.organization_id, m.role as member_role,
          o.name as organization_name, o.slug as organization_slug,
-         e.job_role
+         e.id as employee_id, e.job_role
     from app.user_profiles p
     join app.user_credentials c on c.user_profile_id = p.id
     join app.organization_memberships m on m.user_profile_id = p.id
@@ -106,6 +107,37 @@ const ACCOUNT_QUERY = `
    where p.id = $1
    order by m.joined_at asc
    limit 1`;
+
+async function authenticateBearerToken(pool, token) {
+  if (!pool || !token) return null;
+  const sessionResult = await pool.query(
+    `select user_profile_id from app.user_auth_sessions
+      where token_hash = $1 and revoked_at is null and expires_at > now()`,
+    [tokenHash(token)]
+  );
+  const session = sessionResult.rows[0];
+  if (!session) return null;
+  const accountResult = await pool.query(ACCOUNT_QUERY, [session.user_profile_id]);
+  if (!accountResult.rows[0]) return null;
+  return { token, ...publicAccount(accountResult.rows[0]) };
+}
+
+function createUserSessionMiddleware(pool) {
+  return async (req, res, next) => {
+    const header = String(req.headers.authorization || '');
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    if (!token) return res.status(401).json({ error: 'Authentication required' });
+    try {
+      const user = await authenticateBearerToken(pool, token);
+      if (!user) return res.status(401).json({ error: 'Session expired' });
+      req.authUser = user;
+      return next();
+    } catch (error) {
+      console.error('[auth/session]', error);
+      return res.status(500).json({ error: 'Could not validate session' });
+    }
+  };
+}
 
 function createAuthRouter(pool) {
   const router = express.Router();
@@ -165,10 +197,10 @@ function createAuthRouter(pool) {
          values ($1, $2, 'owner')`,
         [organization.id, profileId]
       );
-      await client.query(
+      const employeeResult = await client.query(
          `insert into app.employees
            (organization_id, external_key, display_name, email_normalized, job_role)
-         values ($1, $2, $3, $4, $5)`,
+         values ($1, $2, $3, $4, $5) returning id`,
         [organization.id, profileId, displayName, email, jobRole]
       );
 
@@ -178,6 +210,7 @@ function createAuthRouter(pool) {
         ...session,
         user: {
           id: profileId,
+          employeeId: employeeResult.rows[0].id,
           authUserId,
           email,
           displayName,
@@ -233,13 +266,9 @@ function createAuthRouter(pool) {
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
     if (!token) return res.status(401).json({ error: 'Authentication required' });
     try {
-      const sessionResult = await pool.query(
-        `select user_profile_id from app.user_auth_sessions
-          where token_hash = $1 and revoked_at is null and expires_at > now()`,
-        [tokenHash(token)]
-      );
-      if (!sessionResult.rows[0]) return res.status(401).json({ error: 'Session expired' });
-      req.auth = { token, userProfileId: sessionResult.rows[0].user_profile_id };
+      const user = await authenticateBearerToken(pool, token);
+      if (!user) return res.status(401).json({ error: 'Session expired' });
+      req.authUser = user;
       return next();
     } catch (error) {
       console.error('[auth/session]', error);
@@ -248,21 +277,15 @@ function createAuthRouter(pool) {
   }
 
   router.get('/me', requireUser, async (req, res) => {
-    try {
-      const result = await pool.query(ACCOUNT_QUERY, [req.auth.userProfileId]);
-      if (!result.rows[0]) return res.status(403).json({ error: 'Account is no longer active' });
-      return res.json({ user: publicAccount(result.rows[0]) });
-    } catch (error) {
-      console.error('[auth/me]', error);
-      return res.status(500).json({ error: 'Could not load account' });
-    }
+    const { token, ...user } = req.authUser;
+    return res.json({ user });
   });
 
   router.post('/logout', requireUser, async (req, res) => {
     try {
       await pool.query(
         `update app.user_auth_sessions set revoked_at = now() where token_hash = $1`,
-        [tokenHash(req.auth.token)]
+        [tokenHash(req.authUser.token)]
       );
       return res.status(204).end();
     } catch (error) {
@@ -274,4 +297,10 @@ function createAuthRouter(pool) {
   return router;
 }
 
-module.exports = { createAuthRouter, hashPassword, verifyPassword };
+module.exports = {
+  createAuthRouter,
+  createUserSessionMiddleware,
+  authenticateBearerToken,
+  hashPassword,
+  verifyPassword,
+};

@@ -1,4 +1,4 @@
-import { noStoreJson, readSession, unauthorized } from './_auth.js';
+import { noStoreJson, readSessionToken, unauthorized } from './_auth.js';
 
 const ALLOWED_PATHS = [
   /^\/api\/sessions$/,
@@ -10,8 +10,7 @@ const ALLOWED_PATHS = [
   /^\/api\/memory\/.+$/,
   /^\/screenshots$/,
 
-  // Read-only modular backend routes. The browser never receives Oracle tokens,
-  // and mutation/ingest routes intentionally remain unavailable through this proxy.
+  // Read-only modular backend routes. The browser never receives Oracle tokens.
   /^\/api\/v1\/health$/,
   /^\/api\/v1\/companies$/,
   /^\/api\/v1\/companies\/[^/]+\/employees$/,
@@ -30,6 +29,13 @@ const ALLOWED_PATHS = [
   /^\/api\/v1\/reports$/,
   /^\/api\/v1\/reports\/[^/]+$/,
   /^\/api\/v1\/settings\/retention$/,
+
+  // User-owned tracking state. These routes use the authenticated user's backend
+  // bearer session rather than the shared Oracle API token.
+  /^\/api\/v1\/tracking-sessions$/,
+  /^\/api\/v1\/tracking-sessions\/current$/,
+  /^\/api\/v1\/tracking-sessions\/start$/,
+  /^\/api\/v1\/tracking-sessions\/[^/]+\/(pause|resume|stop)$/,
 ];
 
 type JsonRecord = Record<string, unknown>;
@@ -44,6 +50,10 @@ function allowedTarget(rawTarget: string): URL | null {
   } catch {
     return null;
   }
+}
+
+function isTrackingTarget(pathname: string): boolean {
+  return /^\/api\/v1\/tracking-sessions(?:\/|$)/.test(pathname);
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -190,59 +200,69 @@ function normalizePayload(payload: unknown, pathname: string): unknown {
 
 export default {
   async fetch(request: Request): Promise<Response> {
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      return noStoreJson({ error: 'Method not allowed' }, 405, { Allow: 'GET, HEAD' });
+    const requestUrl = new URL(request.url);
+    const target = allowedTarget(requestUrl.searchParams.get('target') ?? '');
+    if (!target) return noStoreJson({ error: 'API route is not allowed' }, 400);
+
+    const trackingTarget = isTrackingTarget(target.pathname);
+    const methodAllowed = request.method === 'GET'
+      || request.method === 'HEAD'
+      || (trackingTarget && request.method === 'POST');
+    if (!methodAllowed) {
+      return noStoreJson({ error: 'Method not allowed' }, 405, {
+        Allow: trackingTarget ? 'GET, HEAD, POST' : 'GET, HEAD',
+      });
     }
 
     try {
-      if (!readSession(request)) return unauthorized();
-
-      const requestUrl = new URL(request.url);
-      const target = allowedTarget(requestUrl.searchParams.get('target') ?? '');
-      if (!target) return noStoreJson({ error: 'API route is not allowed' }, 400);
+      const userToken = readSessionToken(request);
+      if (!userToken) return unauthorized();
 
       const apiBase = process.env.TELER_API_BASE?.trim().replace(/\/+$/, '');
       const apiToken = process.env.TELER_API_TOKEN?.trim();
-      if (!apiBase || !apiToken) {
-        console.error('TELER proxy configuration error: TELER_API_BASE or TELER_API_TOKEN is missing');
+      if (!apiBase || (!trackingTarget && !apiToken)) {
+        console.error('TELER proxy configuration error: required backend configuration is missing');
         return noStoreJson({ error: 'Oracle API connection is not configured in Vercel' }, 503);
       }
 
       const upstreamUrl = new URL(`${target.pathname}${target.search}`, `${apiBase}/`);
+      const headers = new Headers();
+      headers.set('Accept', request.headers.get('accept') ?? 'application/json');
+      headers.set('Authorization', `Bearer ${trackingTarget ? userToken : apiToken}`);
+      if (request.method === 'POST') headers.set('Content-Type', request.headers.get('content-type') ?? 'application/json');
+      const upstreamBody = request.method === 'POST' ? await request.text() : undefined;
       const upstream = await fetch(upstreamUrl, {
         method: request.method,
-        headers: {
-          Accept: request.headers.get('accept') ?? '*/*',
-          Authorization: `Bearer ${apiToken}`,
-        },
+        headers,
+        body: upstreamBody,
         redirect: 'error',
       });
 
-      const headers = new Headers();
+      const responseHeaders = new Headers();
       for (const name of ['content-type', 'cache-control', 'etag', 'last-modified']) {
         const value = upstream.headers.get(name);
-        if (value) headers.set(name, value);
+        if (value) responseHeaders.set(name, value);
       }
-      if (!headers.has('cache-control')) headers.set('Cache-Control', 'private, no-store');
-      headers.set('X-Content-Type-Options', 'nosniff');
+      if (!responseHeaders.has('cache-control')) responseHeaders.set('Cache-Control', 'private, no-store');
+      responseHeaders.set('X-Content-Type-Options', 'nosniff');
 
       if (request.method === 'HEAD' || !upstream.ok || !upstream.headers.get('content-type')?.includes('application/json')) {
         return new Response(request.method === 'HEAD' ? null : upstream.body, {
           status: upstream.status,
-          headers,
+          headers: responseHeaders,
         });
       }
 
       const payload = await upstream.json();
       const normalized = normalizePayload(payload, target.pathname);
-      headers.set('Content-Type', 'application/json; charset=utf-8');
-      headers.delete('content-length');
-      headers.delete('etag');
-      headers.delete('last-modified');
+      responseHeaders.set('Content-Type', 'application/json; charset=utf-8');
+      responseHeaders.delete('content-length');
+      responseHeaders.delete('etag');
+      responseHeaders.delete('last-modified');
 
       return new Response(JSON.stringify(normalized), {
         status: upstream.status,
-        headers,
+        headers: responseHeaders,
       });
     } catch (error) {
       console.error('TELER proxy error', error);

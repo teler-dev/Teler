@@ -7,6 +7,7 @@ const { getPool } = require('./db');
 const MIGRATIONS = [
   '004_backend_evolution.sql',
   '005_backend_integrity.sql',
+  '006_tracking_sessions.sql',
 ];
 
 async function main() {

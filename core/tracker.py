@@ -1,4 +1,6 @@
 import os
+import time
+from datetime import datetime
 
 from PyQt6.QtCore import (
     QEasingCurve,
@@ -10,21 +12,22 @@ from PyQt6.QtCore import (
     Qt,
     pyqtSignal,
 )
-from PyQt6.QtGui import QColor, QIcon, QPixmap
+from PyQt6.QtGui import QColor, QFont, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QComboBox,
     QFrame,
     QGraphicsDropShadowEffect,
+    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
-    QMessageBox,
     QPushButton,
-    QTextEdit,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from core.session_api import SessionClient
 from tracker.activity_tracker import ActivityTracker
 
 _ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
@@ -38,6 +41,8 @@ TEXT = "#F7F8FC"
 MUTED = "#8A90A6"
 ACCENT = "#5B5FEF"
 ACCENT_HOVER = "#7074FF"
+GREEN = "#55C98C"
+AMBER = "#E6AE55"
 
 
 def _make_logo_label(height_px: int) -> QLabel | None:
@@ -49,11 +54,28 @@ def _make_logo_label(height_px: int) -> QLabel | None:
         lbl = QLabel()
         lbl.setPixmap(scaled)
         lbl.setFixedSize(scaled.width(), scaled.height())
-        lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl.setStyleSheet("background: transparent; border: none;")
         return lbl
     except Exception:
         return None
+
+
+def _format_duration(seconds):
+    value = max(0, int(seconds or 0))
+    hours, remainder = divmod(value, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def _local_parts(value):
+    if not value:
+        return "—", "—"
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone()
+        return parsed.strftime("%b %d, %Y"), parsed.strftime("%I:%M %p").lstrip("0")
+    except (TypeError, ValueError):
+        return "—", "—"
 
 
 class StopWorker(QThread):
@@ -73,18 +95,24 @@ class StopWorker(QThread):
 class MainWindow(QMainWindow):
     logout_requested = pyqtSignal()
 
-    def __init__(self, username="", organization_name="", job_role="general", organization_id="", employee_id=""):
+    def __init__(self, username="", organization_name="", job_role="general", organization_id="",
+                 employee_id="", auth_client=None):
         super().__init__()
+        self._username = username or "TELER User"
+        self._organization_name = organization_name
+        self._job_role = str(job_role or "general")
         self._stop_worker = None
         self._after_stop = None
         self._stop_error = None
-        self._username = username or "TELER User"
-        self._organization_name = organization_name
+        self._pending_action = None
+        self._server_session = None
+        self._server_sync_monotonic = time.monotonic()
+        self._out_of_sync = False
+        self._fade_animation = None
 
         self.setWindowTitle(f"TELER — {self._username}")
-        self.resize(900, 650)
-        self.setMinimumSize(760, 560)
-
+        self.resize(900, 700)
+        self.setMinimumSize(760, 610)
         try:
             icon = QIcon(_ICO_PATH) if os.path.isfile(_ICO_PATH) else QIcon(QPixmap(_LOGO_PATH))
             if not icon.isNull():
@@ -104,8 +132,9 @@ class MainWindow(QMainWindow):
             QWidget#statusPill {{ background: rgba(138,144,166,0.10); border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; }}
             QLabel#statusDot {{ color: #8A90A6; background: transparent; border: 0; font-size: 10px; }}
             QLabel#statusText {{ color: #B1B6C8; background: transparent; border: 0; font-size: 11px; font-weight: 650; }}
+            QLabel#timer {{ color: {TEXT}; font-size: 30px; font-weight: 700; background: transparent; border: 0; }}
+            QLabel#error {{ color: #F6A6AE; font-size: 10px; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 8px; padding: 6px 8px; }}
             QComboBox {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; padding: 9px 12px; color: {TEXT}; font-size: 12px; }}
-            QComboBox:focus {{ border: 1px solid {ACCENT}; background: #111528; }}
             QComboBox:disabled {{ color: #A4A9B8; background: #10131E; }}
             QPushButton#primary {{ background: {ACCENT}; border: 0; border-radius: 10px; padding: 10px 15px; color: white; font-size: 12px; font-weight: 700; }}
             QPushButton#primary:hover {{ background: {ACCENT_HOVER}; }}
@@ -113,28 +142,43 @@ class MainWindow(QMainWindow):
             QPushButton#secondary {{ background: transparent; border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; padding: 10px 15px; color: #D6D9E6; font-size: 12px; font-weight: 650; }}
             QPushButton#secondary:hover {{ border-color: rgba(112,116,255,0.7); color: white; background: rgba(91,95,239,0.07); }}
             QPushButton#secondary:disabled {{ border-color: rgba(255,255,255,0.06); color: #565B70; background: rgba(255,255,255,0.015); }}
-            QTextEdit {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; color: #D9DCE8; padding: 12px; font-size: 11px; selection-background-color: {ACCENT}; }}
+            QScrollArea#reports {{ background: transparent; border: 0; }}
+            QWidget#reportViewport {{ background: transparent; }}
+            QWidget#reportRow {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.06); border-radius: 9px; }}
+            QWidget#reportRow:hover {{ background: #111528; border-color: rgba(91,95,239,0.20); }}
+            QFrame#reportAccent {{ background: {ACCENT}; border: 0; border-radius: 1px; }}
             QFrame#divider {{ background: rgba(255,255,255,0.07); max-height: 1px; border: 0; }}
         """)
 
         self.role_dropdown = QComboBox()
-        self.role_dropdown.addItem(str(job_role or "general").replace("_", " ").title())
+        self.role_dropdown.addItem(self._job_role.replace("_", " ").title())
         self.role_dropdown.setEnabled(False)
         self.role_dropdown.setToolTip("Role is assigned to your account and can only be changed by an administrator")
         self.role_dropdown.setMinimumHeight(42)
 
         self.start_button = QPushButton("▶  Start Tracking", objectName="primary")
-        self.start_button.setMinimumHeight(42)
+        self.pause_button = QPushButton("Ⅱ  Pause", objectName="secondary")
         self.stop_button = QPushButton("■  Stop Tracking", objectName="secondary")
-        self.stop_button.setMinimumHeight(42)
+        for button in (self.start_button, self.pause_button, self.stop_button):
+            button.setMinimumHeight(42)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.pause_button.hide()
         self.stop_button.setEnabled(False)
+
+        self.timer_label = QLabel("00:00:00", objectName="timer")
+        timer_font = QFont("SF Mono")
+        timer_font.setStyleHint(QFont.StyleHint.Monospace)
+        timer_font.setPointSize(27)
+        timer_font.setWeight(QFont.Weight.Bold)
+        self.timer_label.setFont(timer_font)
+        self.timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.timer_label.setMinimumHeight(48)
 
         self.status_pill = QWidget(objectName="statusPill")
         self.status_pill.setFixedHeight(28)
         status_layout = QHBoxLayout(self.status_pill)
         status_layout.setContentsMargins(10, 0, 10, 0)
         status_layout.setSpacing(6)
-
         self.status_dot_wrap = QWidget()
         self.status_dot_wrap.setFixedSize(14, 14)
         self.status_dot = QLabel("●", self.status_dot_wrap, objectName="statusDot")
@@ -145,21 +189,18 @@ class MainWindow(QMainWindow):
         self.status_dot_effect.setBlurRadius(4)
         self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
         self.status_dot.setGraphicsEffect(self.status_dot_effect)
-
         self.status_text = QLabel("Idle", objectName="statusText")
         status_layout.addWidget(self.status_dot_wrap)
         status_layout.addWidget(self.status_text)
 
-        self.report_area = QTextEdit()
-        self.report_area.setReadOnly(True)
-        self.report_area.document().setMaximumBlockCount(300)
-        self.report_area.hide()
+        self.action_error = QLabel("", objectName="error")
+        self.action_error.setWordWrap(True)
+        self.action_error.hide()
 
         root = QWidget(objectName="root")
         layout = QVBoxLayout(root)
         layout.setContentsMargins(28, 24, 28, 28)
         layout.setSpacing(18)
-
         divider = QFrame(objectName="divider")
         divider.setFixedHeight(1)
         layout.addWidget(divider)
@@ -171,21 +212,14 @@ class MainWindow(QMainWindow):
             header.addWidget(logo)
         header.addWidget(QLabel("TELER", objectName="brand"))
         header.addStretch()
-
         avatar_text = "".join(part[0] for part in self._username.split()[:2] if part)[:2].upper() or "T"
         avatar = QLabel(avatar_text, objectName="avatar")
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.addWidget(avatar)
-
-        identity_text = self._username
-        if self._organization_name:
-            identity_text += f"  ·  {self._organization_name}"
-        identity = QLabel(identity_text, objectName="identity")
-        header.addWidget(identity)
-
+        identity_text = self._username + (f"  ·  {self._organization_name}" if self._organization_name else "")
+        header.addWidget(QLabel(identity_text, objectName="identity"))
         logout_button = QPushButton("↗  Logout", objectName="secondary")
         logout_button.setMinimumHeight(34)
-        logout_button.setToolTip("Sign out of TELER on this computer")
         logout_button.clicked.connect(self._logout)
         header.addWidget(logout_button)
         layout.addLayout(header)
@@ -194,7 +228,7 @@ class MainWindow(QMainWindow):
         role_card, role_layout = self._make_card()
         role_layout.addWidget(QLabel("Assigned role", objectName="sectionTitle"))
         role_layout.addWidget(QLabel("Your role is managed by your TELER workspace administrator.", objectName="muted"))
-        role_layout.addSpacing(6)
+        role_layout.addSpacing(8)
         role_layout.addWidget(self.role_dropdown)
         layout.addWidget(role_card)
 
@@ -203,32 +237,31 @@ class MainWindow(QMainWindow):
         control_copy = QVBoxLayout()
         control_copy.setSpacing(2)
         control_copy.addWidget(QLabel("Tracking controls", objectName="sectionTitle"))
-        control_copy.addWidget(QLabel("Start a secure activity session when you begin work.", objectName="muted"))
+        control_copy.addWidget(QLabel("Server-confirmed state stays synchronized across TELER clients.", objectName="muted"))
         control_header.addLayout(control_copy)
         control_header.addStretch()
         control_header.addWidget(self.status_pill)
         control_layout.addLayout(control_header)
-        control_layout.addSpacing(10)
-
+        control_layout.addSpacing(8)
+        control_layout.addWidget(self.timer_label)
+        control_layout.addSpacing(8)
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
+        button_layout.setSpacing(8)
         button_layout.addWidget(self.start_button)
+        button_layout.addWidget(self.pause_button)
         button_layout.addWidget(self.stop_button)
         button_layout.addStretch()
         control_layout.addLayout(button_layout)
+        control_layout.addWidget(self.action_error)
         layout.addWidget(control_card)
 
         self.report_card, report_layout = self._make_card()
-        self.report_card.setMinimumHeight(280)
+        self.report_card.setMinimumHeight(250)
         self.report_card.setMaximumHeight(400)
-
-        report_header = QHBoxLayout()
-        report_title_box = QVBoxLayout()
-        report_title_box.setSpacing(2)
-        report_title_box.addWidget(QLabel("Activity Reports", objectName="sectionTitle"))
-        report_title_box.addWidget(QLabel("Live session telemetry and saved activity updates.", objectName="muted"))
-        report_header.addLayout(report_title_box)
-        report_header.addStretch()
+        report_header = QVBoxLayout()
+        report_header.setSpacing(2)
+        report_header.addWidget(QLabel("Activity Reports", objectName="sectionTitle"))
+        report_header.addWidget(QLabel("Your saved tracking sessions, most recent first.", objectName="muted"))
         report_layout.addLayout(report_header)
         report_layout.addSpacing(8)
 
@@ -237,27 +270,53 @@ class MainWindow(QMainWindow):
         empty_layout.setContentsMargins(0, 0, 0, 0)
         empty_layout.setSpacing(8)
         empty_layout.addStretch()
-
         empty_icon = QLabel("◷")
         empty_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty_icon.setStyleSheet(f"color:{MUTED}; font-size:24px;")
-        empty_text = QLabel("No activity yet. Start tracking to see timestamped activity reports here.", objectName="muted")
+        empty_text = QLabel("No activity yet. Start tracking to create a session.", objectName="muted")
         empty_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_text.setWordWrap(True)
         empty_layout.addWidget(empty_icon)
         empty_layout.addWidget(empty_text)
         empty_layout.addStretch()
-
         report_layout.addWidget(self.report_empty_state, 1)
-        report_layout.addWidget(self.report_area, 1)
+
+        self.report_scroll = QScrollArea(objectName="reports")
+        self.report_scroll.setWidgetResizable(True)
+        self.report_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.report_scroll.hide()
+        self.report_viewport = QWidget(objectName="reportViewport")
+        self.report_list = QVBoxLayout(self.report_viewport)
+        self.report_list.setContentsMargins(0, 0, 4, 0)
+        self.report_list.setSpacing(8)
+        self.report_list.addStretch()
+        self.report_scroll.setWidget(self.report_viewport)
+        report_layout.addWidget(self.report_scroll, 1)
         layout.addWidget(self.report_card, 0)
         self.main_layout = layout
-
         self.setCentralWidget(root)
 
         self.tracker = ActivityTracker(username=username, organization_id=organization_id, employee_id=employee_id)
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_stats)
+        self.session_client = SessionClient(auth_client, self) if auth_client is not None else None
+        if self.session_client:
+            self.session_client.succeeded.connect(self._session_succeeded)
+            self.session_client.failed.connect(self._session_failed)
+            self.session_client.retrying.connect(self._session_retrying)
+
+        self.ui_timer = QTimer(self)
+        self.ui_timer.setInterval(1000)
+        self.ui_timer.timeout.connect(self._update_timer_display)
+        self.ui_timer.start()
+        self.current_poll = QTimer(self)
+        self.current_poll.setInterval(5000)
+        self.current_poll.timeout.connect(lambda: self.session_client and self.session_client.current())
+        self.current_poll.start()
+        self.report_poll = QTimer(self)
+        self.report_poll.setInterval(30000)
+        self.report_poll.timeout.connect(lambda: self.session_client and self.session_client.list_sessions())
+        self.report_poll.start()
+        self.saved_timer = QTimer(self)
+        self.saved_timer.setSingleShot(True)
+        self.saved_timer.timeout.connect(lambda: self._apply_state("idle"))
 
         self._status_pulse_group = QParallelAnimationGroup(self)
         dot_scale = QPropertyAnimation(self.status_dot, b"geometry", self)
@@ -266,156 +325,360 @@ class MainWindow(QMainWindow):
         dot_scale.setKeyValueAt(0.5, QRect(1, 1, 12, 12))
         dot_scale.setKeyValueAt(1.0, QRect(2, 2, 10, 10))
         dot_scale.setEasingCurve(QEasingCurve.Type.InOutSine)
-
         glow = QPropertyAnimation(self.status_dot_effect, b"blurRadius", self)
         glow.setDuration(1200)
         glow.setKeyValueAt(0.0, 4.0)
         glow.setKeyValueAt(0.5, 10.0)
         glow.setKeyValueAt(1.0, 4.0)
         glow.setEasingCurve(QEasingCurve.Type.InOutSine)
-
         self._status_pulse_group.addAnimation(dot_scale)
         self._status_pulse_group.addAnimation(glow)
         self._status_pulse_group.setLoopCount(-1)
 
         self.start_button.clicked.connect(self.start_tracking)
+        self.pause_button.clicked.connect(self.pause_or_resume_tracking)
         self.stop_button.clicked.connect(self.stop_tracking)
+        self._apply_state("idle")
+        if self.session_client:
+            QTimer.singleShot(0, self.session_client.current)
+            QTimer.singleShot(100, self.session_client.list_sessions)
 
-    def _make_card(self, stretch=False):
+    def _make_card(self):
         card = QWidget(objectName="card")
-        if stretch:
-            card.setMinimumHeight(210)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(16, 16, 16, 16)
         card_layout.setSpacing(8)
-        shadow = QGraphicsDropShadowEffect(card)
-        shadow.setBlurRadius(26)
-        shadow.setOffset(0, 8)
-        shadow.setColor(Qt.GlobalColor.transparent)
-        card.setGraphicsEffect(shadow)
         return card, card_layout
+
+    def _fade_controls(self):
+        effect = self.timer_label.graphicsEffect()
+        if not isinstance(effect, QGraphicsOpacityEffect):
+            effect = QGraphicsOpacityEffect(self.timer_label)
+            self.timer_label.setGraphicsEffect(effect)
+        effect.setOpacity(0.7)
+        self._fade_animation = QPropertyAnimation(effect, b"opacity", self)
+        self._fade_animation.setDuration(180)
+        self._fade_animation.setStartValue(0.7)
+        self._fade_animation.setEndValue(1.0)
+        self._fade_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._fade_animation.start()
 
     def _stop_status_pulse(self):
         self._status_pulse_group.stop()
         self.status_dot.setGeometry(2, 2, 10, 10)
         self.status_dot_effect.setBlurRadius(4)
 
-    def _set_status(self, text, active=False, warning=False):
-        self.status_text.setText(text)
-        if active:
-            self.status_pill.setStyleSheet(
-                "QWidget#statusPill { background: rgba(85,201,140,0.10); border: 1px solid rgba(85,201,140,0.22); border-radius: 13px; }"
-            )
-            self.status_text.setStyleSheet(
-                "color:#78D8A6; background:transparent; border:0; font-size:11px; font-weight:650;"
-            )
-            self.status_dot.setStyleSheet(
-                "color:#55C98C; background:transparent; border:0; font-size:10px;"
-            )
+    def _style_status(self, state):
+        self._stop_status_pulse()
+        if state == "running":
+            bg, border, text, dot, label = "rgba(85,201,140,0.10)", "rgba(85,201,140,0.22)", "#78D8A6", GREEN, "Running"
             self.status_dot_effect.setColor(QColor(85, 201, 140, 150))
             self._status_pulse_group.start()
-        elif warning:
-            self._stop_status_pulse()
-            self.status_pill.setStyleSheet(
-                "QWidget#statusPill { background: rgba(230,174,85,0.10); border: 1px solid rgba(230,174,85,0.22); border-radius: 13px; }"
-            )
-            self.status_text.setStyleSheet(
-                "color:#E8BD76; background:transparent; border:0; font-size:11px; font-weight:650;"
-            )
-            self.status_dot.setStyleSheet(
-                "color:#E6AE55; background:transparent; border:0; font-size:10px;"
-            )
+        elif state == "paused":
+            bg, border, text, dot, label = "rgba(230,174,85,0.10)", "rgba(230,174,85,0.22)", "#E8BD76", AMBER, "Paused"
+            self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
+        elif state == "saved":
+            bg, border, text, dot, label = "rgba(138,144,166,0.10)", "rgba(255,255,255,0.08)", "#C6CAD8", "#8A90A6", "✓ Saved"
+            self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
+        elif state == "warning":
+            bg, border, text, dot, label = "rgba(239,68,68,0.08)", "rgba(239,68,68,0.18)", "#F6A6AE", "#EF6A78", "Out of sync"
             self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
         else:
-            self._stop_status_pulse()
-            self.status_pill.setStyleSheet(
-                "QWidget#statusPill { background: rgba(138,144,166,0.10); border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; }"
-            )
-            self.status_text.setStyleSheet(
-                "color:#B1B6C8; background:transparent; border:0; font-size:11px; font-weight:650;"
-            )
-            self.status_dot.setStyleSheet(
-                "color:#8A90A6; background:transparent; border:0; font-size:10px;"
-            )
+            bg, border, text, dot, label = "rgba(138,144,166,0.10)", "rgba(255,255,255,0.08)", "#B1B6C8", "#8A90A6", "Idle"
             self.status_dot_effect.setColor(QColor(0, 0, 0, 0))
+        self.status_pill.setStyleSheet(f"QWidget#statusPill {{ background:{bg}; border:1px solid {border}; border-radius:13px; }}")
+        self.status_text.setStyleSheet(f"color:{text}; background:transparent; border:0; font-size:11px; font-weight:650;")
+        self.status_dot.setStyleSheet(f"color:{dot}; background:transparent; border:0; font-size:10px;")
+        self.status_text.setText(label)
 
-    def _append_report(self, message):
-        if self.report_area.isHidden():
-            self.report_empty_state.hide()
-            self.report_area.show()
-            self.report_card.setMaximumHeight(16777215)
-            self.main_layout.setStretchFactor(self.report_card, 1)
-        self.report_area.append(message)
+    def _apply_state(self, state):
+        self._fade_controls()
+        self._style_status(state)
+        active_request = self._pending_action is not None
+        if state == "running":
+            self.start_button.hide()
+            self.pause_button.show()
+            self.pause_button.setText("Ⅱ  Pause")
+            self.pause_button.setObjectName("secondary")
+            self.pause_button.setEnabled(not active_request)
+            self.stop_button.setEnabled(not active_request)
+            self.timer_label.setStyleSheet(f"color:{TEXT}; background:transparent; border:0;")
+        elif state == "paused":
+            self.start_button.hide()
+            self.pause_button.show()
+            self.pause_button.setText("▶  Resume")
+            self.pause_button.setObjectName("primary")
+            self.pause_button.setEnabled(not active_request)
+            self.stop_button.setEnabled(not active_request)
+            self.timer_label.setStyleSheet(f"color:{MUTED}; background:transparent; border:0;")
+        else:
+            self.pause_button.hide()
+            self.start_button.show()
+            self.start_button.setText("▶  Start Tracking")
+            self.start_button.setEnabled(not active_request and state != "saved")
+            self.stop_button.setEnabled(False)
+            self.timer_label.setStyleSheet(f"color:{TEXT}; background:transparent; border:0;")
+            if state in ("idle", "saved"):
+                self.timer_label.setText("00:00:00")
+        for button in (self.start_button, self.pause_button, self.stop_button):
+            button.style().unpolish(button)
+            button.style().polish(button)
+
+    def _current_state(self):
+        if self._out_of_sync:
+            return "warning"
+        if not self._server_session:
+            return "idle"
+        return self._server_session.get("status") or "idle"
+
+    def _update_timer_display(self):
+        if not self._server_session:
+            return
+        base = int(self._server_session.get("total_duration_seconds") or 0)
+        if self._server_session.get("status") == "running":
+            base += max(0, int(time.monotonic() - self._server_sync_monotonic))
+        self.timer_label.setText(_format_duration(base))
+
+    def _set_pending(self, action):
+        self._pending_action = action
+        self.action_error.hide()
+        state = self._current_state()
+        if state == "warning":
+            state = self._server_session.get("status", "idle") if self._server_session else "idle"
+        self._apply_state(state)
+        labels = {"start": "Starting…", "pause": "Pausing…", "resume": "Resuming…", "stop": "Saving…"}
+        if action == "start":
+            self.start_button.setText(labels[action])
+        elif action in ("pause", "resume"):
+            self.pause_button.setText(labels[action])
+        elif action == "stop":
+            self.stop_button.setText(labels[action])
+
+    def _clear_pending(self):
+        self._pending_action = None
+        self.stop_button.setText("■  Stop Tracking")
 
     def start_tracking(self):
-        role = self.role_dropdown.currentText()
-        try:
-            self.tracker.set_metadata(role, "")
-            self.tracker.start()
-        except Exception as error:
-            self._set_status("Could not start", warning=True)
-            self.start_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self._append_report(f"Tracking start failed: {error}\n")
-            QMessageBox.critical(self, "TELER tracking error", f"Tracking could not start.\n\n{error}")
+        if self._pending_action:
             return
+        if not self.session_client:
+            self._show_action_error("Tracking server is not connected.")
+            return
+        self._set_pending("start")
+        self.session_client.start(self._job_role)
 
-        self._set_status("Active tracking", active=True)
-        self._append_report(f"Started tracking with role: {role}\n")
-        self.start_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
-        self.timer.start(1000)
+    def pause_or_resume_tracking(self):
+        if self._pending_action or not self._server_session:
+            return
+        session_id = self._server_session.get("id")
+        if self._server_session.get("status") == "running":
+            self._set_pending("pause")
+            self.session_client.pause(session_id)
+        elif self._server_session.get("status") == "paused":
+            self._set_pending("resume")
+            self.session_client.resume(session_id)
 
     def stop_tracking(self):
-        if self._stop_worker is not None:
+        if self._pending_action or not self._server_session:
             return
-        self._set_status("Saving session…", warning=True)
-        self.start_button.setEnabled(False)
-        self.stop_button.setEnabled(False)
-        self.timer.stop()
-        self._stop_status_pulse()
-        self._stop_worker = StopWorker(self.tracker, self)
+        self._set_pending("stop")
+        self.session_client.stop(self._server_session.get("id"))
+
+    def _ensure_local_tracker(self, session):
+        status = session.get("status")
+        role = session.get("role_at_time") or self._job_role
+        if not self.tracker.is_tracking:
+            self.tracker.set_metadata(role, "")
+            self.tracker.start()
+        if status == "paused" and not self.tracker.paused:
+            self.tracker.pause()
+        elif status == "running" and self.tracker.paused:
+            self.tracker.resume()
+
+    def _reconcile_current(self, session):
+        if session is None:
+            if self.tracker.is_tracking and not self._pending_action:
+                self._out_of_sync = True
+                self._style_status("warning")
+                self._show_action_error("Session may be out of sync: local tracking is active but the server has no active session. Retry or stop from another TELER client.")
+                return
+            self._server_session = None
+            self._server_sync_monotonic = time.monotonic()
+            self._out_of_sync = False
+            self._apply_state("idle")
+            return
+
+        if self.tracker.is_tracking and self._server_session and self._server_session.get("id") != session.get("id"):
+            self._out_of_sync = True
+            self._style_status("warning")
+            self._show_action_error("Session may be out of sync: another active session was found. TELER will not overwrite local state silently.")
+            return
+
+        try:
+            self._ensure_local_tracker(session)
+        except Exception as error:
+            self._out_of_sync = True
+            self._style_status("warning")
+            self._show_action_error(f"Server session is active, but local telemetry could not start: {error}")
+            return
+
+        self._server_session = session
+        self._server_sync_monotonic = time.monotonic()
+        self._out_of_sync = False
+        self._apply_state(session.get("status", "idle"))
+        self._update_timer_display()
+
+    def _session_succeeded(self, action, payload):
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if action == "current":
+            if not self._pending_action:
+                self._reconcile_current(data)
+            return
+        if action == "list":
+            self._render_sessions(data or [])
+            return
+
+        self._clear_pending()
+        if action in ("start", "pause", "resume"):
+            try:
+                self._reconcile_current(data)
+            except Exception as error:
+                self._show_action_error(str(error))
+                if data and self.session_client:
+                    self.session_client.stop(data.get("id"))
+            return
+
+        if action == "stop":
+            self._server_session = None
+            self._server_sync_monotonic = time.monotonic()
+            self._out_of_sync = False
+            self._start_local_stop()
+            self._apply_state("saved")
+            self.saved_timer.start(1400)
+            if self.session_client:
+                self.session_client.list_sessions()
+
+    def _session_retrying(self, action, attempt):
+        self.action_error.setText(f"Connection interrupted. Retrying {action} ({attempt + 1}/3)…")
+        self.action_error.show()
+
+    def _session_failed(self, action, message, status):
+        self._clear_pending()
+        self._show_action_error(f"{message}  ·  Retry by using the same control again.")
+        if status == 409:
+            self._out_of_sync = True
+            self._style_status("warning")
+            if self.session_client:
+                self.session_client.current()
+        else:
+            state = self._server_session.get("status", "idle") if self._server_session else "idle"
+            self._apply_state(state)
+
+    def _show_action_error(self, message):
+        self.action_error.setText(message)
+        self.action_error.show()
+
+    def _start_local_stop(self):
+        if not self.tracker.is_tracking or self._stop_worker is not None:
+            action, self._after_stop = self._after_stop, None
+            if action:
+                action()
+            return
         self._stop_error = None
+        self._stop_worker = StopWorker(self.tracker, self)
         self._stop_worker.failed.connect(self._tracking_stop_failed)
         self._stop_worker.finished.connect(self._tracking_stopped)
         self._stop_worker.start()
 
     def _tracking_stop_failed(self, message):
         self._stop_error = message
-        self._append_report(f"Stop failed: {message}")
+        self._show_action_error(f"Session was saved on the server, but local telemetry cleanup failed: {message}")
 
     def _tracking_stopped(self):
         self._stop_worker.deleteLater()
         self._stop_worker = None
-        self._set_status("Save failed", warning=True) if self._stop_error else self._set_status("Idle")
-        if not self._stop_error:
-            self._append_report("Session saved.\n")
-        self.start_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
         action, self._after_stop = self._after_stop, None
         if action:
             action()
 
-    def update_stats(self):
-        stats = self.tracker.get_stats()
-        self._append_report(
-            f"Keys: {stats['keys']}, Clicks: {stats['clicks']}, "
-            f"Idle: {stats['idle_seconds']}s, Active Window: {stats['active_window']}"
-        )
+    def _clear_report_rows(self):
+        while self.report_list.count() > 1:
+            item = self.report_list.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+    def _render_sessions(self, sessions):
+        self._clear_report_rows()
+        if not sessions:
+            self.report_scroll.hide()
+            self.report_empty_state.show()
+            self.report_card.setMaximumHeight(400)
+            self.main_layout.setStretchFactor(self.report_card, 0)
+            return
+        self.report_empty_state.hide()
+        self.report_scroll.show()
+        self.report_card.setMaximumHeight(16777215)
+        self.main_layout.setStretchFactor(self.report_card, 1)
+        for session in sessions:
+            self.report_list.insertWidget(self.report_list.count() - 1, self._session_row(session))
+
+    def _session_row(self, session):
+        row = QWidget(objectName="reportRow")
+        outer = QHBoxLayout(row)
+        outer.setContentsMargins(0, 0, 10, 0)
+        outer.setSpacing(10)
+        accent = QFrame(objectName="reportAccent")
+        accent.setFixedWidth(3)
+        outer.addWidget(accent)
+        copy = QVBoxLayout()
+        copy.setContentsMargins(0, 10, 0, 10)
+        copy.setSpacing(4)
+        top = QHBoxLayout()
+        role = QLabel(str(session.get("role_at_time") or "General").replace("_", " ").title())
+        role.setStyleSheet(f"color:{TEXT}; font-size:11px; font-weight:700; background:transparent; border:0;")
+        duration = QLabel(_format_duration(session.get("total_duration_seconds")))
+        duration.setStyleSheet(f"color:{TEXT}; font-size:11px; font-family:'SF Mono'; background:transparent; border:0;")
+        top.addWidget(role)
+        top.addStretch()
+        top.addWidget(duration)
+        copy.addLayout(top)
+        date_text, start_text = _local_parts(session.get("start_ts"))
+        _, end_text = _local_parts(session.get("end_ts"))
+        timing = QLabel(f"{date_text}  ·  {start_text} → {end_text}", objectName="muted")
+        copy.addWidget(timing)
+        pauses = int(session.get("pause_count") or 0)
+        if pauses:
+            paused_minutes = round(int(session.get("total_paused_seconds") or 0) / 60)
+            pause_text = QLabel(f"Includes {pauses} pause{'s' if pauses != 1 else ''} · {paused_minutes}m paused time.", objectName="muted")
+            copy.addWidget(pause_text)
+        outer.addLayout(copy, 1)
+        return row
 
     def _logout(self):
-        if self.tracker.running or self._stop_worker is not None:
+        if self._server_session:
             self._after_stop = self.logout_requested.emit
             self.stop_tracking()
+            return
+        if self.tracker.is_tracking or self._stop_worker is not None:
+            self._after_stop = self.logout_requested.emit
+            self._start_local_stop()
             return
         self.logout_requested.emit()
 
     def closeEvent(self, event):
-        if self.tracker.running or self._stop_worker is not None:
+        if self._server_session:
             self._after_stop = self.close
             self.stop_tracking()
             event.ignore()
             return
-        self.timer.stop()
+        if self.tracker.is_tracking or self._stop_worker is not None:
+            self._after_stop = self.close
+            self._start_local_stop()
+            event.ignore()
+            return
+        self.ui_timer.stop()
+        self.current_poll.stop()
+        self.report_poll.stop()
         self._stop_status_pulse()
         event.accept()

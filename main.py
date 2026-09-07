@@ -550,7 +550,8 @@ class ApplicationController(QObject):
             organization_name=organization.get("name", ""),
             job_role=account.get("jobRole") or "general",
             organization_id=organization.get("id", ""),
-            employee_id=account.get("id", ""),
+            employee_id=account.get("employeeId") or account.get("id", ""),
+            auth_client=self.client,
         )
         self.window.logout_requested.connect(self.logout)
         self.window.show()

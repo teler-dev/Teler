@@ -1,5 +1,7 @@
 export type AuthenticatedUser = {
   username: string;
+  email?: string;
+  jobRole?: string;
 };
 
 function isPublicAuthShell(): boolean {
@@ -19,20 +21,32 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
   }
 }
 
-export async function login(username: string, password: string): Promise<AuthenticatedUser> {
+function userFromBody(body: Record<string, unknown>): AuthenticatedUser | null {
+  if (typeof body.username !== 'string') return null;
+  const account = body.user && typeof body.user === 'object'
+    ? body.user as Record<string, unknown>
+    : {};
+  return {
+    username: body.username,
+    email: typeof body.email === 'string' ? body.email : undefined,
+    jobRole: typeof account.jobRole === 'string' ? account.jobRole : undefined,
+  };
+}
+
+export async function login(email: string, password: string): Promise<AuthenticatedUser> {
   const response = await fetch('/api/auth-login', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email, password }),
   });
   const body = await readJson(response);
+  const user = userFromBody(body);
 
-  if (!response.ok || typeof body.username !== 'string') {
+  if (!response.ok || !user) {
     throw new Error(typeof body.error === 'string' ? body.error : 'Unable to sign in');
   }
 
-  const user = { username: body.username };
   handoffToRoutedDashboard();
   return user;
 }
@@ -45,9 +59,10 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   if (response.status === 401) return null;
 
   const body = await readJson(response);
-  if (!response.ok || typeof body.username !== 'string') return null;
+  if (!response.ok) return null;
+  const user = userFromBody(body);
+  if (!user) return null;
 
-  const user = { username: body.username };
   handoffToRoutedDashboard();
   return user;
 }

@@ -3,8 +3,9 @@
 const crypto = require('crypto');
 const express = require('express');
 const { getPool } = require('./db');
+const { createUserSessionMiddleware } = require('./auth');
 const { createIngestionRouter } = require('./modules/ingestion');
-const { createSessionsRouter } = require('./modules/v1-sessions');
+const { createSessionsRouter, createTrackingSessionsRouter } = require('./modules/v1-sessions');
 const { createAnalyticsRouter } = require('./modules/v1-analytics');
 const { createAlertsRouter, createAlertRulesRouter } = require('./modules/v1-alerts');
 const { createDirectoryRouter } = require('./modules/v1-directory');
@@ -62,6 +63,8 @@ front.get('/api/v1/health', async (req, res) => res.json({ status: 'ok', auth: B
 
 const v1 = express.Router();
 v1.use(express.json({ limit: '20mb' }));
+const userSession = createUserSessionMiddleware(getPool());
+v1.use('/tracking-sessions', userSession, createTrackingSessionsRouter(express));
 v1.use('/ingest', requireBearer(SYNC_TOKEN), createIngestionRouter(express));
 v1.use('/', requireBearer(API_TOKEN), createDirectoryRouter(express));
 v1.use('/sessions', requireBearer(API_TOKEN), createSessionsRouter(express));

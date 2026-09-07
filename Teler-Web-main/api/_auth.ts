@@ -1,45 +1,10 @@
-import {
-  createHmac,
-  randomBytes,
-  scryptSync,
-  timingSafeEqual,
-} from 'node:crypto';
-
 const COOKIE_NAME = '__Host-teler_session';
-const SESSION_TTL_SECONDS = 12 * 60 * 60;
-const SCRYPT_KEY_LENGTH = 64;
+const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
-type SessionPayload = {
-  sub: string;
-  iat: number;
-  exp: number;
-};
-
-function requiredEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Missing required environment variable: ${name}`);
-  return value;
-}
-
-function encode(value: string | Buffer): string {
-  return Buffer.from(value).toString('base64url');
-}
-
-function sign(value: string): string {
-  return createHmac('sha256', requiredEnv('TELER_SESSION_SECRET'))
-    .update(value)
-    .digest('base64url');
-}
-
-function safeEqualText(left: string, right: string): boolean {
-  const leftHash = createHmac('sha256', 'teler-constant-time-compare').update(left).digest();
-  const rightHash = createHmac('sha256', 'teler-constant-time-compare').update(right).digest();
-  return timingSafeEqual(leftHash, rightHash);
-}
+type JsonRecord = Record<string, unknown>;
 
 function parseCookies(header: string | null): Record<string, string> {
   if (!header) return {};
-
   return Object.fromEntries(
     header.split(';').flatMap((part) => {
       const separator = part.indexOf('=');
@@ -55,62 +20,20 @@ function parseCookies(header: string | null): Record<string, string> {
   );
 }
 
-export function verifyCredentials(username: string, password: string): boolean {
-  const expectedUsername = requiredEnv('TELER_DASHBOARD_USERNAME');
-  const stored = requiredEnv('TELER_DASHBOARD_PASSWORD_HASH');
-  const [algorithm, saltHex, hashHex] = stored.split('$');
-
-  if (algorithm !== 'scrypt' || !saltHex || !hashHex) {
-    throw new Error('TELER_DASHBOARD_PASSWORD_HASH must use scrypt$saltHex$hashHex format');
-  }
-
-  const expectedHash = Buffer.from(hashHex, 'hex');
-  if (expectedHash.length !== SCRYPT_KEY_LENGTH) {
-    throw new Error('TELER_DASHBOARD_PASSWORD_HASH has an invalid hash length');
-  }
-
-  const actualHash = scryptSync(password, Buffer.from(saltHex, 'hex'), SCRYPT_KEY_LENGTH, {
-    N: 16_384,
-    r: 8,
-    p: 1,
-    maxmem: 64 * 1024 * 1024,
-  });
-
-  return safeEqualText(username, expectedUsername) && timingSafeEqual(actualHash, expectedHash);
+export function backendApiBase(): string {
+  const value = process.env.TELER_API_BASE?.trim().replace(/\/+$/, '');
+  if (!value) throw new Error('Missing required environment variable: TELER_API_BASE');
+  return value;
 }
 
-export function createSessionToken(username: string): string {
-  const now = Math.floor(Date.now() / 1000);
-  const payload: SessionPayload = {
-    sub: username,
-    iat: now,
-    exp: now + SESSION_TTL_SECONDS,
-  };
-  const encodedPayload = encode(JSON.stringify(payload));
-  return `${encodedPayload}.${sign(encodedPayload)}`;
+export function readSessionToken(request: Request): string | null {
+  return parseCookies(request.headers.get('cookie'))[COOKIE_NAME] || null;
 }
 
-export function readSession(request: Request): SessionPayload | null {
-  const token = parseCookies(request.headers.get('cookie'))[COOKIE_NAME];
-  if (!token) return null;
-
-  const [encodedPayload, suppliedSignature, extra] = token.split('.');
-  if (!encodedPayload || !suppliedSignature || extra) return null;
-
-  const expectedSignature = sign(encodedPayload);
-  const supplied = Buffer.from(suppliedSignature);
-  const expected = Buffer.from(expectedSignature);
-  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return null;
-
-  try {
-    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as SessionPayload;
-    const now = Math.floor(Date.now() / 1000);
-    if (!payload.sub || !Number.isInteger(payload.iat) || !Number.isInteger(payload.exp)) return null;
-    if (payload.iat > now + 60 || payload.exp <= now || payload.exp - payload.iat > SESSION_TTL_SECONDS) return null;
-    return payload;
-  } catch {
-    return null;
-  }
+/** Compatibility helper retained for existing proxy call sites. */
+export function readSession(request: Request): { token: string } | null {
+  const token = readSessionToken(request);
+  return token ? { token } : null;
 }
 
 export function sessionCookie(token: string): string {
@@ -135,13 +58,20 @@ export function unauthorized(): Response {
   return noStoreJson({ error: 'Unauthorized' }, 401);
 }
 
-export function generatePasswordHash(password: string): string {
-  const salt = randomBytes(16);
-  const hash = scryptSync(password, salt, SCRYPT_KEY_LENGTH, {
-    N: 16_384,
-    r: 8,
-    p: 1,
-    maxmem: 64 * 1024 * 1024,
+export async function backendJson(
+  path: string,
+  init: RequestInit = {},
+  token?: string | null,
+): Promise<{ response: Response; body: JsonRecord }> {
+  const headers = new Headers(init.headers);
+  headers.set('Accept', 'application/json');
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${backendApiBase()}${path}`, {
+    ...init,
+    headers,
+    redirect: 'error',
   });
-  return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
+  const body = await response.json().catch(() => ({})) as JsonRecord;
+  return { response, body };
 }

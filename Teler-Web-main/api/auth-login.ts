@@ -1,9 +1,4 @@
-import {
-  createSessionToken,
-  noStoreJson,
-  sessionCookie,
-  verifyCredentials,
-} from './_auth.js';
+import { backendJson, noStoreJson, sessionCookie } from './_auth.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -18,30 +13,37 @@ export default {
       return noStoreJson({ error: 'Invalid request' }, 400);
     }
 
-    const username = typeof (body as { username?: unknown })?.username === 'string'
-      ? (body as { username: string }).username.trim()
-      : '';
-    const password = typeof (body as { password?: unknown })?.password === 'string'
-      ? (body as { password: string }).password
-      : '';
-
-    if (!username || !password || username.length > 128 || password.length > 256) {
-      return noStoreJson({ error: 'Invalid username or password' }, 401);
+    const input = body as { username?: unknown; email?: unknown; password?: unknown };
+    const email = typeof input.email === 'string'
+      ? input.email.trim()
+      : typeof input.username === 'string' ? input.username.trim() : '';
+    const password = typeof input.password === 'string' ? input.password : '';
+    if (!email || !password || email.length > 254 || password.length > 256) {
+      return noStoreJson({ error: 'Invalid email or password' }, 401);
     }
 
     try {
-      if (!verifyCredentials(username, password)) {
-        return noStoreJson({ error: 'Invalid username or password' }, 401);
+      const { response, body: upstream } = await backendJson('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      if (!response.ok) {
+        return noStoreJson({ error: typeof upstream.error === 'string' ? upstream.error : 'Unable to sign in' }, response.status);
       }
-
+      const token = typeof upstream.token === 'string' ? upstream.token : '';
+      const user = upstream.user && typeof upstream.user === 'object'
+        ? upstream.user as Record<string, unknown>
+        : {};
+      if (!token) return noStoreJson({ error: 'Authentication server returned no session token' }, 502);
+      const username = typeof user.displayName === 'string' ? user.displayName : email;
       return noStoreJson(
-        { username },
+        { username, email: typeof user.email === 'string' ? user.email : email, user },
         200,
-        { 'Set-Cookie': sessionCookie(createSessionToken(username)) },
+        { 'Set-Cookie': sessionCookie(token) },
       );
     } catch (error) {
-      console.error('TELER login configuration error', error);
-      return noStoreJson({ error: 'Authentication is not configured' }, 503);
+      console.error('TELER login backend error', error);
+      return noStoreJson({ error: 'Authentication service is unavailable' }, 503);
     }
   },
 };

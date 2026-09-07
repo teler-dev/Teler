@@ -11,6 +11,37 @@ const { normalizeTelemetry } = require('../lib/telemetry-normalizer');
 const { conditionMatches } = require('../workers/session-normalizer');
 const { processReportGeneration } = require('../workers/report-generator');
 const { processRetentionCleanup, safeDelete } = require('../workers/retention-cleanup');
+const { deriveTiming } = require('../modules/v1-sessions');
+
+test('tracking session timing freezes active duration while paused', () => {
+  const events = [
+    { id: '1', event_type: 'start', event_ts: '2026-09-07T10:00:00Z' },
+    { id: '2', event_type: 'pause', event_ts: '2026-09-07T10:10:00Z' },
+    { id: '3', event_type: 'resume', event_ts: '2026-09-07T10:15:00Z' },
+    { id: '4', event_type: 'stop', event_ts: '2026-09-07T10:25:00Z' },
+  ];
+  const timing = deriveTiming(events, new Date('2026-09-07T10:30:00Z'));
+  assert.equal(timing.status, 'stopped');
+  assert.equal(timing.total_duration_seconds, 1200);
+  assert.equal(timing.total_paused_seconds, 300);
+  assert.equal(timing.pause_count, 1);
+});
+
+test('tracking session timing derives live running and paused states from server timestamps', () => {
+  const running = deriveTiming([
+    { id: '1', event_type: 'start', event_ts: '2026-09-07T10:00:00Z' },
+  ], new Date('2026-09-07T10:00:42Z'));
+  assert.equal(running.status, 'running');
+  assert.equal(running.total_duration_seconds, 42);
+
+  const paused = deriveTiming([
+    { id: '1', event_type: 'start', event_ts: '2026-09-07T10:00:00Z' },
+    { id: '2', event_type: 'pause', event_ts: '2026-09-07T10:00:30Z' },
+  ], new Date('2026-09-07T10:01:00Z'));
+  assert.equal(paused.status, 'paused');
+  assert.equal(paused.total_duration_seconds, 30);
+  assert.equal(paused.total_paused_seconds, 30);
+});
 
 test('structured ingestion validation rejects missing identity', () => {
   const errors = validate({ external_session_id: 's1', started_at: '2026-09-04T10:00:00Z', events: [] });
