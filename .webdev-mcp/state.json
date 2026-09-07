@@ -3,8 +3,7 @@
     "change_scope": {
       "data": {
         "allowed_shared_files": [
-          "main.py",
-          "core/tracker.py"
+          "main.py"
         ],
         "route": "/desktop-app",
         "route_files": [],
@@ -20,48 +19,47 @@
           "lib/desktop-app",
           "src/lib/desktop-app"
         ],
-        "shared_change_justification": "These two files exclusively own the requested desktop auth and tracking dashboard UI; no web or backend files are needed.",
-        "task_summary": "Reapply the already-approved TELER PyQt6 desktop UI redesign to the fresh Git checkout so it can be pushed to main."
+        "shared_change_justification": "The invisible Terms/Privacy checkbox is entirely defined by PremiumCheckBox and QCheckBox styling in main.py.",
+        "task_summary": "Fix TELER Create Account checkbox visibility on macOS by removing the direct graphics effect from the checkbox and strengthening the unchecked/checked indicator rendering without changing validation or layout."
       },
-      "project_id": "teler-deploy",
-      "project_path": "/app/data/projects/teler-deploy",
+      "project_id": "teler-checkboxfix",
+      "project_path": "/app/data/projects/teler-checkboxfix",
       "status": "confirmed",
-      "updated_at": "2026-09-07T07:04:03.540354+00:00"
+      "updated_at": "2026-09-07T08:54:11.240643+00:00"
     },
     "github_source": {
       "data": {
-        "authentication": "token",
         "branch": "main",
-        "commit_sha": "fcf34287cc885568d7bacfb4e64d541d437a2b11",
-        "depth": 1,
+        "commit_sha": "be3cd7ab1b4270ba21fc376912162eb725c66aca",
         "evidence": {
-          "action": "github_repository_cloned",
+          "action": "github_existing_checkout_pushed",
           "claim_status": "verified",
           "limitations": [
-            "Repository contents have not yet been inspected for task correctness."
+            "This receipt verifies GitHub source publication only; deployment is not verified."
           ],
           "may_claim_action_complete": true,
-          "observed_at": "2026-09-07T07:03:11.653751+00:00",
+          "observed_at": "2026-09-07T09:04:29.231784+00:00",
           "sources": [
-            "git_clone_exit_code",
-            "local_git_branch",
-            "local_git_commit"
+            "git_fetch_exit_code",
+            "git_commit_sha",
+            "git_push_exit_code"
           ],
           "target": "https://github.com/teler-dev/Teler"
         },
-        "next_action": "Call repo_list, then repo_read for the files needed by the task.",
-        "project_id": "teler-deploy",
-        "project_path": "/app/data/projects/teler-deploy",
+        "force_with_lease": false,
+        "git_root": "/app/data/projects/teler-checkboxfix",
+        "project_id": "teler-checkboxfix",
+        "project_path": "/app/data/projects/teler-checkboxfix",
         "repository_url": "https://github.com/teler-dev/Teler",
-        "status": "cloned"
+        "status": "pushed"
       },
-      "project_id": "teler-deploy",
-      "project_path": "/app/data/projects/teler-deploy",
+      "project_id": "teler-checkboxfix",
+      "project_path": "/app/data/projects/teler-checkboxfix",
       "status": "complete",
-      "updated_at": "2026-09-07T07:03:11.655158+00:00"
+      "updated_at": "2026-09-07T09:04:29.233631+00:00"
     }
   },
   "credentials_collected": [],
-  "project_id": "teler-deploy",
-  "project_path": "/app/data/projects/teler-deploy"
+  "project_id": "teler-checkboxfix",
+  "project_path": "/app/data/projects/teler-checkboxfix"
 }

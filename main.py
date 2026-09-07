@@ -338,6 +338,13 @@ class AuthDialog(QDialog):
         self.server.setText(self.client.api_base)
 
         self.terms = PremiumCheckBox("I agree to the Terms and Privacy Policy")
+        self.terms.setGraphicsEffect(None)
+        self.terms.setStyleSheet(
+            f"QCheckBox {{ color:{MUTED}; spacing:10px; font-size:10px; }} "
+            f"QCheckBox::indicator {{ width:18px; height:18px; border:2px solid rgba(255,255,255,0.34); border-radius:5px; background:{INPUT}; }} "
+            f"QCheckBox::indicator:hover {{ border:2px solid rgba(91,95,239,0.80); background:#111528; }} "
+            f"QCheckBox::indicator:checked {{ background:{ACCENT}; border:2px solid {ACCENT}; }}"
+        )
         self.terms.setToolTip("Required to create a TELER account")
         form.addWidget(self.terms)
 
