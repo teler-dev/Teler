@@ -132,14 +132,15 @@ class MainWindow(QMainWindow):
             QWidget#statusPill {{ background: rgba(138,144,166,0.10); border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; }}
             QLabel#statusDot {{ color: #8A90A6; background: transparent; border: 0; font-size: 10px; }}
             QLabel#statusText {{ color: #B1B6C8; background: transparent; border: 0; font-size: 11px; font-weight: 650; }}
-            QLabel#timer {{ color: {TEXT}; font-size: 32px; font-weight: 700; background: transparent; border: 0; }}
+            QLabel#timer {{ color: {TEXT}; font-size: 36px; font-weight: 750; letter-spacing: 1px; background: transparent; border: 0; }}
             QLabel#stateHint {{ color: {MUTED}; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; background: transparent; border: 0; }}
-            QWidget#timerPanel {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; }}
+            QWidget#timerPanel {{ background: #0D101C; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; }}
             QLabel#error {{ color: #F6A6AE; font-size: 10px; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 8px; padding: 6px 8px; }}
             QComboBox {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; padding: 9px 12px; color: {TEXT}; font-size: 12px; }}
             QComboBox:disabled {{ color: #A4A9B8; background: #10131E; }}
-            QPushButton#primary {{ background: {ACCENT}; border: 0; border-radius: 10px; padding: 10px 15px; color: white; font-size: 12px; font-weight: 700; }}
+            QPushButton#primary {{ background: {ACCENT}; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 11px 16px; color: white; font-size: 12px; font-weight: 750; }}
             QPushButton#primary:hover {{ background: {ACCENT_HOVER}; }}
+            QPushButton#primary:pressed {{ background: #4F53E8; padding-top: 12px; padding-bottom: 10px; }}
             QPushButton#primary:disabled {{ background: #34384E; color: #777D93; }}
             QPushButton#secondary {{ background: transparent; border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; padding: 10px 15px; color: #D6D9E6; font-size: 12px; font-weight: 650; }}
             QPushButton#secondary:hover {{ border-color: rgba(112,116,255,0.7); color: white; background: rgba(91,95,239,0.07); }}
