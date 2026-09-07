@@ -59,7 +59,13 @@ const legacy = captureLegacyApp();
 const front = express();
 front.disable('x-powered-by');
 front.set('trust proxy', 'loopback');
-front.get('/api/v1/health', async (req, res) => res.json({ status: 'ok', auth: Boolean(API_TOKEN), architecture: 'modular-monolith-v1', ...(await databaseHealth()) }));
+front.get('/api/v1/health', async (req, res) => res.json({
+  status: 'ok',
+  auth: Boolean(API_TOKEN),
+  architecture: 'modular-monolith-v1',
+  tracking_sessions: true,
+  ...(await databaseHealth()),
+}));
 
 const v1 = express.Router();
 v1.use(express.json({ limit: '20mb' }));

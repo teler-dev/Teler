@@ -3,34 +3,52 @@
     "change_scope": {
       "data": {
         "allowed_shared_files": [
-          "main.py"
+          "database/006_tracking_sessions.sql",
+          "api/run-migrations.js",
+          "api/auth.js",
+          "api/server-entry.js",
+          "api/modules/v1-sessions.js",
+          "api/tests/backend-evolution.test.js",
+          "Teler-Web-main/api/_auth.ts",
+          "Teler-Web-main/api/auth-login.ts",
+          "Teler-Web-main/api/auth-me.ts",
+          "Teler-Web-main/api/auth-logout.ts",
+          "Teler-Web-main/api/teler.ts",
+          "Teler-Web-main/services/authService.ts",
+          "Teler-Web-main/services/trackingSessionService.ts",
+          "Teler-Web-main/components/employee/EmployeeApp.tsx",
+          "Teler-Web-main/App.tsx",
+          "main.py",
+          "core/session_api.py",
+          "core/tracker.py",
+          "tracker/activity_tracker.py"
         ],
-        "route": "/desktop-app",
+        "route": "/tracking",
         "route_files": [],
         "route_subtrees": [
-          "app/desktop-app",
-          "src/app/desktop-app",
-          "pages/desktop-app",
-          "src/pages/desktop-app",
-          "components/desktop-app",
-          "src/components/desktop-app",
-          "features/desktop-app",
-          "src/features/desktop-app",
-          "lib/desktop-app",
-          "src/lib/desktop-app"
+          "app/tracking",
+          "src/app/tracking",
+          "pages/tracking",
+          "src/pages/tracking",
+          "components/tracking",
+          "src/components/tracking",
+          "features/tracking",
+          "src/features/tracking",
+          "lib/tracking",
+          "src/lib/tracking"
         ],
-        "shared_change_justification": "The invisible Terms/Privacy checkbox is entirely defined by PremiumCheckBox and QCheckBox styling in main.py.",
-        "task_summary": "Fix TELER Create Account checkbox visibility on macOS by removing the direct graphics effect from the checkbox and strengthening the unchecked/checked indicator rendering without changing validation or layout."
+        "shared_change_justification": "This feature intentionally spans the existing desktop tracker, employee React client, shared web proxy/auth boundary, modular Express session API, and existing PostgreSQL session schema. These files are the minimum causal set; no unrelated routes or frameworks are being changed.",
+        "task_summary": "Extend existing TELER tracking as one connected feature across PyQt desktop, React employee client, Express/Postgres API, and existing auth/proxy: server-authoritative start/pause/resume/stop, UTC event log/duration reconciliation, polling sync, activity reports, and requested auth UI polish without new frameworks or dependencies."
       },
-      "project_id": "teler-checkboxfix",
-      "project_path": "/app/data/projects/teler-checkboxfix",
+      "project_id": "teler-session-flow",
+      "project_path": "/app/data/projects/teler-session-flow",
       "status": "confirmed",
-      "updated_at": "2026-09-07T08:54:11.240643+00:00"
+      "updated_at": "2026-09-07T09:18:43.655916+00:00"
     },
     "github_source": {
       "data": {
         "branch": "main",
-        "commit_sha": "be3cd7ab1b4270ba21fc376912162eb725c66aca",
+        "commit_sha": "a39ddaeaf51170c5ccc37fb21d7f16b8bec6f412",
         "evidence": {
           "action": "github_existing_checkout_pushed",
           "claim_status": "verified",
@@ -38,7 +56,7 @@
             "This receipt verifies GitHub source publication only; deployment is not verified."
           ],
           "may_claim_action_complete": true,
-          "observed_at": "2026-09-07T09:04:29.231784+00:00",
+          "observed_at": "2026-09-07T09:37:10.206340+00:00",
           "sources": [
             "git_fetch_exit_code",
             "git_commit_sha",
@@ -47,19 +65,19 @@
           "target": "https://github.com/teler-dev/Teler"
         },
         "force_with_lease": false,
-        "git_root": "/app/data/projects/teler-checkboxfix",
-        "project_id": "teler-checkboxfix",
-        "project_path": "/app/data/projects/teler-checkboxfix",
+        "git_root": "/app/data/projects/teler-session-flow",
+        "project_id": "teler-session-flow",
+        "project_path": "/app/data/projects/teler-session-flow",
         "repository_url": "https://github.com/teler-dev/Teler",
         "status": "pushed"
       },
-      "project_id": "teler-checkboxfix",
-      "project_path": "/app/data/projects/teler-checkboxfix",
+      "project_id": "teler-session-flow",
+      "project_path": "/app/data/projects/teler-session-flow",
       "status": "complete",
-      "updated_at": "2026-09-07T09:04:29.233631+00:00"
+      "updated_at": "2026-09-07T09:37:10.207909+00:00"
     }
   },
   "credentials_collected": [],
-  "project_id": "teler-checkboxfix",
-  "project_path": "/app/data/projects/teler-checkboxfix"
+  "project_id": "teler-session-flow",
+  "project_path": "/app/data/projects/teler-session-flow"
 }
