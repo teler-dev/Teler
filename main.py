@@ -3,7 +3,7 @@ import re
 import sys
 
 from PyQt6.QtCore import QObject, QEasingCurve, QPropertyAnimation, QRect, QTimer, Qt
-from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -185,6 +185,9 @@ class AuthDialog(QDialog):
         forgot_row.addStretch()
         forgot_row.addWidget(self.forgot)
         form.addLayout(forgot_row)
+        self.forgot_gap = QWidget()
+        self.forgot_gap.setFixedHeight(12)
+        form.addWidget(self.forgot_gap)
 
         self.strength_wrap = QWidget()
         strength_layout = QHBoxLayout(self.strength_wrap)
@@ -253,6 +256,7 @@ class AuthDialog(QDialog):
         for widget in (self.name_label, self.name, self.confirm_label, self.confirm, self.strength_wrap, self.terms):
             widget.setVisible(signup)
         self.forgot.setVisible(not signup)
+        self.forgot_gap.setVisible(not signup)
         self.submit.setText("Create account" if signup else "Sign in")
         self.headline.setText("Create your account" if signup else "Welcome back")
         self.subtitle.setText("Join TELER with the same secure workspace" if signup else "Sign in to start secure tracking")
@@ -267,7 +271,10 @@ class AuthDialog(QDialog):
 
     def _move_tab_indicator(self, signup, animate=True):
         target_button = self.signup_mode if signup else self.login_mode
-        target = QRect(target_button.x() + 12, self.tabs.height() - 3, max(24, target_button.width() - 24), 2)
+        metrics = QFontMetrics(target_button.font())
+        indicator_width = max(1, metrics.horizontalAdvance(target_button.text()))
+        indicator_x = target_button.x() + (target_button.width() - indicator_width) // 2
+        target = QRect(indicator_x, self.tabs.height() - 3, indicator_width, 2)
         if not animate or self.tab_indicator.geometry().width() <= 0:
             self.tab_indicator.setGeometry(target)
             return
