@@ -66,6 +66,158 @@ def _glyph_icon(glyph: str, color: str = MUTED) -> QIcon:
     return QIcon(pixmap)
 
 
+def _refine_tracking(label, amount=0.25):
+    font = label.font()
+    font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, amount)
+    label.setFont(font)
+
+
+class PremiumLineEdit(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.IBeamCursor)
+        self._focus_shadow = QGraphicsDropShadowEffect(self)
+        self._focus_shadow.setOffset(0, 0)
+        self._focus_shadow.setBlurRadius(0)
+        self._focus_shadow.setColor(QColor(91, 95, 239, 0))
+        self.setGraphicsEffect(self._focus_shadow)
+        self._focus_animation = QPropertyAnimation(self._focus_shadow, b"blurRadius", self)
+        self._focus_animation.setDuration(180)
+        self._focus_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._apply_state(False)
+
+    def _apply_state(self, focused):
+        border_width = 2 if focused else 1
+        border_color = ACCENT if focused else "rgba(255,255,255,0.09)"
+        background = "#111528" if focused else INPUT
+        self.setStyleSheet(
+            f"QLineEdit {{ background:{background}; border:{border_width}px solid {border_color}; "
+            f"border-radius:11px; padding:11px 13px; color:{TEXT}; font-size:13px; "
+            f"selection-background-color:{ACCENT}; }}"
+        )
+
+    def focusInEvent(self, event):
+        self._apply_state(True)
+        self._focus_shadow.setColor(QColor(91, 95, 239, 82))
+        self._focus_animation.stop()
+        self._focus_animation.setStartValue(self._focus_shadow.blurRadius())
+        self._focus_animation.setEndValue(14.0)
+        self._focus_animation.start()
+        super().focusInEvent(event)
+
+    def focusOutEvent(self, event):
+        self._apply_state(False)
+        self._focus_animation.stop()
+        self._focus_animation.setStartValue(self._focus_shadow.blurRadius())
+        self._focus_animation.setEndValue(0.0)
+        self._focus_animation.start()
+        super().focusOutEvent(event)
+
+
+class PremiumPrimaryButton(QPushButton):
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setAutoDefault(False)
+        self.setDefault(False)
+        self.setFlat(False)
+        self.setMinimumHeight(48)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self._shadow = QGraphicsDropShadowEffect(self)
+        self._shadow.setOffset(0, 7)
+        self._shadow.setBlurRadius(22)
+        self._shadow.setColor(QColor(91, 95, 239, 85))
+        self.setGraphicsEffect(self._shadow)
+        self._shadow_animation = QPropertyAnimation(self._shadow, b"blurRadius", self)
+        self._shadow_animation.setDuration(170)
+        self._shadow_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._apply_style("normal")
+
+    def _apply_style(self, state):
+        if not self.isEnabled():
+            background = "#33374F"
+            foreground = "#777D93"
+            top, bottom = 12, 12
+        elif state == "hover":
+            background = ACCENT_HOVER
+            foreground = "#FFFFFF"
+            top, bottom = 12, 12
+        elif state == "pressed":
+            background = ACCENT
+            foreground = "#FFFFFF"
+            top, bottom = 13, 11
+        else:
+            background = ACCENT
+            foreground = "#FFFFFF"
+            top, bottom = 12, 12
+        self.setStyleSheet(
+            f"QPushButton {{ background:{background}; color:{foreground}; border:none; border-radius:12px; "
+            f"padding:{top}px 16px {bottom}px 16px; font-size:13px; font-weight:700; }}"
+        )
+
+    def enterEvent(self, event):
+        if self.isEnabled():
+            self._apply_style("hover")
+            self._shadow_animation.stop()
+            self._shadow_animation.setStartValue(self._shadow.blurRadius())
+            self._shadow_animation.setEndValue(28.0)
+            self._shadow_animation.start()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._apply_style("normal")
+        self._shadow_animation.stop()
+        self._shadow_animation.setStartValue(self._shadow.blurRadius())
+        self._shadow_animation.setEndValue(22.0)
+        self._shadow_animation.start()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and self.isEnabled():
+            self._apply_style("pressed")
+            self._shadow.setOffset(0, 3)
+            self._shadow.setBlurRadius(13)
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.isEnabled():
+            self._shadow.setOffset(0, 7)
+            self._apply_style("hover" if self.underMouse() else "normal")
+            self._shadow_animation.stop()
+            self._shadow_animation.setStartValue(self._shadow.blurRadius())
+            self._shadow_animation.setEndValue(28.0 if self.underMouse() else 22.0)
+            self._shadow_animation.start()
+        super().mouseReleaseEvent(event)
+
+    def setEnabled(self, enabled):
+        super().setEnabled(enabled)
+        if hasattr(self, "_shadow"):
+            self._shadow.setColor(QColor(91, 95, 239, 85 if enabled else 0))
+            self._apply_style("normal")
+
+
+class PremiumCheckBox(QCheckBox):
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._check_shadow = QGraphicsDropShadowEffect(self)
+        self._check_shadow.setOffset(0, 0)
+        self._check_shadow.setBlurRadius(0)
+        self._check_shadow.setColor(QColor(91, 95, 239, 0))
+        self.setGraphicsEffect(self._check_shadow)
+        self._check_animation = QPropertyAnimation(self._check_shadow, b"blurRadius", self)
+        self._check_animation.setDuration(180)
+        self._check_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.toggled.connect(self._animate_toggle)
+
+    def _animate_toggle(self, checked):
+        self._check_shadow.setColor(QColor(91, 95, 239, 105 if checked else 0))
+        self._check_animation.stop()
+        self._check_animation.setStartValue(11.0 if checked else self._check_shadow.blurRadius())
+        self._check_animation.setEndValue(3.0 if checked else 0.0)
+        self._check_animation.start()
+
+
 class AuthDialog(QDialog):
     def __init__(self, client, parent=None):
         super().__init__(parent)
@@ -97,20 +249,16 @@ class AuthDialog(QDialog):
             QLabel#field {{ color: #A9AFC2; font-size: 11px; font-weight: 600; }}
             QLabel#helper {{ color: {MUTED}; font-size: 10px; }}
             QLabel#error {{ color: #F6A6AE; font-size: 11px; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 9px; padding: 8px 10px; }}
-            QLineEdit {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; padding: 11px 13px; color: {TEXT}; font-size: 13px; selection-background-color: {ACCENT}; }}
-            QLineEdit:focus {{ border: 1px solid {ACCENT}; background: #111528; }}
-            QPushButton#primary {{ background: {ACCENT}; border: 0; border-radius: 11px; padding: 12px 16px; color: white; font-size: 13px; font-weight: 700; }}
-            QPushButton#primary:hover {{ background: {ACCENT_HOVER}; }}
-            QPushButton#primary:disabled {{ background: #33374F; color: #777D93; }}
             QPushButton#mode {{ background: transparent; border: 0; color: {MUTED}; padding: 9px 14px; font-size: 12px; font-weight: 650; }}
             QPushButton#mode[active="true"] {{ color: {TEXT}; }}
             QPushButton#link {{ background: transparent; border: 0; color: #8C90FF; padding: 0; font-size: 11px; font-weight: 600; text-align: right; }}
             QPushButton#link:hover {{ color: #B5B7FF; text-decoration: underline; }}
-            QCheckBox {{ color: {MUTED}; spacing: 8px; font-size: 10px; }}
-            QCheckBox::indicator {{ width: 15px; height: 15px; border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; background: {INPUT}; }}
-            QCheckBox::indicator:checked {{ background: {ACCENT}; border-color: {ACCENT}; }}
-            QProgressBar {{ background: #0D101B; border: 0; border-radius: 3px; height: 6px; text-align: center; color: transparent; }}
-            QProgressBar::chunk {{ border-radius: 3px; background: #A1A7B8; }}
+            QCheckBox {{ color: {MUTED}; spacing: 10px; font-size: 10px; }}
+            QCheckBox::indicator {{ width: 17px; height: 17px; border: 1px solid rgba(255,255,255,0.20); border-radius: 5px; background: {INPUT}; }}
+            QCheckBox::indicator:hover {{ border: 1px solid rgba(91,95,239,0.65); background: #111528; }}
+            QCheckBox::indicator:checked {{ background: {ACCENT}; border: 1px solid {ACCENT}; image: none; }}
+            QProgressBar {{ background: #0D101B; border: 0; border-radius: 5px; min-height: 10px; max-height: 10px; text-align: center; color: transparent; }}
+            QProgressBar::chunk {{ border-radius: 5px; background: #A1A7B8; }}
             QFrame#divider {{ background: rgba(255,255,255,0.07); max-height: 1px; border: 0; }}
         """)
 
@@ -125,25 +273,27 @@ class AuthDialog(QDialog):
         card = QWidget(objectName="card")
         card.setMinimumWidth(420)
         card.setMaximumWidth(460)
+        card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         shadow = QGraphicsDropShadowEffect(card)
-        shadow.setBlurRadius(44)
-        shadow.setOffset(0, 14)
-        shadow.setColor(QColor(42, 45, 91, 115))
+        shadow.setBlurRadius(52)
+        shadow.setOffset(0, 16)
+        shadow.setColor(QColor(20, 23, 46, 150))
         card.setGraphicsEffect(shadow)
 
         form = QVBoxLayout(card)
-        form.setContentsMargins(34, 30, 34, 32)
-        form.setSpacing(9)
+        form.setContentsMargins(34, 32, 34, 32)
+        form.setSpacing(8)
 
         brand = QHBoxLayout()
         brand.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        brand.setSpacing(9)
+        brand.setSpacing(8)
         logo = _make_logo_label(34)
         if logo:
             brand.addWidget(logo)
-        brand.addWidget(QLabel("TELER", objectName="brand"))
+        brand_label = QLabel("TELER", objectName="brand")
+        brand.addWidget(brand_label)
         form.addLayout(brand)
-        form.addSpacing(6)
+        form.addSpacing(8)
 
         self.headline = QLabel("Welcome back", objectName="headline")
         self.headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -151,14 +301,15 @@ class AuthDialog(QDialog):
 
         secure_row = QHBoxLayout()
         secure_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        secure_row.setSpacing(6)
+        secure_row.setSpacing(8)
         shield = QLabel("◈")
         shield.setStyleSheet(f"color: {ACCENT}; font-size: 13px;")
         secure_row.addWidget(shield)
         self.subtitle = QLabel("Sign in to start secure tracking", objectName="subtitle")
+        _refine_tracking(self.subtitle, 0.15)
         secure_row.addWidget(self.subtitle)
         form.addLayout(secure_row)
-        form.addSpacing(14)
+        form.addSpacing(16)
 
         self.tabs = QWidget()
         self.tabs.setFixedHeight(40)
@@ -175,7 +326,7 @@ class AuthDialog(QDialog):
         self.tab_indicator.setStyleSheet(f"background: {ACCENT}; border-radius: 1px;")
         self.tab_indicator.setFixedHeight(2)
         form.addWidget(self.tabs)
-        form.addSpacing(7)
+        form.addSpacing(8)
 
         self.name_label, self.name = self._field(form, "Full name", "Your full name", "A")
         self.email_label, self.email = self._field(form, "Email", "name@company.com", "✉")
@@ -195,14 +346,17 @@ class AuthDialog(QDialog):
         self.strength_wrap = QWidget()
         strength_layout = QHBoxLayout(self.strength_wrap)
         strength_layout.setContentsMargins(0, 0, 0, 0)
-        strength_layout.setSpacing(10)
+        strength_layout.setSpacing(8)
         self.strength = QProgressBar()
         self.strength.setRange(0, 3)
         self.strength.setValue(0)
         self.strength.setTextVisible(False)
+        self.strength.setFixedHeight(10)
         self.strength_label = QLabel("Password strength", objectName="helper")
+        self.strength_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+        _refine_tracking(self.strength_label, 0.15)
         strength_layout.addWidget(self.strength, 1)
-        strength_layout.addWidget(self.strength_label)
+        strength_layout.addWidget(self.strength_label, 0, Qt.AlignmentFlag.AlignVCenter)
         form.addWidget(self.strength_wrap)
         self.password.textChanged.connect(self._update_password_strength)
 
@@ -212,7 +366,7 @@ class AuthDialog(QDialog):
         self.server_label, self.server = self._field(form, "Server", "https://your-teler-server", "◇")
         self.server.setText(self.client.api_base)
 
-        self.terms = QCheckBox("I agree to the Terms and Privacy Policy")
+        self.terms = PremiumCheckBox("I agree to the Terms and Privacy Policy")
         self.terms.setToolTip("Required to create a TELER account")
         form.addWidget(self.terms)
 
@@ -221,15 +375,15 @@ class AuthDialog(QDialog):
         self.error.hide()
         form.addWidget(self.error)
 
-        form.addSpacing(3)
-        self.submit = QPushButton("Sign in", objectName="primary")
-        self.submit.setMinimumHeight(46)
+        form.addSpacing(4)
+        self.submit = PremiumPrimaryButton("Sign in")
         self.submit.clicked.connect(self._submit)
         form.addWidget(self.submit)
 
         helper = QLabel("Secure telemetry • encrypted session • privacy-first", objectName="helper")
         helper.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        form.addSpacing(4)
+        _refine_tracking(helper, 0.18)
+        form.addSpacing(8)
         form.addWidget(helper)
 
         self.confirm.returnPressed.connect(self._submit)
@@ -250,18 +404,16 @@ class AuthDialog(QDialog):
         scroll.setWidget(scroll_content)
         outer.addWidget(scroll)
 
-        for edit in self.findChildren(QLineEdit):
-            edit.setCursor(Qt.CursorShape.IBeamCursor)
         for button in self.findChildren(QPushButton):
             button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.terms.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self._set_mode("login", animate=False)
 
     def _field(self, layout, label_text, placeholder, glyph):
         label = QLabel(label_text, objectName="field")
-        edit = QLineEdit()
-        edit.setMinimumHeight(44)
+        _refine_tracking(label, 0.22)
+        edit = PremiumLineEdit()
+        edit.setMinimumHeight(46)
         edit.setPlaceholderText(placeholder)
         edit.addAction(_glyph_icon(glyph), QLineEdit.ActionPosition.LeadingPosition)
         layout.addWidget(label)
@@ -297,7 +449,7 @@ class AuthDialog(QDialog):
             self.tab_indicator.setGeometry(target)
             return
         self._tab_animation = QPropertyAnimation(self.tab_indicator, b"geometry", self)
-        self._tab_animation.setDuration(190)
+        self._tab_animation.setDuration(180)
         self._tab_animation.setStartValue(self.tab_indicator.geometry())
         self._tab_animation.setEndValue(target)
         self._tab_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
@@ -319,8 +471,8 @@ class AuthDialog(QDialog):
         else:
             color, label = "#55C98C", "Strong"
         self.strength.setStyleSheet(
-            f"QProgressBar {{ background:#0D101B; border:0; border-radius:3px; }} "
-            f"QProgressBar::chunk {{ background:{color}; border-radius:3px; }}"
+            f"QProgressBar {{ background:#0D101B; border:0; border-radius:5px; min-height:10px; max-height:10px; }} "
+            f"QProgressBar::chunk {{ background:{color}; border-radius:5px; }}"
         )
         self.strength_label.setText(label if value else "Password strength")
 
