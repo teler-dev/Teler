@@ -132,7 +132,9 @@ class MainWindow(QMainWindow):
             QWidget#statusPill {{ background: rgba(138,144,166,0.10); border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; }}
             QLabel#statusDot {{ color: #8A90A6; background: transparent; border: 0; font-size: 10px; }}
             QLabel#statusText {{ color: #B1B6C8; background: transparent; border: 0; font-size: 11px; font-weight: 650; }}
-            QLabel#timer {{ color: {TEXT}; font-size: 30px; font-weight: 700; background: transparent; border: 0; }}
+            QLabel#timer {{ color: {TEXT}; font-size: 32px; font-weight: 700; background: transparent; border: 0; }}
+            QLabel#stateHint {{ color: {MUTED}; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; background: transparent; border: 0; }}
+            QWidget#timerPanel {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; }}
             QLabel#error {{ color: #F6A6AE; font-size: 10px; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 8px; padding: 6px 8px; }}
             QComboBox {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; padding: 9px 12px; color: {TEXT}; font-size: 12px; }}
             QComboBox:disabled {{ color: #A4A9B8; background: #10131E; }}
@@ -172,7 +174,10 @@ class MainWindow(QMainWindow):
         timer_font.setWeight(QFont.Weight.Bold)
         self.timer_label.setFont(timer_font)
         self.timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.timer_label.setMinimumHeight(48)
+        self.timer_label.setMinimumHeight(54)
+
+        self.state_hint = QLabel("Ready to track", objectName="stateHint")
+        self.state_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.status_pill = QWidget(objectName="statusPill")
         self.status_pill.setFixedHeight(28)
@@ -242,15 +247,20 @@ class MainWindow(QMainWindow):
         control_header.addStretch()
         control_header.addWidget(self.status_pill)
         control_layout.addLayout(control_header)
-        control_layout.addSpacing(8)
-        control_layout.addWidget(self.timer_label)
-        control_layout.addSpacing(8)
+        control_layout.addSpacing(10)
+        timer_panel = QWidget(objectName="timerPanel")
+        timer_panel_layout = QVBoxLayout(timer_panel)
+        timer_panel_layout.setContentsMargins(16, 12, 16, 12)
+        timer_panel_layout.setSpacing(2)
+        timer_panel_layout.addWidget(self.timer_label)
+        timer_panel_layout.addWidget(self.state_hint)
+        control_layout.addWidget(timer_panel)
+        control_layout.addSpacing(10)
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
-        button_layout.addWidget(self.start_button)
-        button_layout.addWidget(self.pause_button)
-        button_layout.addWidget(self.stop_button)
-        button_layout.addStretch()
+        button_layout.addWidget(self.start_button, 1)
+        button_layout.addWidget(self.pause_button, 1)
+        button_layout.addWidget(self.stop_button, 1)
         control_layout.addLayout(button_layout)
         control_layout.addWidget(self.action_error)
         layout.addWidget(control_card)
@@ -403,6 +413,8 @@ class MainWindow(QMainWindow):
             self.pause_button.setEnabled(not active_request)
             self.stop_button.setEnabled(not active_request)
             self.timer_label.setStyleSheet(f"color:{TEXT}; background:transparent; border:0;")
+            self.state_hint.setText("Tracking in progress")
+            self.state_hint.setStyleSheet(f"color:{GREEN}; background:transparent; border:0; font-size:10px; font-weight:600;")
         elif state == "paused":
             self.start_button.hide()
             self.pause_button.show()
@@ -411,6 +423,8 @@ class MainWindow(QMainWindow):
             self.pause_button.setEnabled(not active_request)
             self.stop_button.setEnabled(not active_request)
             self.timer_label.setStyleSheet(f"color:{MUTED}; background:transparent; border:0;")
+            self.state_hint.setText("Paused · timer frozen")
+            self.state_hint.setStyleSheet(f"color:{AMBER}; background:transparent; border:0; font-size:10px; font-weight:600;")
         else:
             self.pause_button.hide()
             self.start_button.show()
@@ -420,6 +434,12 @@ class MainWindow(QMainWindow):
             self.timer_label.setStyleSheet(f"color:{TEXT}; background:transparent; border:0;")
             if state in ("idle", "saved"):
                 self.timer_label.setText("00:00:00")
+            if state == "saved":
+                self.state_hint.setText("Session saved successfully")
+                self.state_hint.setStyleSheet(f"color:{MUTED}; background:transparent; border:0; font-size:10px; font-weight:600;")
+            else:
+                self.state_hint.setText("Ready to track")
+                self.state_hint.setStyleSheet(f"color:{MUTED}; background:transparent; border:0; font-size:10px; font-weight:600;")
         for button in (self.start_button, self.pause_button, self.stop_button):
             button.style().unpolish(button)
             button.style().polish(button)
