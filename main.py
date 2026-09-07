@@ -72,6 +72,7 @@ class AuthDialog(QDialog):
         self.client = client
         self.account = None
         self.mode = "login"
+        self._auth_action = None
         self._tab_animation = None
         self.setWindowTitle("TELER — Sign in")
         self.resize(560, 760)
@@ -80,6 +81,7 @@ class AuthDialog(QDialog):
         self.client.auth_succeeded.connect(self._auth_succeeded)
         self.client.request_failed.connect(self._request_failed)
         if self.client.token:
+            self._auth_action = "restore"
             self._set_busy(True, "Restoring your session…")
             QTimer.singleShot(0, self.client.restore_session)
 
@@ -247,6 +249,13 @@ class AuthDialog(QDialog):
         scroll_layout.addStretch()
         scroll.setWidget(scroll_content)
         outer.addWidget(scroll)
+
+        for edit in self.findChildren(QLineEdit):
+            edit.setCursor(Qt.CursorShape.IBeamCursor)
+        for button in self.findChildren(QPushButton):
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.terms.setCursor(Qt.CursorShape.PointingHandCursor)
+
         self._set_mode("login", animate=False)
 
     def _field(self, layout, label_text, placeholder, glyph):
@@ -341,9 +350,11 @@ class AuthDialog(QDialog):
                 return self._show_error("Password must contain at least 8 characters.")
             if not self.terms.isChecked():
                 return self._show_error("Please agree to the Terms and Privacy Policy to continue.")
+            self._auth_action = "signup"
             self._set_busy(True, "Creating account…")
             self.client.signup(name, email, password, f"{name}'s workspace", "general")
         else:
+            self._auth_action = "login"
             self._set_busy(True, "Signing in…")
             self.client.login(email, password)
 
@@ -371,15 +382,17 @@ class AuthDialog(QDialog):
 
     def _request_failed(self, message, status):
         self._set_busy(False)
-        if not message and status == 401:
-            self.error.hide()
-            return
-        if status == 503:
+        if status == 401 and self._auth_action == "restore":
+            message = "Your session expired. Please sign in again."
+        elif status == 401 and self.mode == "login":
+            message = "Login failed. Check your email and password and try again."
+        elif status == 503:
             message = "Server authentication database is not configured yet."
         elif status == 401 and self.mode == "signup" and message == "Unauthorized":
             message = "Oracle server is still running the old TELER API. Deploy the auth update first."
         elif status == 0:
             message = f"Cannot reach TELER server: {message}"
+        self._auth_action = None
         self._show_error(message)
 
 
