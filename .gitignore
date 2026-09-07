@@ -7,6 +7,7 @@ __pycache__/
 build/
 dist/
 .venv/
+.teler-local/
 venv/
 env/
 .Python

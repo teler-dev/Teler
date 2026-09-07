@@ -187,7 +187,7 @@ async function ingestStructured(candidate, sourceFingerprint) {
   const employee = candidate.employee || resolveLegacyEmployee(master);
   const organization = candidate.organization || meta.company_id || 'COMP_DEV_001';
   const payload = {
-    organization_external_key: organization,
+    ...(meta.organization_id ? { organization_id: meta.organization_id } : { organization_external_key: organization }),
     employee_external_key: employee,
     employee_name: meta.user_name || employee,
     device_name: os.hostname(),

@@ -241,6 +241,8 @@ class ApplicationController(QObject):
             username=display_name,
             organization_name=organization.get("name", ""),
             job_role=account.get("jobRole") or "general",
+            organization_id=organization.get("id", ""),
+            employee_id=account.get("id", ""),
         )
         self.window.logout_requested.connect(self.logout)
         self.window.show()

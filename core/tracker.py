@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget,
     QComboBox, QTextEdit, QHBoxLayout, QMessageBox
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
 from tracker.activity_tracker import ActivityTracker
 
@@ -29,11 +29,28 @@ def _make_logo_label(height_px: int) -> QLabel | None:
         return None
 
 
+class StopWorker(QThread):
+    failed = pyqtSignal(str)
+
+    def __init__(self, tracker, parent=None):
+        super().__init__(parent)
+        self.tracker = tracker
+
+    def run(self):
+        try:
+            self.tracker.stop()
+        except Exception as error:
+            self.failed.emit(str(error))
+
+
 class MainWindow(QMainWindow):
     logout_requested = pyqtSignal()
 
-    def __init__(self, username="", organization_name="", job_role="general"):
+    def __init__(self, username="", organization_name="", job_role="general", organization_id="", employee_id=""):
         super().__init__()
+        self._stop_worker = None
+        self._after_stop = None
+        self._stop_error = None
 
         # ==== Window Setup ====
         title = f"AI Timer App  —  {username}" if username else "AI Timer App"
@@ -63,6 +80,7 @@ class MainWindow(QMainWindow):
 
         self.report_area = QTextEdit()
         self.report_area.setReadOnly(True)
+        self.report_area.document().setMaximumBlockCount(300)
         self.report_area.setPlaceholderText("Reports will appear here...")
 
         # ==== Layout ====
@@ -113,7 +131,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
         # ==== Tracker backend ====
-        self.tracker = ActivityTracker(username=username)
+        self.tracker = ActivityTracker(username=username, organization_id=organization_id, employee_id=employee_id)
 
         # Timer for UI updates
         self.timer = QTimer()
@@ -148,13 +166,32 @@ class MainWindow(QMainWindow):
         self.timer.start(1000)  # update every second
 
     def stop_tracking(self):
-        self.status_label.setText("Status: Stopped")
-        self.report_area.append("Stopped tracking.\n")
-        self.start_button.setEnabled(True)
+        if self._stop_worker is not None:
+            return
+        self.status_label.setText("Status: Saving session…")
+        self.start_button.setEnabled(False)
         self.stop_button.setEnabled(False)
-
-        self.tracker.stop()
         self.timer.stop()
+        self._stop_worker = StopWorker(self.tracker, self)
+        self._stop_error = None
+        self._stop_worker.failed.connect(self._tracking_stop_failed)
+        self._stop_worker.finished.connect(self._tracking_stopped)
+        self._stop_worker.start()
+
+    def _tracking_stop_failed(self, message):
+        self._stop_error = message
+        self.report_area.append(f"Stop failed: {message}")
+
+    def _tracking_stopped(self):
+        self._stop_worker.deleteLater()
+        self._stop_worker = None
+        self.status_label.setText("Status: Save failed" if self._stop_error else "Status: Stopped")
+        if not self._stop_error:
+            self.report_area.append("Session saved.\n")
+        self.start_button.setEnabled(True)
+        action, self._after_stop = self._after_stop, None
+        if action:
+            action()
 
     def update_stats(self):
         stats = self.tracker.get_stats()
@@ -164,12 +201,17 @@ class MainWindow(QMainWindow):
         )
 
     def _logout(self):
-        if self.tracker.running:
+        if self.tracker.running or self._stop_worker is not None:
+            self._after_stop = self.logout_requested.emit
             self.stop_tracking()
+            return
         self.logout_requested.emit()
 
     def closeEvent(self, event):
-        if self.tracker.running:
-            self.tracker.stop()
+        if self.tracker.running or self._stop_worker is not None:
+            self._after_stop = self.close
+            self.stop_tracking()
+            event.ignore()
+            return
         self.timer.stop()
         event.accept()

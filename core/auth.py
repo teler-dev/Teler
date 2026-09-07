@@ -20,7 +20,7 @@ class AuthClient(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._network = QNetworkAccessManager(self)
-        self._settings = QSettings("TELER", "Desktop")
+        self._settings = QSettings(os.environ["TELER_SETTINGS_FILE"], QSettings.Format.IniFormat) if os.environ.get("TELER_SETTINGS_FILE") else QSettings("TELER", "Desktop")
         self._replies = set()
 
     @property
@@ -34,6 +34,8 @@ class AuthClient(QObject):
     def configure(self, api_base):
         value = str(api_base or "").strip().rstrip("/")
         if value:
+            if value != self.api_base:
+                self.clear_session()
             self._settings.setValue("api_base", value)
 
     def clear_session(self):
@@ -75,6 +77,7 @@ class AuthClient(QObject):
 
     def _request(self, method, path, payload, purpose, token=None):
         request = QNetworkRequest(QUrl(f"{self.api_base}{path}"))
+        request.setTransferTimeout(15_000)
         request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
         bearer = self.token if token is None else token
         if bearer:

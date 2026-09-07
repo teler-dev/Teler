@@ -450,9 +450,9 @@ function shortName(win) {
 // Consecutive events with the same window title are collapsed into one run,
 // so the output has one segment per distinct app span, not one per raw event.
 
-function buildTimeline(date, stamp, sessionStart) {
+function buildTimeline(date, stamp, sessionStart, sessionDir) {
   // Resolve events file (new and old format)
-  let eventsPath = path.join(BASE, 'logs', date, `Session_${stamp}`, 'events.jsonl');
+  let eventsPath = sessionDir ? path.join(sessionDir, 'events.jsonl') : path.join(BASE, 'logs', date, `Session_${stamp}`, 'events.jsonl');
   if (!exists(eventsPath)) {
     eventsPath = path.join(BASE, 'logs', date, `${stamp}-events.jsonl`);
   }
@@ -475,11 +475,12 @@ function buildTimeline(date, stamp, sessionStart) {
     const title = e.window_title || e.active_window || '';
     const url   = e.active_url   || e.url           || '';
     const last  = runs[runs.length - 1];
-    if (last && last.title === title) {
+    const idle = Number(e.idle_seconds) > 0;
+    if (last && last.title === title && last.idle === idle) {
       last.endTs = e.timestamp;
       if (!last.url && url) last.url = url;
     } else {
-      runs.push({ title, url, startTs: e.timestamp, endTs: e.timestamp });
+      runs.push({ title, url, idle, startTs: e.timestamp, endTs: e.timestamp });
     }
   }
 
@@ -502,7 +503,10 @@ function buildTimeline(date, stamp, sessionStart) {
     const _wallMs     = origin.getTime() + (isNaN(startMs) ? 0 : startMs);
     const wallStart   = isNaN(_wallMs) ? new Date().toISOString() : new Date(_wallMs).toISOString();
 
-    const { type, classifiedBy } = classifyWindow(run.title, run.url);
+    const classification = run.idle
+      ? { type: 'idle', classifiedBy: 'idle' }
+      : classifyWindow(run.title, run.url);
+    const { type, classifiedBy } = classification;
     const app = shortName(run.title);
 
     return {
@@ -888,7 +892,9 @@ function buildSession(date, stamp, masterPath) {
   const modelKey   = primaryMeta.key;
   const modelShort = primaryMeta.short;
 
-  console.log('Session parsed:', `${date}_${stamp}`, '|', modelKey, '|', allModels.map(m => m.key).join('+') || 'none');
+  if (process.env.TELER_DEBUG === '1') {
+    console.log('Session parsed:', `${date}_${stamp}`, '|', modelKey, '|', allModels.map(m => m.key).join('+') || 'none');
+  }
 
   // Normalize scores: AI JSONs use 0-10 scale → ×10
   // But the GK_IMG / older grok json also uses 0-10. Multiply all.
@@ -938,7 +944,7 @@ function buildSession(date, stamp, masterPath) {
   const ocrSample = buildOcrSample(date, stamp, sessionDir);
 
   // --- Timeline from events.jsonl ---
-  const { segments, appSwitches, contextSpikes } = buildTimeline(date, stamp, sessionStart);
+  const { segments, appSwitches, contextSpikes } = buildTimeline(date, stamp, sessionStart, sessionDir);
 
   // --- Timeline Intelligence (Phase 2 — deterministic, no AI) ---
   const timelineIntel = detectTimelinePatterns(segments, appSwitches);

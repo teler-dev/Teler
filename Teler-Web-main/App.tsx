@@ -513,7 +513,7 @@ const TypingHeadline: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  const [view, setView] = useState<View>('landing');
+  const [view, setView] = useState<View>(() => window.location.pathname === '/login' ? 'login' : 'landing');
   const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'anonymous'>('checking');
   const [activeFeatureTab, setActiveFeatureTab] = useState(0);
   const [loggedInUser, setLoggedInUser] = useState('');

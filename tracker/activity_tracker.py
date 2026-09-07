@@ -7,8 +7,11 @@ import hashlib
 from datetime import datetime
 from collections import Counter
 import platform
+import shutil
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = os.environ.get("TELER_TESSERACT_CMD") or shutil.which("tesseract") or (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe" if platform.system() == "Windows" else "tesseract"
+)
 
 from pynput import keyboard, mouse
 import pyautogui
@@ -185,7 +188,7 @@ class ActivityTracker:
     }
 
     def __init__(self, idle_threshold=30, screenshot_interval=60, camera_interval=120,
-                 camera_enabled=False, ocr_enabled=True, username=""):
+                 camera_enabled=False, ocr_enabled=True, username="", organization_id="", employee_id=""):
         # ---- Config ----
         self.idle_threshold = idle_threshold
         self.screenshot_interval = screenshot_interval
@@ -195,6 +198,9 @@ class ActivityTracker:
 
         # ---- Employee identity ----
         self.username = username or os.environ.get("TELER_USER", platform.node() or "unknown")
+        self.organization_id = organization_id
+        self.company_id = organization_id or COMPANY_ID
+        self.account_employee_id = employee_id
 
         # ---- Runtime state ----
         self.is_tracking = False
@@ -217,8 +223,8 @@ class ActivityTracker:
         # ---- Metadata ----
         self.role = "Unspecified"
         self.task = "Unspecified"
-        self.employee_id  = resolve_employee_id(self.role)
-        self.employee_uid = make_employee_uid(self.employee_id)
+        self.employee_id = self.account_employee_id or resolve_employee_id(self.role)
+        self.employee_uid = f"{self.company_id}_{self.employee_id}"
 
         # ---- Session identifiers ----
         self.lock = threading.Lock()
@@ -228,6 +234,7 @@ class ActivityTracker:
         self.end_time = None
 
         self._stop_event = threading.Event()
+        self._workers = []
 
         # ---- Active file paths (set in start()) ----
         self._session_dir = None
@@ -258,8 +265,8 @@ class ActivityTracker:
     def set_metadata(self, role, task):
         self.role = role or "Unspecified"
         self.task = task or "Unspecified"
-        self.employee_id  = resolve_employee_id(self.role)
-        self.employee_uid = make_employee_uid(self.employee_id)
+        self.employee_id = self.account_employee_id or resolve_employee_id(self.role)
+        self.employee_uid = f"{self.company_id}_{self.employee_id}"
         self.ai_logs.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "event": "Role/Task Changed",
@@ -284,6 +291,10 @@ class ActivityTracker:
                 import win32gui
                 hwnd = win32gui.GetForegroundWindow()
                 return win32gui.GetWindowText(hwnd) or "Unknown"
+            if platform.system() == "Darwin":
+                from AppKit import NSWorkspace
+                app = NSWorkspace.sharedWorkspace().frontmostApplication()
+                return app.localizedName() if app else "Unknown"
             return "Active window not supported"
         except Exception:
             return "Unknown"
@@ -387,7 +398,8 @@ class ActivityTracker:
         return {
             "meta": {
                 "user_name":    self.username,
-                "company_id":   COMPANY_ID,
+                "company_id":   self.company_id,
+                "organization_id": self.organization_id or None,
                 "employee_id":  self.employee_id,
                 "employee_uid": self.employee_uid,
             },
@@ -431,7 +443,7 @@ class ActivityTracker:
 
         # ---- Build session directory tree ----
         _emp_base = os.path.join(
-            DATA_BASE, "companies", COMPANY_ID, "employees", self.employee_id
+            DATA_BASE, "companies", self.company_id, "employees", self.employee_id
         )
         self._session_dir = os.path.join(
             _emp_base, "sessions", self.today, f"Session_{self.stamp}"
@@ -485,19 +497,30 @@ class ActivityTracker:
         self._write_master("in_progress")
 
         # ---- Input listeners ----
-        self.keyboard_listener = keyboard.Listener(
-            on_press=self._on_key_press, on_release=self._on_key_release
-        )
-        self.mouse_listener = mouse.Listener(on_click=self._on_click)
-        self.keyboard_listener.start()
-        self.mouse_listener.start()
+        self.keyboard_listener = self.mouse_listener = None
+        try:
+            if platform.system() == "Darwin":
+                from tracker.macos_input import MacInputListener
+                self.keyboard_listener = MacInputListener(self._on_key_press, self._on_click)
+            else:
+                self.keyboard_listener = keyboard.Listener(
+                    on_press=self._on_key_press, on_release=self._on_key_release
+                )
+                self.mouse_listener = mouse.Listener(on_click=self._on_click)
+            self.keyboard_listener.start()
+            if self.mouse_listener:
+                self.mouse_listener.start()
+        except Exception:
+            self.stop()
+            raise
 
         # ---- Worker threads ----
-        threading.Thread(target=self._run,               daemon=True).start()
-        threading.Thread(target=self._checkpoint_loop,   daemon=True).start()
-        threading.Thread(target=self._capture_screenshots, daemon=True).start()
+        targets = [self._run, self._checkpoint_loop, self._capture_screenshots]
         if self.camera_enabled:
-            threading.Thread(target=self._capture_camera, daemon=True).start()
+            targets.append(self._capture_camera)
+        self._workers = [threading.Thread(target=target, daemon=True) for target in targets]
+        for worker in self._workers:
+            worker.start()
 
         print("[Tracker] Started")
 
@@ -514,6 +537,10 @@ class ActivityTracker:
         except Exception:
             pass
 
+        # Finish writers before marking the session complete or allowing restart.
+        for worker in self._workers:
+            worker.join()
+        self._workers = []
         self._flush_minute_buffer(force=True)
         self._flush_keystroke_json()
         self._write_master("completed")  # atomic, status → completed
@@ -524,8 +551,7 @@ class ActivityTracker:
     # ---------------------------
     def _run(self):
         """Main 1-second telemetry loop. Appends one event line to events.jsonl per tick."""
-        while not self._stop_event.is_set():
-            time.sleep(1)
+        while not self._stop_event.wait(1):
             now = time.time()
             idle_now = int(now - self.last_input_time)
             self.idle_seconds = idle_now if idle_now > self.idle_threshold else 0
@@ -574,8 +600,7 @@ class ActivityTracker:
     def _checkpoint_loop(self):
         """Write master.json + keystroke JSON every 60 seconds during tracking."""
         elapsed = 0
-        while not self._stop_event.is_set():
-            time.sleep(1)
+        while not self._stop_event.wait(1):
             elapsed += 1
             if elapsed >= 60:
                 elapsed = 0
@@ -605,7 +630,7 @@ class ActivityTracker:
 
                 if self.ocr_enabled:
                     top_crop = img.crop((0, 0, img.width, 80))
-                    text = pytesseract.image_to_string(top_crop)
+                    text = pytesseract.image_to_string(top_crop, timeout=5)
                     text_raw = text or ""
                     text_norm = re.sub(r"\s+", " ", text_raw).strip().lower()
 

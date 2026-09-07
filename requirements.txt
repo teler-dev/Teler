@@ -1,0 +1,6 @@
+PyQt6>=6.6,<7
+pytesseract>=0.3.13,<0.4
+pynput>=1.8,<2
+PyAutoGUI>=0.9.54,<1
+opencv-python>=4.10,<6
+pywin32>=306; sys_platform == "win32"

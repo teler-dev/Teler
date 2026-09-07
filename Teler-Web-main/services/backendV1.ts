@@ -1,7 +1,7 @@
 import { Session } from '../types';
 import { apiFetch } from './apiConfig';
 
-const DEFAULT_ORGANIZATION_KEY = 'COMP_DEV_001';
+const DEFAULT_ORGANIZATION_KEY = (import.meta.env.VITE_ORGANIZATION_KEY || 'COMP_DEV_001').trim();
 
 interface ApiEnvelope<T> { data: T; pagination?: { limit:number; offset:number; total:number } }
 interface V1Company { id:string; external_key?:string|null; slug:string; name:string; status:string }

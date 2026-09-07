@@ -40,7 +40,7 @@ function buildSegments(events) {
   const runs = [];
   for (const event of events) {
     const last = runs[runs.length - 1];
-    const key = `${event.window_title}\n${event.active_url}`;
+    const key = `${event.window_title}\n${event.active_url}\n${event.idle_seconds > 0}`;
     if (last && last.key === key) {
       last.last = event;
       continue;

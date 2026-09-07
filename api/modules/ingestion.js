@@ -8,7 +8,7 @@ const { withTransaction } = require('../db');
 const BASE = process.env.DATA_ROOT || (process.platform === 'win32' ? path.join(process.cwd(), 'data') : '/opt/teler/data');
 const MAX_EVENTS = 100_000;
 const safeKey = value => String(value || '').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 160);
-const validDate = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d; };
+const validDate = value => { if (typeof value !== 'string' || !value.trim()) return null; const d = new Date(value); return Number.isNaN(d.getTime()) ? null : d; };
 
 function validate(body) {
   const errors = [];
@@ -18,20 +18,25 @@ function validate(body) {
   if (!body.external_session_id || String(body.external_session_id).length > 180) errors.push('external_session_id is required and must be <= 180 chars');
   if (!validDate(body.started_at)) errors.push('started_at must be a valid timestamp');
   if (body.ended_at && !validDate(body.ended_at)) errors.push('ended_at must be a valid timestamp');
+  if (validDate(body.started_at) && validDate(body.ended_at) && new Date(body.ended_at) < new Date(body.started_at)) errors.push('ended_at must not precede started_at');
   if (body.events && !Array.isArray(body.events)) errors.push('events must be an array');
   if (Array.isArray(body.events) && body.events.length > MAX_EVENTS) errors.push(`events exceeds ${MAX_EVENTS}`);
   return errors;
 }
 
-function atomicArchive(body) {
+async function atomicArchive(body) {
   const org = safeKey(body.organization_external_key || body.organization_slug || body.organization_id || 'unknown');
   const session = safeKey(body.external_session_id);
   const dir = path.join(BASE, 'structured-ingest', org);
-  fs.mkdirSync(dir, { recursive: true });
+  await fs.promises.mkdir(dir, { recursive: true });
   const dest = path.join(dir, `${session}.json`);
-  const tmp = `${dest}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(body));
-  fs.renameSync(tmp, dest);
+  const tmp = `${dest}.${crypto.randomUUID()}.tmp`;
+  try {
+    await fs.promises.writeFile(tmp, JSON.stringify(body));
+    await fs.promises.rename(tmp, dest);
+  } finally {
+    await fs.promises.rm(tmp, { force: true }).catch(() => {});
+  }
   return dest;
 }
 
@@ -40,8 +45,8 @@ function createIngestionRouter(express) {
   router.post('/session', async (req, res) => {
     const errors = validate(req.body);
     if (errors.length) return res.status(400).json({ error: 'Invalid session payload', details: errors });
-    const rawPath = atomicArchive(req.body);
     try {
+      const rawPath = await atomicArchive(req.body);
       const result = await withTransaction(async client => {
         const body = req.body;
         let organization;
