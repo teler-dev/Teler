@@ -76,14 +76,6 @@ class PremiumLineEdit(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setCursor(Qt.CursorShape.IBeamCursor)
-        self._focus_shadow = QGraphicsDropShadowEffect(self)
-        self._focus_shadow.setOffset(0, 0)
-        self._focus_shadow.setBlurRadius(0)
-        self._focus_shadow.setColor(QColor(91, 95, 239, 0))
-        self.setGraphicsEffect(self._focus_shadow)
-        self._focus_animation = QPropertyAnimation(self._focus_shadow, b"blurRadius", self)
-        self._focus_animation.setDuration(180)
-        self._focus_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._apply_state(False)
 
     def _apply_state(self, focused):
@@ -98,20 +90,13 @@ class PremiumLineEdit(QLineEdit):
 
     def focusInEvent(self, event):
         self._apply_state(True)
-        self._focus_shadow.setColor(QColor(91, 95, 239, 82))
-        self._focus_animation.stop()
-        self._focus_animation.setStartValue(self._focus_shadow.blurRadius())
-        self._focus_animation.setEndValue(14.0)
-        self._focus_animation.start()
         super().focusInEvent(event)
+        self.update()
 
     def focusOutEvent(self, event):
         self._apply_state(False)
-        self._focus_animation.stop()
-        self._focus_animation.setStartValue(self._focus_shadow.blurRadius())
-        self._focus_animation.setEndValue(0.0)
-        self._focus_animation.start()
         super().focusOutEvent(event)
+        self.update()
 
 
 class PremiumPrimaryButton(QPushButton):
