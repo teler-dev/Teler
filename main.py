@@ -185,22 +185,8 @@ class PremiumCheckBox(QCheckBox):
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._check_shadow = QGraphicsDropShadowEffect(self)
-        self._check_shadow.setOffset(0, 0)
-        self._check_shadow.setBlurRadius(0)
-        self._check_shadow.setColor(QColor(91, 95, 239, 0))
-        self.setGraphicsEffect(self._check_shadow)
-        self._check_animation = QPropertyAnimation(self._check_shadow, b"blurRadius", self)
-        self._check_animation.setDuration(180)
-        self._check_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self.toggled.connect(self._animate_toggle)
-
-    def _animate_toggle(self, checked):
-        self._check_shadow.setColor(QColor(91, 95, 239, 105 if checked else 0))
-        self._check_animation.stop()
-        self._check_animation.setStartValue(11.0 if checked else self._check_shadow.blurRadius())
-        self._check_animation.setEndValue(3.0 if checked else 0.0)
-        self._check_animation.start()
+        self.setMinimumHeight(24)
+        self.toggled.connect(lambda _checked: self.update())
 
 
 class AuthDialog(QDialog):
@@ -239,9 +225,9 @@ class AuthDialog(QDialog):
             QPushButton#link {{ background: transparent; border: 0; color: #8C90FF; padding: 0; font-size: 11px; font-weight: 600; text-align: right; }}
             QPushButton#link:hover {{ color: #B5B7FF; text-decoration: underline; }}
             QCheckBox {{ color: {MUTED}; spacing: 10px; font-size: 10px; }}
-            QCheckBox::indicator {{ width: 17px; height: 17px; border: 1px solid rgba(255,255,255,0.20); border-radius: 5px; background: {INPUT}; }}
-            QCheckBox::indicator:hover {{ border: 1px solid rgba(91,95,239,0.65); background: #111528; }}
-            QCheckBox::indicator:checked {{ background: {ACCENT}; border: 1px solid {ACCENT}; image: none; }}
+            QCheckBox::indicator {{ width: 17px; height: 17px; border: 1.5px solid rgba(255,255,255,0.48); border-radius: 5px; background: #111528; }}
+            QCheckBox::indicator:hover {{ border: 1.5px solid rgba(91,95,239,0.90); background: #151A31; }}
+            QCheckBox::indicator:checked {{ background: {ACCENT}; border: 1.5px solid {ACCENT}; image: none; }}
             QProgressBar {{ background: #0D101B; border: 0; border-radius: 5px; min-height: 10px; max-height: 10px; text-align: center; color: transparent; }}
             QProgressBar::chunk {{ border-radius: 5px; background: #A1A7B8; }}
             QFrame#divider {{ background: rgba(255,255,255,0.07); max-height: 1px; border: 0; }}
