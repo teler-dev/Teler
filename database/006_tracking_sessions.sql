@@ -13,6 +13,8 @@ alter table app.work_sessions
   add column if not exists total_duration_seconds bigint not null default 0;
 alter table app.work_sessions
   add column if not exists total_paused_seconds bigint not null default 0;
+alter table app.work_sessions
+  add column if not exists updated_at timestamptz not null default now();
 
 update app.work_sessions ws
 set role_at_time = coalesce(nullif(e.job_role, ''), 'general')

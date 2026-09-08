@@ -190,6 +190,7 @@ class MainWindow(QMainWindow):
 
         self.state_hint = QLabel("Ready to track", objectName="stateHint")
         self.state_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.state_hint.setMinimumHeight(18)
         self.state_hint_effect = None
 
         self.status_pill = QWidget(objectName="statusPill")
@@ -223,11 +224,6 @@ class MainWindow(QMainWindow):
         master_card = QWidget(objectName="card")
         master_card.setMinimumWidth(660)
         master_card.setMaximumWidth(760)
-        self.master_card_effect = QGraphicsDropShadowEffect(master_card)
-        self.master_card_effect.setOffset(0, 12)
-        self.master_card_effect.setBlurRadius(42)
-        self.master_card_effect.setColor(QColor(0, 0, 0, 105))
-        master_card.setGraphicsEffect(self.master_card_effect)
         master_layout = QVBoxLayout(master_card)
         master_layout.setContentsMargins(20, 18, 20, 20)
         master_layout.setSpacing(14)
@@ -293,7 +289,7 @@ class MainWindow(QMainWindow):
         timer_panel = QWidget(objectName="timerPanel")
         self.timer_panel = timer_panel
         self.timer_panel_effect = QGraphicsDropShadowEffect(timer_panel)
-        timer_panel.setMinimumHeight(126)
+        timer_panel.setMinimumHeight(146)
         timer_panel_layout = QVBoxLayout(timer_panel)
         timer_panel_layout.setContentsMargins(20, 18, 20, 18)
         timer_panel_layout.setSpacing(6)

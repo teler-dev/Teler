@@ -232,7 +232,7 @@ function createTrackingSessionsRouter(express) {
         const updated = await client.query(
           `update app.work_sessions
               set tracking_status=$3,status=$4,ended_at=coalesce($5,ended_at),
-                  total_duration_seconds=$6,total_paused_seconds=$7,total_minutes=$6::numeric/60,updated_at=now()
+                  total_duration_seconds=$6,total_paused_seconds=$7,total_minutes=$6::numeric/60
             where organization_id=$1 and id=$2 returning *`,
           [row.organization_id, row.id, nextStatus, lifecycle, endedAt,
            timing.total_duration_seconds, timing.total_paused_seconds]
