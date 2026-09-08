@@ -185,16 +185,12 @@ class MainWindow(QMainWindow):
         timer_font.setWeight(QFont.Weight.Bold)
         self.timer_label.setFont(timer_font)
         self.timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.timer_label.setMinimumHeight(66)
-        self.timer_text_effect = QGraphicsOpacityEffect(self.timer_label)
-        self.timer_text_effect.setOpacity(1.0)
-        self.timer_label.setGraphicsEffect(self.timer_text_effect)
+        self.timer_label.setMinimumHeight(72)
+        self.timer_text_effect = None
 
         self.state_hint = QLabel("Ready to track", objectName="stateHint")
         self.state_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.state_hint_effect = QGraphicsOpacityEffect(self.state_hint)
-        self.state_hint_effect.setOpacity(1.0)
-        self.state_hint.setGraphicsEffect(self.state_hint_effect)
+        self.state_hint_effect = None
 
         self.status_pill = QWidget(objectName="statusPill")
         self.status_pill.setFixedHeight(28)
@@ -457,20 +453,13 @@ class MainWindow(QMainWindow):
         return super().eventFilter(obj, event)
 
     def _fade_controls(self):
-        effect = self.timer_label.graphicsEffect()
-        if not isinstance(effect, QGraphicsOpacityEffect):
-            effect = QGraphicsOpacityEffect(self.timer_label)
-            self.timer_label.setGraphicsEffect(effect)
-        effect.setOpacity(0.7)
-        self._fade_animation = QPropertyAnimation(effect, b"opacity", self)
-        self._fade_animation.setDuration(200)
-        self._fade_animation.setStartValue(0.7)
-        self._fade_animation.setEndValue(1.0)
-        self._fade_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self._fade_animation.start()
+        return
 
     def _crossfade_label(self, label, effect, text):
         if label.text() == text:
+            return
+        if effect is None:
+            label.setText(text)
             return
         fade_out = QPropertyAnimation(effect, b"opacity", self)
         fade_out.setDuration(80)
