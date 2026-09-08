@@ -374,19 +374,6 @@ class MainWindow(QMainWindow):
         self.main_layout = master_layout
         self.setCentralWidget(root)
 
-        self._entrance_animations = []
-        for delay, section in ((0, role_section), (70, control_section), (140, self.report_card)):
-            section_effect = QGraphicsOpacityEffect(section)
-            section_effect.setOpacity(0.0)
-            section.setGraphicsEffect(section_effect)
-            animation = QPropertyAnimation(section_effect, b"opacity", self)
-            animation.setDuration(260)
-            animation.setStartValue(0.0)
-            animation.setEndValue(1.0)
-            animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-            self._entrance_animations.append(animation)
-            QTimer.singleShot(delay, animation.start)
-
         self.tracker = ActivityTracker(username=username, organization_id=organization_id, employee_id=employee_id)
         self.session_client = SessionClient(auth_client, self) if auth_client is not None else None
         if self.session_client:
