@@ -19,6 +19,7 @@ import { AppRoute, employeePath, employeeSlug, navigate, parseRoute, routeTitle 
 import { PageHeader } from './components/ui/PageHeader';
 import { IconButton } from './components/ui/IconButton';
 import { Button } from './components/ui/Button';
+import { QuickAiDock } from './components/ui/QuickAiDock';
 
 declare const __TELER_BUILD_ID__: string;
 
@@ -147,6 +148,7 @@ export const AuthenticatedRouter: React.FC = () => {
       <Button size="sm" onClick={() => window.location.reload()}>Reload</Button>
     </div>}
     <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />
+    {!showAiChat && <QuickAiDock onOpen={() => setShowAiChat(true)} />}
     {showAiChat && <AiChatPanel sessions={globalSessions} onClose={() => setShowAiChat(false)} />}
   </div>;
 };
