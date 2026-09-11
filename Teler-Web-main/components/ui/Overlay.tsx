@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { cx } from './Surface';
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -54,7 +55,7 @@ interface OverlayProps {
   label: string;
   onClose: () => void;
   children: React.ReactNode;
-  kind?: 'dialog' | 'drawer' | 'panel';
+  kind?: 'dialog' | 'drawer' | 'panel' | 'center';
   className?: string;
   backdrop?: boolean;
   flush?: boolean;
@@ -77,11 +78,15 @@ export const OverlaySurface: React.FC<OverlayProps> = ({
       ? 'items-stretch justify-end'
       : kind === 'panel'
       ? 'items-end justify-end sm:items-end'
+      : kind === 'center'
+      ? 'items-center justify-center'
       : 'items-start justify-center pt-[12vh]';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className={cx('fixed inset-0 z-[100] flex', flush ? 'p-0' : 'p-4', position, !backdrop && 'pointer-events-none')}>
-      {backdrop && <button type="button" aria-label={`Close ${label}`} onClick={onClose} className="absolute inset-0 bg-black/45 backdrop-blur-sm" />}
+      {backdrop && <button type="button" aria-label={`Close ${label}`} onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-sm" />}
       <div
         ref={panelRef}
         role="dialog"
@@ -92,6 +97,7 @@ export const OverlaySurface: React.FC<OverlayProps> = ({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

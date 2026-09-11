@@ -86,7 +86,8 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
     {open && <OverlaySurface
       label="Evidence gallery"
       onClose={close}
-      className="w-full max-w-7xl h-[88vh] bg-surface-card border border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+      kind="center"
+      className="w-[calc(100vw-2rem)] max-w-[1500px] h-[calc(100vh-2rem)] max-h-[920px] bg-surface-card border border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col"
     >
       <header className="shrink-0 flex items-center justify-between gap-3 px-4 md:px-5 py-3.5 border-b border-subtle bg-surface-card">
         <div className="min-w-0">
@@ -107,14 +108,14 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
       </header>
 
       {previewIndex == null ? <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-5">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {imageUrls.map((url, index) => <button
             key={url}
             type="button"
             onClick={() => setPreviewIndex(index)}
             className="group text-left overflow-hidden rounded-xl border border-subtle bg-surface-raised hover:border-accent hover:bg-surface-hover transition-all"
           >
-            <img src={url} alt={`Screenshot ${index + 1}`} loading="lazy" className="block w-full aspect-video object-cover" />
+            <img src={url} alt={`Screenshot ${index + 1}`} loading="lazy" className="block w-full aspect-video object-cover bg-surface-page" />
             <div className="px-3 py-2.5">
               <p className="text-sm font-medium text-primary">Screenshot {index + 1}</p>
               <p className="text-[11px] text-secondary mt-0.5">Open full preview</p>
@@ -122,7 +123,7 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
           </button>)}
         </div>
       </div> : <div className="flex-1 min-h-0 flex flex-col bg-surface-page">
-        <div className="flex-1 min-h-0 relative flex items-center justify-center p-3 md:p-5">
+        <div className="flex-1 min-h-0 relative flex items-center justify-center p-3 md:p-5 overflow-hidden">
           <img
             src={imageUrls[previewIndex]}
             alt={`Screenshot ${previewIndex + 1} full preview`}
