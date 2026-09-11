@@ -6,7 +6,7 @@ from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkReques
 
 
 DEFAULT_API_BASE = os.environ.get(
-    "TELER_API_BASE", "https://148-116-79-191.sslip.io"
+    "TELER_API_BASE", "https://204-216-105-57.sslip.io"
 ).rstrip("/")
 
 
