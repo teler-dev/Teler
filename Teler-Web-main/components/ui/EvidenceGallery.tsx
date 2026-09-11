@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Grid3X3, Images, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Grid3X3, Images, Maximize2, X } from 'lucide-react';
 import { OverlaySurface } from './Overlay';
 import { IconButton } from './IconButton';
 import { Button } from './Button';
@@ -59,8 +59,13 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
   return <>
     <section className="bg-surface-card border border-subtle rounded-2xl p-5 md:p-6 shadow-card">
       <div className="flex items-center gap-2">
-        <Images className="w-4 h-4 text-accent" />
-        <h3 className="font-semibold">{title}</h3>
+        <span className="w-8 h-8 rounded-xl bg-accent-soft border border-accent flex items-center justify-center shrink-0">
+          <Images className="w-4 h-4 text-accent" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-primary">{title}</h3>
+          <p className="text-[11px] text-secondary mt-0.5">Session visual evidence</p>
+        </div>
         <button type="button" onClick={openGrid} className="ml-auto inline-flex items-center gap-2 text-xs text-secondary hover:text-primary transition-colors">
           <span>{imageUrls.length} screenshot{imageUrls.length === 1 ? '' : 's'}</span>
           <span className="text-accent font-semibold">View all</span>
@@ -72,9 +77,14 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
           key={url}
           type="button"
           onClick={() => openPreview(index)}
-          className="group relative text-left overflow-hidden rounded-xl border border-subtle bg-surface-raised hover:border-accent transition-colors"
+          className="group relative text-left overflow-hidden rounded-xl border border-subtle bg-surface-raised hover:border-accent transition-all"
         >
-          <img src={url} alt={`Screenshot ${index + 1} from this session`} loading="lazy" className="block w-full aspect-video object-cover" />
+          <div className="relative overflow-hidden">
+            <img src={url} alt={`Screenshot ${index + 1} from this session`} loading="lazy" className="block w-full aspect-video object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+            <span className="absolute top-2 left-2 rounded-full bg-surface-card/90 backdrop-blur px-2 py-1 text-[10px] font-semibold text-primary border border-subtle">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+          </div>
           <span className="flex items-center justify-between gap-2 px-2.5 py-2 text-xs text-secondary">
             <span>Screenshot {index + 1}</span>
             {index === visible.length - 1 && remaining > 0 && <span className="rounded-full border border-accent bg-accent-soft px-2 py-0.5 text-accent font-semibold">+{remaining} more</span>}
@@ -84,73 +94,134 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
     </section>
 
     {open && <OverlaySurface
-      label="Evidence gallery"
+      label="Evidence studio"
       onClose={close}
       kind="center"
-      className="w-[calc(100vw-2rem)] max-w-[1500px] h-[calc(100vh-2rem)] max-h-[920px] bg-surface-card border border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+      className="w-[calc(100vw-2rem)] max-w-[1540px] h-[calc(100vh-2rem)] max-h-[940px] bg-surface-card border border-strong rounded-[26px] shadow-2xl overflow-hidden flex flex-col"
     >
-      <header className="shrink-0 flex items-center justify-between gap-3 px-4 md:px-5 py-3.5 border-b border-subtle bg-surface-card">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Images className="w-4 h-4 text-accent" />
-            <h2 className="font-semibold text-primary">{title}</h2>
+      <header className="shrink-0 flex items-center justify-between gap-4 px-4 md:px-6 py-4 border-b border-subtle bg-surface-card/95 backdrop-blur-xl">
+        <div className="min-w-0 flex items-center gap-3">
+          <span className="w-10 h-10 rounded-2xl bg-accent-soft border border-accent flex items-center justify-center shrink-0">
+            <Images className="w-5 h-5 text-accent" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <h2 className="font-semibold text-primary truncate">{title} Studio</h2>
+              <span className="hidden sm:inline-flex rounded-full border border-subtle bg-surface-raised px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-secondary">
+                Review mode
+              </span>
+            </div>
+            <p className="text-xs text-secondary mt-1">
+              {previewIndex == null ? `${imageUrls.length} captured screenshots` : `Screenshot ${previewIndex + 1} of ${imageUrls.length}`}
+            </p>
           </div>
-          <p className="text-xs text-secondary mt-1">
-            {previewIndex == null ? `${imageUrls.length} screenshots` : `Screenshot ${previewIndex + 1} of ${imageUrls.length}`}
-          </p>
         </div>
+
         <div className="flex items-center gap-2">
           {previewIndex != null && <Button variant="secondary" size="sm" onClick={() => setPreviewIndex(null)}>
-            <Grid3X3 className="w-4 h-4" /> Back to grid
+            <Grid3X3 className="w-4 h-4" /> <span className="hidden sm:inline">Grid</span>
           </Button>}
-          <IconButton label="Close evidence gallery" size="sm" variant="ghost" onClick={close}><X className="w-4 h-4" /></IconButton>
+          <IconButton label="Close evidence studio" size="sm" variant="ghost" onClick={close}><X className="w-4 h-4" /></IconButton>
         </div>
       </header>
 
-      {previewIndex == null ? <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-5">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {imageUrls.map((url, index) => <button
-            key={url}
-            type="button"
-            onClick={() => setPreviewIndex(index)}
-            className="group text-left overflow-hidden rounded-xl border border-subtle bg-surface-raised hover:border-accent hover:bg-surface-hover transition-all"
-          >
-            <img src={url} alt={`Screenshot ${index + 1}`} loading="lazy" className="block w-full aspect-video object-cover bg-surface-page" />
-            <div className="px-3 py-2.5">
-              <p className="text-sm font-medium text-primary">Screenshot {index + 1}</p>
-              <p className="text-[11px] text-secondary mt-0.5">Open full preview</p>
+      {previewIndex == null ? (
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 bg-surface-page">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] font-semibold text-accent">Evidence board</p>
+              <h3 className="text-lg font-semibold text-primary mt-1">Captured session frames</h3>
             </div>
-          </button>)}
-        </div>
-      </div> : <div className="flex-1 min-h-0 flex flex-col bg-surface-page">
-        <div className="flex-1 min-h-0 relative flex items-center justify-center p-3 md:p-5 overflow-hidden">
-          <img
-            src={imageUrls[previewIndex]}
-            alt={`Screenshot ${previewIndex + 1} full preview`}
-            className="max-w-full max-h-full object-contain rounded-xl border border-subtle bg-surface-card shadow-card"
-          />
-          {imageUrls.length > 1 && <>
-            <IconButton
-              label="Previous screenshot"
-              onClick={previous}
-              className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 bg-surface-card/95 backdrop-blur border-strong shadow-card"
+            <span className="text-xs text-secondary">{imageUrls.length} total</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            {imageUrls.map((url, index) => <button
+              key={url}
+              type="button"
+              onClick={() => setPreviewIndex(index)}
+              className="group text-left overflow-hidden rounded-2xl border border-subtle bg-surface-card hover:border-accent hover:-translate-y-0.5 transition-all shadow-card"
             >
-              <ChevronLeft className="w-5 h-5" />
-            </IconButton>
-            <IconButton
-              label="Next screenshot"
-              onClick={next}
-              className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 bg-surface-card/95 backdrop-blur border-strong shadow-card"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </IconButton>
-          </>}
+              <div className="relative overflow-hidden bg-surface-raised">
+                <img src={url} alt={`Screenshot ${index + 1}`} loading="lazy" className="block w-full aspect-video object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
+                <span className="absolute top-2.5 left-2.5 rounded-full bg-surface-card/92 backdrop-blur px-2 py-1 text-[10px] font-semibold text-primary border border-subtle">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-surface-card/92 backdrop-blur border border-subtle flex items-center justify-center text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <div className="px-3.5 py-3">
+                <p className="text-sm font-semibold text-primary">Screenshot {index + 1}</p>
+                <p className="text-[11px] text-secondary mt-1">Open studio preview</p>
+              </div>
+            </button>)}
+          </div>
         </div>
-        <footer className="shrink-0 px-4 md:px-5 py-3 border-t border-subtle bg-surface-card flex items-center justify-between gap-3">
-          <span className="text-xs text-secondary">Use ← and → to navigate</span>
-          <span className="text-xs font-semibold text-primary">Screenshot {previewIndex + 1} / {imageUrls.length}</span>
-        </footer>
-      </div>}
+      ) : (
+        <div className="flex-1 min-h-0 flex flex-col bg-surface-page">
+          <div
+            className="flex-1 min-h-0 relative flex items-center justify-center p-4 md:p-7 overflow-hidden"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 50% 42%, rgba(34,211,238,0.08), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.012), transparent)',
+            }}
+          >
+            <div className="absolute top-4 left-4 md:top-6 md:left-6 inline-flex items-center gap-2 rounded-full border border-subtle bg-surface-card/85 backdrop-blur px-3 py-1.5 text-[11px] text-secondary">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+              Studio preview
+            </div>
+
+            <div className="relative max-w-[min(1120px,84vw)] max-h-[calc(100%-1rem)] p-2 md:p-3 rounded-[24px] border border-subtle bg-surface-card/65 backdrop-blur-sm shadow-2xl">
+              <img
+                src={imageUrls[previewIndex]}
+                alt={`Screenshot ${previewIndex + 1} full preview`}
+                className="block max-w-full max-h-[calc(100vh-250px)] object-contain rounded-2xl bg-surface-card"
+              />
+            </div>
+
+            {imageUrls.length > 1 && <>
+              <IconButton
+                label="Previous screenshot"
+                onClick={previous}
+                className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-surface-card/90 backdrop-blur border-strong shadow-2xl hover:bg-surface-raised"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </IconButton>
+              <IconButton
+                label="Next screenshot"
+                onClick={next}
+                className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-surface-card/90 backdrop-blur border-strong shadow-2xl hover:bg-surface-raised"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </IconButton>
+            </>}
+          </div>
+
+          <footer className="shrink-0 border-t border-subtle bg-surface-card/96 backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6 pt-3">
+              <span className="text-[11px] text-secondary">Use ← and → to navigate</span>
+              <span className="rounded-full border border-subtle bg-surface-raised px-2.5 py-1 text-[11px] font-semibold text-primary">
+                {previewIndex + 1} / {imageUrls.length}
+              </span>
+            </div>
+            <div className="overflow-x-auto px-4 md:px-6 py-3">
+              <div className="flex gap-2 min-w-max">
+                {imageUrls.map((url, index) => <button
+                  key={url}
+                  type="button"
+                  onClick={() => setPreviewIndex(index)}
+                  aria-label={`Preview screenshot ${index + 1}`}
+                  className={`relative w-24 md:w-28 aspect-video overflow-hidden rounded-xl border transition-all ${index === previewIndex ? 'border-accent ring-2 ring-accent/20 bg-accent-soft' : 'border-subtle opacity-65 hover:opacity-100 hover:border-strong'}`}
+                >
+                  <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  <span className="absolute bottom-1 right-1 rounded bg-surface-card/90 px-1.5 py-0.5 text-[9px] font-semibold text-primary">{index + 1}</span>
+                </button>)}
+              </div>
+            </div>
+          </footer>
+        </div>
+      )}
     </OverlaySurface>}
   </>;
 };
