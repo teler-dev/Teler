@@ -12,14 +12,18 @@ afterEach(() => {
 });
 
 describe('normalized v1 session sync', () => {
-  it('limits the selectable AI models to OpenRouter free-tier IDs', async () => {
+  it('offers free OpenRouter models and the managed GPT-4o Mini option', async () => {
     const { OPENROUTER_MODELS } = await import('./aiAgentService');
     expect(OPENROUTER_MODELS).not.toHaveLength(0);
     expect(OPENROUTER_MODELS.every(({ value }) => value.endsWith(':free'))).toBe(true);
 
-    const { isFreeOpenRouterModel } = await import('../api/ai');
+    const { OPENAI_MODELS } = await import('./aiAgentService');
+    expect(OPENAI_MODELS).toEqual([{ value: 'gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' }]);
+
+    const { isFreeOpenRouterModel, isSupportedOpenAiModel } = await import('../api/ai');
     expect(isFreeOpenRouterModel('google/gemma-4-26b-a4b-it:free')).toBe(true);
-    expect(isFreeOpenRouterModel('openai/gpt-4o-mini')).toBe(false);
+    expect(isSupportedOpenAiModel('gpt-4o-mini')).toBe(true);
+    expect(isSupportedOpenAiModel('gpt-4o')).toBe(false);
   });
 
   it('uses the configured workspace and maps screenshot evidence into the website session', async () => {

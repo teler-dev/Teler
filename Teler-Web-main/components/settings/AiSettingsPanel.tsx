@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   AiSettings,
   DEFAULT_SETTINGS,
+  OPENAI_MODELS,
   OPENROUTER_MODELS,
   OPENROUTER_RERANK_MODELS,
   getAiSettings,
@@ -127,7 +128,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
 
   const handleTest = async () => {
     const apiKey = getActiveApiKey(settings);
-    if (!apiKey.trim() && settings.provider !== 'local' && settings.provider !== 'openrouter') {
+    if (!apiKey.trim() && settings.provider === 'local') {
       setToast({ type: 'error', message: 'Connection failed. Check API key.' });
       setConn('error');
       return;
@@ -154,7 +155,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
     }
   };
 
-  const modelOptions = OPENROUTER_MODELS;
+  const modelOptions = settings.provider === 'openai' ? OPENAI_MODELS : OPENROUTER_MODELS;
   const selectedModel = settings.model;
   const selectedRerankModel = settings.rerankModel;
   const sc = STATUS_CFG[connStatus];
@@ -211,17 +212,20 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
         <div className="space-y-1.5">
           <FieldLabel className="uppercase tracking-widest">AI Provider</FieldLabel>
           <div className="flex gap-2">
-            {(['openrouter'] as const).map(p => (
+            {(['openrouter', 'openai'] as const).map(p => (
               <button
                 key={p}
-                onClick={() => update('provider', p)}
+                onClick={() => setSettings(current => p === 'openai'
+                  ? { ...current, provider: p, model: 'gpt-4o-mini', customModel: '', useReranking: false }
+                  : { ...current, provider: p, model: DEFAULT_SETTINGS.model, customModel: '', useReranking: true }
+                )}
                 className={`flex-1 min-h-10 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
                   settings.provider === p
                     ? 'bg-accent-soft border-accent text-primary'
                     : 'bg-surface-raised border-subtle text-secondary hover:border-accent hover:text-primary'
                 }`}
               >
-                OpenRouter — free models only
+                {p === 'openai' ? 'OpenAI — GPT-4o Mini' : 'OpenRouter — free models'}
               </button>
             ))}
           </div>
@@ -234,6 +238,12 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
             <p className="text-[11px] text-secondary mt-1">
               The OpenRouter key is stored server-side in Vercel and is never exposed to this browser.
             </p>
+          </div>
+        )}
+        {settings.provider === 'openai' && (
+          <div className="rounded-xl border border-accent bg-accent-soft px-3.5 py-3">
+            <p className="text-xs font-bold text-primary">Managed securely by TELER</p>
+            <p className="text-[11px] text-secondary mt-1">GPT-4o Mini uses the server-side OpenAI key. The key is never exposed to this browser.</p>
           </div>
         )}
 

@@ -1,12 +1,18 @@
 import { backendJson, noStoreJson, readSession, unauthorized } from './_auth.js';
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+const OPENAI_BASE = 'https://api.openai.com/v1';
 const MAX_CONTEXT_BYTES = 750_000;
 const MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]{1,160}$/i;
 const FREE_OPENROUTER_MODEL_PATTERN = /:free$/i;
+const OPENAI_MODEL = 'gpt-4o-mini';
 
 export function isFreeOpenRouterModel(model: string): boolean {
   return MODEL_ID_PATTERN.test(model) && FREE_OPENROUTER_MODEL_PATTERN.test(model);
+}
+
+export function isSupportedOpenAiModel(model: string): boolean {
+  return model === OPENAI_MODEL;
 }
 
 type AiRequest = {
@@ -14,6 +20,7 @@ type AiRequest = {
   context?: unknown;
   sources?: unknown;
   settings?: {
+    provider?: unknown;
     model?: unknown;
     useReranking?: unknown;
     rerankModel?: unknown;
@@ -107,9 +114,6 @@ export default {
       const session = readSession(request);
       if (!session) return unauthorized();
 
-      const apiKey = process.env.OPENROUTER_API_KEY?.trim();
-      if (!apiKey) return noStoreJson({ error: 'OPENROUTER_API_KEY is not configured in Vercel' }, 503);
-
       let body: AiRequest;
       try {
         body = await request.json() as AiRequest;
@@ -118,6 +122,7 @@ export default {
       }
 
       const question = typeof body.question === 'string' ? body.question.trim() : '';
+      const provider = body.settings?.provider === 'openai' ? 'openai' : 'openrouter';
       const model = typeof body.settings?.model === 'string' ? body.settings.model.trim() : '';
       const rerankModel = typeof body.settings?.rerankModel === 'string'
         ? body.settings.rerankModel.trim()
@@ -131,13 +136,22 @@ export default {
       const maxTokens = typeof body.settings?.maxTokens === 'number'
         ? Math.min(8_000, Math.max(256, Math.round(body.settings.maxTokens)))
         : 2_000;
+      const apiKey = provider === 'openai'
+        ? process.env.OPENAI_API_KEY?.trim()
+        : process.env.OPENROUTER_API_KEY?.trim();
+      if (!apiKey) {
+        return noStoreJson({ error: provider === 'openai' ? 'OPENAI_API_KEY is not configured in Vercel' : 'OPENROUTER_API_KEY is not configured in Vercel' }, 503);
+      }
 
       if (!question || question.length > 8_000) return noStoreJson({ error: 'Question is required' }, 400);
-      if (!isFreeOpenRouterModel(model)) {
+      if (provider === 'openrouter' && !isFreeOpenRouterModel(model)) {
         return noStoreJson({ error: 'Only OpenRouter models explicitly marked :free are allowed' }, 400);
       }
+      if (provider === 'openai' && !isSupportedOpenAiModel(model)) {
+        return noStoreJson({ error: 'Only GPT-4o Mini is enabled for OpenAI' }, 400);
+      }
       if (!systemPrompt || systemPrompt.length > 12_000) return noStoreJson({ error: 'Invalid system prompt' }, 400);
-      if (body.settings?.useReranking && !isFreeOpenRouterModel(rerankModel)) {
+      if (provider === 'openrouter' && body.settings?.useReranking && !isFreeOpenRouterModel(rerankModel)) {
         return noStoreJson({ error: 'Only OpenRouter rerank models explicitly marked :free are allowed' }, 400);
       }
 
@@ -149,17 +163,16 @@ export default {
       }
 
       const appOrigin = new URL(request.url).origin;
-      const preparedContext = body.settings?.useReranking
+      const preparedContext = provider === 'openrouter' && body.settings?.useReranking
         ? await rerankContext(question, context, rerankModel, apiKey, appOrigin)
         : context;
 
-      const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+      const response = await fetch(`${provider === 'openai' ? OPENAI_BASE : OPENROUTER_BASE}/chat/completions`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': appOrigin,
-          'X-Title': 'TELER Dashboard',
+          ...(provider === 'openrouter' ? { 'HTTP-Referer': appOrigin, 'X-Title': 'TELER Dashboard' } : {}),
         },
         body: JSON.stringify({
           model,
@@ -178,9 +191,9 @@ export default {
       });
       const payload = await readProviderBody(response);
       if (!response.ok) {
-        console.error('OpenRouter error', response.status, providerError(payload, response.statusText));
+        console.error(`${provider} error`, response.status, providerError(payload, response.statusText));
         return noStoreJson(
-          { error: providerError(payload, `OpenRouter returned HTTP ${response.status}`) },
+          { error: providerError(payload, `${provider === 'openai' ? 'OpenAI' : 'OpenRouter'} returned HTTP ${response.status}`) },
           response.status === 401 || response.status === 402 || response.status === 429 ? response.status : 502,
         );
       }
@@ -188,7 +201,7 @@ export default {
       const content = (payload as { choices?: Array<{ message?: { content?: unknown } }> })
         ?.choices?.[0]?.message?.content;
       if (typeof content !== 'string' || !content.trim()) {
-        return noStoreJson({ error: 'OpenRouter returned an empty response' }, 502);
+        return noStoreJson({ error: `${provider === 'openai' ? 'OpenAI' : 'OpenRouter'} returned an empty response` }, 502);
       }
       const sources = Array.isArray(body.sources) ? body.sources.slice(0, 8) : [];
       const sessionId = typeof (sources[0] as { sessionId?: unknown } | undefined)?.sessionId === 'string'
@@ -196,14 +209,14 @@ export default {
         : '';
       const saved = await backendJson('/api/v1/ai-analyses', {
         method: 'POST',
-        body: JSON.stringify({ question, answer: content, provider: 'openrouter', model, sources, session_id: sessionId }),
+        body: JSON.stringify({ question, answer: content, provider, model, sources, session_id: sessionId }),
       }, session.token);
       if (!saved.response.ok) return noStoreJson({ error: typeof saved.body.error === 'string' ? saved.body.error : 'Unable to save AI analysis' }, 502);
       return noStoreJson({ answer: content, analysis: saved.body.data });
     } catch (error) {
       console.error('TELER AI error', error);
       const message = error instanceof Error && error.name === 'TimeoutError'
-        ? 'OpenRouter request timed out'
+        ? 'AI provider request timed out'
         : 'TELER AI is temporarily unavailable';
       return noStoreJson({ error: message }, 502);
     }

@@ -50,9 +50,7 @@ export const OPENROUTER_RERANK_MODELS = [
 ];
 
 export const OPENAI_MODELS = [
-  { value: 'gpt-4o',      label: 'GPT-4o'           },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini'       },
-  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo'       },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' },
 ];
 
 
@@ -70,15 +68,20 @@ export function getAiSettings(): AiSettings {
     ) {
       merged.model = DEFAULT_OPENROUTER_MODEL;
     }
-    if (!merged.model.endsWith(':free') || merged.customModel.trim()) {
+    const savedProvider = saved.provider === 'openai' ? 'openai' : 'openrouter';
+    merged.provider = savedProvider;
+    if (savedProvider === 'openai' && saved.model === 'gpt-4o-mini') {
+      merged.model = 'gpt-4o-mini';
+      merged.customModel = '';
+      merged.useReranking = false;
+    } else if (!merged.model.endsWith(':free') || merged.customModel.trim()) {
       merged.model = DEFAULT_OPENROUTER_MODEL;
       merged.customModel = '';
     }
-    if (!merged.rerankModel.endsWith(':free') || merged.customRerankModel.trim()) {
+    if (savedProvider === 'openrouter' && (!merged.rerankModel.endsWith(':free') || merged.customRerankModel.trim())) {
       merged.rerankModel = DEFAULT_RERANK_MODEL;
       merged.customRerankModel = '';
     }
-    merged.provider = 'openrouter';
     if (saved.openRouterApiKey) localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     return merged;
   } catch {
@@ -101,7 +104,7 @@ export function getActiveRerankModel(settings: AiSettings): string {
 }
 
 export function getActiveApiKey(settings: AiSettings): string {
-  if (settings.provider === 'openai') return settings.openAiApiKey;
+  if (settings.provider === 'openai') return '';
   if (settings.provider === 'openrouter') return '';
   return settings.openRouterApiKey;
 }
@@ -127,7 +130,7 @@ export async function askAiAgent(
   const s = settings ?? getAiSettings();
   const apiKey = getActiveApiKey(s);
 
-  if (s.provider === 'openrouter') {
+  if (s.provider === 'openrouter' || s.provider === 'openai') {
     const response = await fetch('/api/ai', {
       method: 'POST',
       credentials: 'same-origin',
@@ -137,6 +140,7 @@ export async function askAiAgent(
         context,
         sources,
         settings: {
+          provider: s.provider,
           model: getActiveModel(s),
           useReranking: s.useReranking,
           rerankModel: getActiveRerankModel(s),
