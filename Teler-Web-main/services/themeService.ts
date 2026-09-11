@@ -9,8 +9,8 @@ const SEMANTIC_CSS = `
   --surface-page:10 15 26;--surface-sidebar:10 15 26;--surface-card:17 24 39;--surface-raised:24 34 52;--surface-input:15 23 42;--surface-hover:30 41 59;
   --text-primary:241 245 249;--text-secondary:203 213 225;--text-muted:148 163 184;
   --border-subtle:51 65 85;--border-strong:71 85 105;
-  --accent:8 145 178;--accent-hover:6 182 212;--accent-soft:14 116 144;--focus-ring:34 211 238;
-  --success:34 197 94;--success-soft:20 83 45;--warning:245 158 11;--warning-soft:120 53 15;--danger:248 113 113;--danger-soft:127 29 29;--info:56 189 248;--info-soft:12 74 110;
+  --accent:34 211 238;--accent-hover:103 232 249;--accent-soft:8 47 73;--focus-ring:34 211 238;
+  --success:74 222 128;--success-soft:20 50 32;--warning:251 191 36;--warning-soft:69 44 9;--danger:248 113 113;--danger-soft:69 10 10;--info:56 189 248;--info-soft:8 47 73;
   --shadow-card:0 10px 30px rgba(0,0,0,.22);--scroll-track:10 15 26;--scroll-thumb:71 85 105;--skeleton-a:255 255 255;--skeleton-b:255 255 255;
 }
 :root[data-theme="light"]{

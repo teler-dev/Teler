@@ -217,7 +217,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
                 onClick={() => update('provider', p)}
                 className={`flex-1 min-h-10 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
                   settings.provider === p
-                    ? 'bg-accent-soft border-accent text-accent'
+                    ? 'bg-accent-soft border-accent text-primary'
                     : 'bg-surface-raised border-subtle text-secondary hover:border-accent hover:text-primary'
                 }`}
               >
@@ -230,7 +230,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
         {/* API Keys */}
         {settings.provider === 'openrouter' && (
           <div className="rounded-xl border border-accent bg-accent-soft px-3.5 py-3">
-            <p className="text-xs font-bold text-accent">Managed securely by TELER</p>
+            <p className="text-xs font-bold text-primary">Managed securely by TELER</p>
             <p className="text-[11px] text-secondary mt-1">
               The OpenRouter key is stored server-side in Vercel and is never exposed to this browser.
             </p>
