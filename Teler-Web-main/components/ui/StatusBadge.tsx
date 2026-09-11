@@ -39,7 +39,7 @@ export const StatusDot: React.FC<{ tone?: StatusTone; className?: string }> = ({
       tone === 'danger' && 'bg-danger',
       tone === 'info' && 'bg-info',
       tone === 'accent' && 'bg-accent',
-      tone === 'neutral' && 'bg-surface-hover',
+      tone === 'neutral' && 'bg-status-neutral',
       className,
     )}
   />

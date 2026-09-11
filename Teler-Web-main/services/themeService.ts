@@ -23,7 +23,7 @@ const SEMANTIC_CSS = `
 }
 html,body,#root{min-height:100%;background:rgb(var(--surface-page));color:rgb(var(--text-primary))}
 body{transition:background-color .15s ease,color .15s ease}
-.text-on-accent{color:rgb(var(--accent-contrast))}.bg-accent.text-white{color:rgb(var(--accent-contrast))!important}
+.text-on-accent{color:rgb(var(--accent-contrast))}.bg-accent.text-white{color:rgb(var(--accent-contrast))!important}.bg-status-neutral{background:rgb(var(--text-muted))}
 :where(input,select,textarea){background:rgb(var(--surface-input));color:rgb(var(--text-primary));border-color:rgb(var(--border-subtle));accent-color:rgb(var(--accent))}
 :where(input,select,textarea):hover:not(:disabled){border-color:rgb(var(--border-strong))}
 :where(input,select,textarea):focus-visible,:where(button,a,[role="button"]):focus-visible{outline:2px solid rgb(var(--focus-ring));outline-offset:2px}

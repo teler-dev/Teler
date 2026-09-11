@@ -32,15 +32,15 @@ const CustomTrendTooltip: React.FC<any> = ({ active, payload, label }) => {
   const score = payload[0].value;
   const cls = score != null ? classifyScore(score) : null;
   return (
-    <div className="bg-navy-800 border border-white/10 rounded-xl p-3 text-sm shadow-xl">
-      <p className="text-gray-400 mb-1">{label}</p>
+    <div className="bg-surface-card border border-subtle rounded-xl p-3 text-sm shadow-xl">
+      <p className="text-secondary mb-1">{label}</p>
       {score != null ? (
         <>
-          <p className="text-white font-bold text-base">{score}</p>
+          <p className="text-primary font-bold text-base">{score}</p>
           <p className={`text-xs font-semibold ${cls?.color}`}>{cls?.label}</p>
         </>
       ) : (
-        <p className="text-gray-500 italic">No sessions</p>
+        <p className="text-muted italic">No sessions</p>
       )}
     </div>
   );
@@ -49,30 +49,30 @@ const CustomTrendTooltip: React.FC<any> = ({ active, payload, label }) => {
 export const TrendChart: React.FC<{ sessions: Session[] }> = ({ sessions }) => {
   const data = buildTrendData(sessions);
   return (
-    <div className="bg-navy-800/60 border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-cyan-500/20 transition-colors">
+    <div className="bg-surface-card border border-subtle rounded-2xl p-6 flex flex-col gap-4 hover:border-strong transition-colors">
       <div>
-        <h3 className="text-white font-bold text-base">Productivity Trend</h3>
-        <p className="text-gray-500 text-xs mt-0.5">Overall score · Last 7 days</p>
+        <h3 className="text-primary font-bold text-base">Productivity Trend</h3>
+        <p className="text-muted text-xs mt-0.5">Overall score · Last 7 days</p>
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#13D6FF" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#13D6FF" stopOpacity={0} />
+              <stop offset="5%" stopColor="rgb(var(--accent))" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="rgb(var(--accent))" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-          <XAxis dataKey="date" tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-          <YAxis domain={[0, 100]} tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-          <Tooltip content={<CustomTrendTooltip />} cursor={{ stroke: 'rgba(19,214,255,0.15)', strokeWidth: 1 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-subtle))" vertical={false} />
+          <XAxis dataKey="date" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} axisLine={false} tickLine={false} />
+          <Tooltip content={<CustomTrendTooltip />} cursor={{ stroke: 'rgba(34,211,238,0.12)', strokeWidth: 1 }} />
           <Line
             type="monotone"
             dataKey="score"
-            stroke="#13D6FF"
+            stroke="rgb(var(--accent))"
             strokeWidth={2.5}
-            dot={{ fill: '#13D6FF', r: 4, strokeWidth: 0 }}
-            activeDot={{ r: 6, fill: '#3DF2FF', strokeWidth: 0 }}
+            dot={{ fill: 'rgb(var(--accent))', r: 4, strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: 'rgb(var(--accent-hover))', strokeWidth: 0 }}
             connectNulls={false}
           />
         </LineChart>
@@ -84,7 +84,7 @@ export const TrendChart: React.FC<{ sessions: Session[] }> = ({ sessions }) => {
 // ─────────────────────────────────────────────
 // Focus vs Idle donut
 // ─────────────────────────────────────────────
-const DONUT_COLORS = ['#13D6FF', '#1e3a8a', '#f59e0b'];
+const DONUT_COLORS = ['rgb(var(--accent))', 'rgb(var(--info))', 'rgb(var(--warning))'];
 
 export const FocusDonut: React.FC<{ sessions: Session[] }> = ({ sessions }) => {
   const filtered = sessions.slice(0, 20); // most recent
@@ -102,17 +102,17 @@ export const FocusDonut: React.FC<{ sessions: Session[] }> = ({ sessions }) => {
   const activePct = total > 0 ? Math.round((totalActive / total) * 100) : 0;
 
   const CustomLabel = ({ cx, cy }: any) => (
-    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill="white">
-      <tspan x={cx} dy="-6" fontSize="22" fontWeight="800" fill="#3DF2FF">{activePct}%</tspan>
-      <tspan x={cx} dy="20" fontSize="11" fill="#6B7280">Active</tspan>
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill="rgb(var(--text-primary))">
+      <tspan x={cx} dy="-6" fontSize="22" fontWeight="800" fill="rgb(var(--accent-hover))">{activePct}%</tspan>
+      <tspan x={cx} dy="20" fontSize="11" fill="rgb(var(--text-muted))">Active</tspan>
     </text>
   );
 
   return (
-    <div className="bg-navy-800/60 border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-cyan-500/20 transition-colors">
+    <div className="bg-surface-card border border-subtle rounded-2xl p-6 flex flex-col gap-4 hover:border-strong transition-colors">
       <div>
-        <h3 className="text-white font-bold text-base">Focus vs Idle</h3>
-        <p className="text-gray-500 text-xs mt-0.5">Time distribution · Recent sessions</p>
+        <h3 className="text-primary font-bold text-base">Focus vs Idle</h3>
+        <p className="text-muted text-xs mt-0.5">Time distribution · Recent sessions</p>
       </div>
       <ResponsiveContainer width="100%" height={180}>
         <PieChart>
@@ -132,7 +132,7 @@ export const FocusDonut: React.FC<{ sessions: Session[] }> = ({ sessions }) => {
             ))}
           </Pie>
           <Legend
-            formatter={(val: string) => <span style={{ color: '#9CA3AF', fontSize: '11px' }}>{val}</span>}
+            formatter={(val: string) => <span style={{ color: 'rgb(var(--text-secondary))', fontSize: '11px' }}>{val}</span>}
             iconType="circle"
             iconSize={8}
           />
@@ -144,7 +144,7 @@ export const FocusDonut: React.FC<{ sessions: Session[] }> = ({ sessions }) => {
             <div className="text-sm font-bold" style={{ color: DONUT_COLORS[i] }}>
               {Math.floor(d.value / 60) > 0 ? `${Math.floor(d.value / 60)}h ${d.value % 60}m` : `${d.value}m`}
             </div>
-            <div className="text-xs text-gray-500">{d.name}</div>
+            <div className="text-xs text-muted">{d.name}</div>
           </div>
         ))}
       </div>
@@ -160,9 +160,9 @@ const ScoreTooltip: React.FC<any> = ({ active, payload }) => {
   const score = payload[0].value;
   const cls = classifyScore(score);
   return (
-    <div className="bg-navy-800 border border-white/10 rounded-xl p-3 text-sm shadow-xl">
-      <p className="text-gray-400 mb-1">{payload[0].name}</p>
-      <p className="text-white font-bold">{score}</p>
+    <div className="bg-surface-card border border-subtle rounded-xl p-3 text-sm shadow-xl">
+      <p className="text-secondary mb-1">{payload[0].name}</p>
+      <p className="text-primary font-bold">{score}</p>
       <p className={`text-xs font-semibold ${cls.color}`}>{cls.label}</p>
     </div>
   );
@@ -172,7 +172,7 @@ export const ScoreComparison: React.FC<{ session: Session | null }> = ({ session
   if (!session) return null;
 
   const bars = [
-    { name: 'Focus',            key: 'focus_score',              value: session.focus_score,              color: '#13D6FF' },
+    { name: 'Focus',            key: 'focus_score',              value: session.focus_score,              color: 'rgb(var(--accent))' },
     { name: 'Workflow',         key: 'workflow_structure_score',  value: session.workflow_structure_score, color: '#818cf8' },
     { name: 'Tool Usage',       key: 'tool_usage_score',          value: session.tool_usage_score,         color: '#34d399' },
     { name: 'Context Switch',   key: 'context_switching_score',   value: session.context_switching_score,  color: '#f59e0b' },
@@ -180,19 +180,19 @@ export const ScoreComparison: React.FC<{ session: Session | null }> = ({ session
   ];
 
   return (
-    <div className="bg-navy-800/60 border border-white/8 rounded-2xl p-6 hover:border-cyan-500/20 transition-colors">
+    <div className="bg-surface-card border border-subtle rounded-2xl p-6 hover:border-strong transition-colors">
       <div className="mb-4">
-        <h3 className="text-white font-bold text-base">Score Breakdown</h3>
-        <p className="text-gray-500 text-xs mt-0.5">
+        <h3 className="text-primary font-bold text-base">Score Breakdown</h3>
+        <p className="text-muted text-xs mt-0.5">
           Session · {new Date(session.session_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={bars} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={true} vertical={false} />
-          <XAxis dataKey="name" tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-          <YAxis domain={[0, 100]} tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-          <Tooltip content={<ScoreTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-subtle))" horizontal={true} vertical={false} />
+          <XAxis dataKey="name" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} axisLine={false} tickLine={false} />
+          <Tooltip content={<ScoreTooltip />} cursor={{ fill: 'rgba(34,211,238,0.08)' }} />
           <Bar dataKey="value" radius={[6, 6, 0, 0]}>
             {bars.map((b, i) => <Cell key={i} fill={b.color} opacity={0.85} />)}
           </Bar>

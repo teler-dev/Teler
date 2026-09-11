@@ -1,7 +1,7 @@
 import React from 'react';
 import { cx } from './Surface';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accentSoft';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,6 +16,7 @@ const variantClass: Record<ButtonVariant, string> = {
   outline: 'bg-transparent text-primary border border-subtle hover:bg-surface-raised hover:border-strong',
   ghost: 'bg-transparent text-secondary border border-transparent hover:bg-surface-raised hover:text-primary',
   danger: 'bg-danger-soft text-danger border border-danger hover:bg-surface-hover',
+  accentSoft: 'bg-accent-soft text-accent border border-accent hover:bg-surface-hover',
 };
 
 const sizeClass: Record<ButtonSize, string> = {

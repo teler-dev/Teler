@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ArrowRight, Check, ShieldCheck, Lock, User, Mail } from 'lucide-react';
 import { TelerIcon } from './components/ui/TelerIcon';
@@ -120,14 +119,8 @@ const Navbar: React.FC<{
 const LoginPage: React.FC<{ onBack: () => void; onDashboard: (user: string) => void }> = ({ onBack, onDashboard }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const getBarHeight = (index: number) => {
-    const heights = ['h-5', 'h-3.5', 'h-2'];
-    return heights[index % 3];
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,43 +173,18 @@ const LoginPage: React.FC<{ onBack: () => void; onDashboard: (user: string) => v
             <div className="space-y-1.5">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Password</label>
-                <button type="button" className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-wider transition-colors">Forgot password?</button>
+                <button type="button" className="text-[10px] text-cyan-300/90 hover:text-cyan-200 font-bold uppercase tracking-wider transition-colors">Forgot password?</button>
               </div>
 
-              <div className="relative group min-h-[50px]">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-cyan-400 transition-colors z-20" />
-
-                <div className="absolute inset-0 flex items-center pl-11 pr-4 pointer-events-none z-10">
-                  <div className="flex items-center gap-[3px]">
-                    {password.length > 0 ? (
-                      password.split('').map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-[3px] bg-cyan-400 rounded-full transition-all duration-300 ${getBarHeight(i)} drop-shadow-[0_0_8px_rgba(19,214,255,0.6)] animate-signal-sweep`}
-                        />
-                      ))
-                    ) : (
-                      [...Array(8)].map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-[3px] bg-white/10 rounded-full transition-all duration-300 ${getBarHeight(i)}`}
-                        />
-                      ))
-                    )}
-                    {isFocused && (
-                      <div className="w-[1.5px] h-4 bg-cyan-400 ml-1 animate-pulse" />
-                    )}
-                  </div>
-                </div>
-
+              <div className="relative group">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-cyan-300 transition-colors" />
                 <input
                   type="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  className="w-full bg-navy-900 border border-white/10 focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/5 outline-none rounded-xl py-3.5 pl-11 pr-4 transition-all text-transparent selection:bg-cyan-500/30"
+                  placeholder="Enter your password"
+                  className="w-full bg-navy-900 border border-white/10 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/10 outline-none rounded-xl py-3.5 pl-11 pr-4 transition-all text-white placeholder:text-gray-600"
                 />
               </div>
             </div>

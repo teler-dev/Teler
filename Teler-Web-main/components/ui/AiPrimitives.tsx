@@ -70,7 +70,14 @@ export const AiComposer: React.FC<AiComposerProps> = ({
     />
     <div className="flex items-center justify-between gap-3 mt-2">
       <div>{leadingAction}</div>
-      <Button size="sm" onClick={onSend} disabled={!value.trim() || disabled} aria-label="Send to TELER AI">
+      <Button
+        size="sm"
+        variant={compact ? 'accentSoft' : 'primary'}
+        onClick={onSend}
+        disabled={!value.trim() || disabled}
+        aria-label="Send to TELER AI"
+        className={compact ? 'w-10 px-0' : undefined}
+      >
         <Send className="w-4 h-4" />
         {!compact && 'Send'}
       </Button>
