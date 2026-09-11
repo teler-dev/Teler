@@ -20,8 +20,9 @@ describe('normalized v1 session sync', () => {
     const { OPENAI_MODELS } = await import('./aiAgentService');
     expect(OPENAI_MODELS).toEqual([{ value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' }]);
 
-    const { isFreeOpenRouterModel, isSupportedOpenAiModel } = await import('../api/ai');
+    const { FREE_OPENROUTER_FALLBACK_MODEL, isFreeOpenRouterModel, isSupportedOpenAiModel } = await import('../api/ai');
     expect(isFreeOpenRouterModel('google/gemma-4-26b-a4b-it:free')).toBe(true);
+    expect(isFreeOpenRouterModel(FREE_OPENROUTER_FALLBACK_MODEL)).toBe(true);
     expect(isSupportedOpenAiModel('openai/gpt-4o-mini')).toBe(true);
     expect(isSupportedOpenAiModel('gpt-4o')).toBe(false);
   });

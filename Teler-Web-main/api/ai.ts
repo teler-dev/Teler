@@ -6,6 +6,10 @@ const MAX_CONTEXT_BYTES = 750_000;
 const MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]{1,160}$/i;
 const FREE_OPENROUTER_MODEL_PATTERN = /:free$/i;
 const OPENAI_MODEL = 'openai/gpt-4o-mini';
+// Free-provider capacity changes frequently. Keep one current free model as a
+// server-side fallback so a temporarily saturated selected model does not make
+// the dashboard AI unavailable.
+export const FREE_OPENROUTER_FALLBACK_MODEL = 'nvidia/nemotron-3.5-lightning:free';
 
 export function isFreeOpenRouterModel(model: string): boolean {
   return MODEL_ID_PATTERN.test(model) && FREE_OPENROUTER_MODEL_PATTERN.test(model);
@@ -172,29 +176,48 @@ export default {
 
       const upstreamProvider = useDirectOpenAi ? 'openai' : 'openrouter';
       const upstreamModel = useDirectOpenAi ? 'gpt-4o-mini' : model;
-      const response = await fetch(`${upstreamProvider === 'openai' ? OPENAI_BASE : OPENROUTER_BASE}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          ...(upstreamProvider === 'openrouter' ? { 'HTTP-Referer': appOrigin, 'X-Title': 'TELER Dashboard' } : {}),
+      const complete = (modelId: string) => fetch(
+        `${upstreamProvider === 'openai' ? OPENAI_BASE : OPENROUTER_BASE}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            ...(upstreamProvider === 'openrouter' ? { 'HTTP-Referer': appOrigin, 'X-Title': 'TELER Dashboard' } : {}),
+          },
+          body: JSON.stringify({
+            model: modelId,
+            temperature,
+            max_tokens: maxTokens,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              {
+                role: 'system',
+                content: `Workforce telemetry context (JSON):\n${JSON.stringify(preparedContext, null, 2)}`,
+              },
+              { role: 'user', content: question },
+            ],
+          }),
+          signal: AbortSignal.timeout(45_000),
         },
-        body: JSON.stringify({
-          model: upstreamModel,
-          temperature,
-          max_tokens: maxTokens,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            {
-              role: 'system',
-              content: `Workforce telemetry context (JSON):\n${JSON.stringify(preparedContext, null, 2)}`,
-            },
-            { role: 'user', content: question },
-          ],
-        }),
-        signal: AbortSignal.timeout(45_000),
-      });
-      const payload = await readProviderBody(response);
+      );
+
+      let resolvedModel = upstreamModel;
+      let response = await complete(resolvedModel);
+      let payload = await readProviderBody(response);
+      if (
+        response.status === 429
+        && provider === 'openrouter'
+        && resolvedModel !== FREE_OPENROUTER_FALLBACK_MODEL
+      ) {
+        console.warn('OpenRouter free model is rate limited; retrying with fallback', {
+          model: resolvedModel,
+          fallback: FREE_OPENROUTER_FALLBACK_MODEL,
+        });
+        resolvedModel = FREE_OPENROUTER_FALLBACK_MODEL;
+        response = await complete(resolvedModel);
+        payload = await readProviderBody(response);
+      }
       if (!response.ok) {
         console.error(`${provider} error`, response.status, providerError(payload, response.statusText));
         return noStoreJson(
@@ -214,7 +237,7 @@ export default {
         : '';
       const saved = await backendJson('/api/v1/ai-analyses', {
         method: 'POST',
-        body: JSON.stringify({ question, answer: content, provider, model, sources, session_id: sessionId }),
+        body: JSON.stringify({ question, answer: content, provider, model: resolvedModel, sources, session_id: sessionId }),
       }, session.token);
       if (!saved.response.ok) return noStoreJson({ error: typeof saved.body.error === 'string' ? saved.body.error : 'Unable to save AI analysis' }, 502);
       return noStoreJson({ answer: content, analysis: saved.body.data });

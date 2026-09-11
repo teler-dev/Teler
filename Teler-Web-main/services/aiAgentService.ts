@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS: AiSettings = {
 
 export const OPENROUTER_MODELS = [
   { value: 'google/gemma-4-26b-a4b-it:free',        label: 'Gemma 4 26B A4B (Free) — Recommended' },
+  { value: 'nvidia/nemotron-3.5-lightning:free', label: 'Nemotron 3.5 Lightning (Free)' },
   { value: 'nvidia/nemotron-3-nano-30b-a3b:free', label: 'Nemotron 3 Nano 30B (Free)' },
 ];
 
