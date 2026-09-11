@@ -648,9 +648,17 @@ class MainWindow(QMainWindow):
     def _reconcile_current(self, session):
         if session is None:
             if self.tracker.is_tracking and not self._pending_action:
-                self._out_of_sync = True
-                self._style_status("warning")
-                self._show_action_error("Session may be out of sync: local tracking is active but the server has no active session. Retry or stop from another TELER client.")
+                # Another TELER client can legitimately stop a server-owned
+                # session.  Keep the server authoritative: finish the local
+                # capture safely instead of leaving this desktop locked in an
+                # unrecoverable warning state.
+                self._server_session = None
+                self._server_sync_monotonic = time.monotonic()
+                self._out_of_sync = False
+                self._show_action_error("Session ended from another TELER client. Finishing local capture…")
+                self._start_local_stop()
+                self._apply_state("saved")
+                self.saved_timer.start(1400)
                 return
             self._server_session = None
             self._server_sync_monotonic = time.monotonic()
