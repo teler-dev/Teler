@@ -133,17 +133,17 @@ class MainWindow(QMainWindow):
             QWidget#statusPill {{ background: rgba(138,144,166,0.08); border: 1px solid rgba(255,255,255,0.08); border-radius: 13px; }}
             QLabel#statusDot {{ color: #8A90A6; background: transparent; border: 0; font-size: 10px; }}
             QLabel#statusText {{ color: #B1B6C8; background: transparent; border: 0; font-size: 11px; font-weight: 650; }}
-            QLabel#timer {{ color: {TEXT}; font-size: 38px; font-weight: 700; letter-spacing: 1.6px; background: transparent; border: 0; }}
-            QLabel#stateHint {{ color: {MUTED}; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; background: transparent; border: 0; }}
-            QWidget#timerPanel {{ background: #090C16; border: 1px solid rgba(255,255,255,0.10); border-radius: 18px; }}
+            QLabel#timer {{ color: {TEXT}; font-size: 34px; font-weight: 800; letter-spacing: 2px; background: transparent; border: 0; }}
+            QLabel#stateHint {{ color: {MUTED}; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; background: transparent; border: 0; }}
+            QWidget#timerPanel {{ background: #090C16; border: 1px solid rgba(255,255,255,0.12); border-radius: 15px; }}
             QLabel#error {{ color: #F6A6AE; font-size: 10px; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 8px; padding: 6px 8px; }}
             QComboBox {{ background: {INPUT}; border: 1px solid rgba(255,255,255,0.09); border-radius: 11px; padding: 9px 12px; color: {TEXT}; font-size: 12px; }}
             QComboBox:disabled {{ color: #A4A9B8; background: #10131E; }}
-            QPushButton#primary {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #6A6EFF, stop:1 #5155E8); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 11px 16px; color: white; font-size: 12px; font-weight: 750; }}
+            QPushButton#primary {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #6A6EFF, stop:1 #5155E8); border: 1px solid rgba(255,255,255,0.16); border-radius: 10px; padding: 8px 14px; color: white; font-size: 12px; font-weight: 750; }}
             QPushButton#primary:hover {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #777BFF, stop:1 #5B5FEF); border-color: rgba(255,255,255,0.24); }}
             QPushButton#primary:pressed {{ background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #5559EC, stop:1 #474BD3); padding-top: 12px; padding-bottom: 10px; }}
             QPushButton#primary:disabled {{ background: #34384E; color: #777D93; }}
-            QPushButton#secondary {{ background: transparent; border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; padding: 10px 15px; color: #D6D9E6; font-size: 12px; font-weight: 650; }}
+            QPushButton#secondary {{ background: transparent; border: 1px solid rgba(255,255,255,0.13); border-radius: 10px; padding: 8px 14px; color: #D6D9E6; font-size: 12px; font-weight: 650; }}
             QPushButton#secondary:hover {{ border-color: rgba(112,116,255,0.7); color: white; background: rgba(91,95,239,0.07); }}
             QPushButton#secondary:pressed {{ background: rgba(91,95,239,0.12); border-color: rgba(112,116,255,0.85); padding-top: 11px; padding-bottom: 9px; }}
             QPushButton#secondary:disabled {{ border-color: rgba(255,255,255,0.06); color: #565B70; background: rgba(255,255,255,0.015); }}
@@ -159,14 +159,15 @@ class MainWindow(QMainWindow):
         self.role_dropdown.addItem(self._job_role.replace("_", " ").title())
         self.role_dropdown.setEnabled(False)
         self.role_dropdown.setToolTip("Role is assigned to your account and can only be changed by an administrator")
-        self.role_dropdown.setMinimumHeight(42)
+        self.role_dropdown.setMinimumHeight(36)
+        self.role_dropdown.setMaximumWidth(280)
 
         self.start_button = QPushButton("▶  Start Tracking", objectName="primary")
         self.pause_button = QPushButton("Ⅱ  Pause", objectName="secondary")
         self.stop_button = QPushButton("■  Stop Tracking", objectName="secondary")
         self._button_effects = {}
         for button in (self.start_button, self.pause_button, self.stop_button):
-            button.setMinimumHeight(44)
+            button.setMinimumHeight(38)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             effect = QGraphicsDropShadowEffect(button)
             effect.setOffset(0, 4)
@@ -179,18 +180,19 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(False)
 
         self.timer_label = QLabel("00:00:00", objectName="timer")
-        timer_font = QFont("SF Mono")
+        timer_font = QFont("Consolas")
         timer_font.setStyleHint(QFont.StyleHint.Monospace)
-        timer_font.setPointSize(29)
+        timer_font.setPointSize(26)
         timer_font.setWeight(QFont.Weight.Bold)
+        timer_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.5)
         self.timer_label.setFont(timer_font)
         self.timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.timer_label.setMinimumHeight(78)
+        self.timer_label.setMinimumHeight(50)
         self.timer_text_effect = None
 
         self.state_hint = QLabel("Ready to track", objectName="stateHint")
         self.state_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.state_hint.setMinimumHeight(18)
+        self.state_hint.setMinimumHeight(14)
         self.state_hint_effect = None
 
         self.status_pill = QWidget(objectName="statusPill")
@@ -226,7 +228,7 @@ class MainWindow(QMainWindow):
         master_card.setMaximumWidth(760)
         master_layout = QVBoxLayout(master_card)
         master_layout.setContentsMargins(20, 18, 20, 20)
-        master_layout.setSpacing(14)
+        master_layout.setSpacing(10)
 
         header = QHBoxLayout()
         header.setSpacing(10)
@@ -252,11 +254,11 @@ class MainWindow(QMainWindow):
         master_layout.addWidget(header_divider)
 
         role_section = QWidget()
-        role_layout = QVBoxLayout(role_section)
+        role_layout = QHBoxLayout(role_section)
         role_layout.setContentsMargins(0, 0, 0, 0)
-        role_layout.setSpacing(8)
+        role_layout.setSpacing(12)
         role_layout.addWidget(QLabel("Assigned role", objectName="sectionTitle"))
-        role_layout.addWidget(QLabel("Your role is managed by your TELER workspace administrator.", objectName="muted"))
+        role_layout.addStretch()
         role_layout.addWidget(self.role_dropdown)
         master_layout.addWidget(role_section)
 
@@ -281,7 +283,7 @@ class MainWindow(QMainWindow):
 
         controls_module = QWidget()
         controls_module.setMaximumWidth(520)
-        controls_module.setMinimumWidth(440)
+        controls_module.setMinimumWidth(380)
         controls_module_layout = QVBoxLayout(controls_module)
         controls_module_layout.setContentsMargins(0, 0, 0, 0)
         controls_module_layout.setSpacing(10)
@@ -289,20 +291,24 @@ class MainWindow(QMainWindow):
         timer_panel = QWidget(objectName="timerPanel")
         self.timer_panel = timer_panel
         self.timer_panel_effect = QGraphicsDropShadowEffect(timer_panel)
-        timer_panel.setMinimumHeight(146)
+        # Keep the timer and controls in separate vertical bands.  Without an
+        # explicit module height, Qt can compress this layout below the sum of
+        # its children and paint the action buttons over the timer panel.
+        timer_panel.setFixedHeight(96)
         timer_panel_layout = QVBoxLayout(timer_panel)
-        timer_panel_layout.setContentsMargins(20, 18, 20, 18)
-        timer_panel_layout.setSpacing(6)
+        timer_panel_layout.setContentsMargins(20, 8, 20, 8)
+        timer_panel_layout.setSpacing(2)
         timer_panel_layout.addWidget(self.timer_label)
         timer_panel_layout.addWidget(self.state_hint)
         controls_module_layout.addWidget(timer_panel)
 
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(8)
+        button_layout.setSpacing(12)
         button_layout.addWidget(self.start_button, 1)
         button_layout.addWidget(self.pause_button, 1)
         button_layout.addWidget(self.stop_button, 1)
         controls_module_layout.addLayout(button_layout)
+        controls_module.setFixedHeight(144)
 
         controls_center_row = QHBoxLayout()
         controls_center_row.setContentsMargins(24, 0, 24, 0)
@@ -369,6 +375,8 @@ class MainWindow(QMainWindow):
             self.session_client.succeeded.connect(self._session_succeeded)
             self.session_client.failed.connect(self._session_failed)
             self.session_client.retrying.connect(self._session_retrying)
+            self.session_client.screenshot_uploaded.connect(self._screenshot_uploaded)
+            self.session_client.screenshot_failed.connect(self._screenshot_upload_failed)
 
         self.ui_timer = QTimer(self)
         self.ui_timer.setInterval(1000)
@@ -382,6 +390,10 @@ class MainWindow(QMainWindow):
         self.report_poll.setInterval(30000)
         self.report_poll.timeout.connect(lambda: self.session_client and self.session_client.list_sessions())
         self.report_poll.start()
+        self.screenshot_upload_poll = QTimer(self)
+        self.screenshot_upload_poll.setInterval(2000)
+        self.screenshot_upload_poll.timeout.connect(self._upload_pending_screenshots)
+        self.screenshot_upload_poll.start()
         self.saved_timer = QTimer(self)
         self.saved_timer.setSingleShot(True)
         self.saved_timer.timeout.connect(lambda: self._apply_state("idle"))
@@ -607,6 +619,7 @@ class MainWindow(QMainWindow):
     def _ensure_local_tracker(self, session):
         status = session.get("status")
         role = session.get("role_at_time") or self._job_role
+        self.tracker.set_server_session_id(session.get("id"))
         if not self.tracker.is_tracking:
             self.tracker.set_metadata(role, "")
             self.tracker.start()
@@ -614,6 +627,23 @@ class MainWindow(QMainWindow):
             self.tracker.pause()
         elif status == "running" and self.tracker.paused:
             self.tracker.resume()
+
+    def _upload_pending_screenshots(self):
+        if not self.session_client:
+            return
+        for screenshot in self.tracker.claim_pending_screenshots(limit=2):
+            self.session_client.upload_screenshot(screenshot)
+
+    def _screenshot_uploaded(self, screenshot, server_record):
+        self.tracker.mark_screenshot_uploaded(
+            screenshot.get("screenshot_path"),
+            str(server_record.get("storage_path") or "uploaded"),
+            server_record.get("id"),
+        )
+
+    def _screenshot_upload_failed(self, screenshot, _message):
+        # The capture stays on disk and is retried by the next polling cycle.
+        self.tracker.mark_screenshot_upload_failed(screenshot.get("screenshot_path"))
 
     def _reconcile_current(self, session):
         if session is None:
@@ -800,5 +830,6 @@ class MainWindow(QMainWindow):
         self.ui_timer.stop()
         self.current_poll.stop()
         self.report_poll.stop()
+        self.screenshot_upload_poll.stop()
         self._stop_status_pulse()
         event.accept()

@@ -163,6 +163,9 @@ class ActivityTracker:
         self.session_logs = []
         self.ai_logs = []
         self._snapshots = []
+        self._pending_screenshots = []
+        self._uploading_screenshot_paths = set()
+        self.server_session_id = ""
         self._ks_timestamps = []
         self._last_ocr_hash = None
         self._modifiers_down = set()
@@ -175,6 +178,46 @@ class ActivityTracker:
         self.employee_id = self.account_employee_id or resolve_employee_id(self.role)
         self.employee_uid = f"{self.company_id}_{self.employee_id}"
         self.ai_logs.append({"timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "event": "Role/Task Changed", "role": self.role, "task": self.task})
+
+    def set_server_session_id(self, session_id):
+        """Associate newly captured screenshots with the server-authoritative session."""
+        with self.lock:
+            self.server_session_id = str(session_id or "")
+
+    def claim_pending_screenshots(self, limit=2):
+        """Return captures that may be uploaded now, marking them in-flight safely."""
+        with self.lock:
+            claimed = []
+            for snapshot in self._pending_screenshots:
+                filepath = snapshot.get("screenshot_path")
+                if not filepath or filepath in self._uploading_screenshot_paths:
+                    continue
+                self._uploading_screenshot_paths.add(filepath)
+                claimed.append(dict(snapshot))
+                if len(claimed) >= limit:
+                    break
+            return claimed
+
+    def mark_screenshot_uploaded(self, local_path, storage_path, screenshot_id=None):
+        """Keep only server metadata after a confirmed upload; the local image is removed."""
+        with self.lock:
+            self._uploading_screenshot_paths.discard(local_path)
+            self._pending_screenshots = [item for item in self._pending_screenshots if item.get("screenshot_path") != local_path]
+            for snapshot in self._snapshots:
+                if snapshot.get("screenshot_path") == local_path:
+                    snapshot["screenshot_path"] = storage_path
+                    snapshot["screenshot_id"] = screenshot_id
+                    snapshot["uploaded"] = True
+                    break
+        try:
+            if local_path and os.path.isfile(local_path):
+                os.remove(local_path)
+        except OSError as error:
+            print(f"[Tracker] Uploaded screenshot cleanup error: {error}")
+
+    def mark_screenshot_upload_failed(self, local_path):
+        with self.lock:
+            self._uploading_screenshot_paths.discard(local_path)
 
     def set_idle_threshold(self, seconds): self.idle_threshold = int(seconds)
     def set_screenshot_interval(self, seconds): self.screenshot_interval = max(10, int(seconds))
@@ -284,7 +327,7 @@ class ActivityTracker:
         self._camera_folder = os.path.join("camera_report", self.today); os.makedirs(self._camera_folder, exist_ok=True)
         self.is_tracking = self.running = True; self.paused = False; self._stop_event.clear()
         self.key_count = self.click_count = self.idle_seconds = self.idle_accumulated = self._window_switches = 0
-        self._last_window = ""; self.last_input_time = time.time(); self.session_logs = []; self.ai_logs = []; self._snapshots = []; self._ks_timestamps = []
+        self._last_window = ""; self.last_input_time = time.time(); self.session_logs = []; self.ai_logs = []; self._snapshots = []; self._pending_screenshots = []; self._uploading_screenshot_paths = set(); self._ks_timestamps = []
         self._minute_anchor = None; self._minute_buffer = []; self._last_ocr_hash = None; self.last_ocr_snippet = ""; self.active_url = ""
         self.screenshots_taken = self.snapshots_taken = 0; self.end_time = None
         self._write_master("in_progress")
@@ -384,7 +427,11 @@ class ActivityTracker:
                                 except Exception as fe: print(f"[Tracker] OCR append error: {fe}")
                             self._last_ocr_hash = text_hash
                     else: snapshot_entry["screenshot_type"] = "duplicate"
-                with self.lock: self._snapshots.append(snapshot_entry)
+                with self.lock:
+                    self._snapshots.append(snapshot_entry)
+                    if self.server_session_id:
+                        snapshot_entry["server_session_id"] = self.server_session_id
+                        self._pending_screenshots.append(snapshot_entry)
             except Exception as e: print(f"[Tracker] Screenshot error: {e}")
             for _ in range(self.screenshot_interval):
                 if self._stop_event.is_set() or self.paused: break

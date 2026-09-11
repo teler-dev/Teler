@@ -5,7 +5,7 @@ const express = require('express');
 const { getPool } = require('./db');
 const { createUserSessionMiddleware } = require('./auth');
 const { createIngestionRouter } = require('./modules/ingestion');
-const { createSessionsRouter, createTrackingSessionsRouter } = require('./modules/v1-sessions');
+const { createSessionsRouter, createTrackingSessionsRouter, createScreenshotsRouter } = require('./modules/v1-sessions');
 const { createAnalyticsRouter } = require('./modules/v1-analytics');
 const { createAlertsRouter, createAlertRulesRouter } = require('./modules/v1-alerts');
 const { createDirectoryRouter } = require('./modules/v1-directory');
@@ -74,6 +74,7 @@ v1.use('/tracking-sessions', userSession, createTrackingSessionsRouter(express))
 v1.use('/ingest', requireBearer(SYNC_TOKEN), createIngestionRouter(express));
 v1.use('/', requireBearer(API_TOKEN), createDirectoryRouter(express));
 v1.use('/sessions', requireBearer(API_TOKEN), createSessionsRouter(express));
+v1.use('/screenshots', requireBearer(API_TOKEN), createScreenshotsRouter(express));
 v1.use('/analytics', requireBearer(API_TOKEN), createAnalyticsRouter(express));
 v1.use('/alerts', requireBearer(API_TOKEN), createAlertsRouter(express));
 v1.use('/alert-rules', requireBearer(API_TOKEN), createAlertRulesRouter(express));

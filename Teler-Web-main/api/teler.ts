@@ -19,6 +19,7 @@ const ALLOWED_PATHS = [
   /^\/api\/v1\/devices\/[^/]+$/,
   /^\/api\/v1\/sessions$/,
   /^\/api\/v1\/sessions\/[^/]+$/,
+  /^\/api\/v1\/screenshots\/[^/]+\/content$/,
   /^\/api\/v1\/analytics\/company\/[^/]+\/daily$/,
   /^\/api\/v1\/analytics\/employee\/[^/]+\/trends$/,
   /^\/api\/v1\/alerts$/,

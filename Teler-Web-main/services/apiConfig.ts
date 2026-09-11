@@ -33,6 +33,8 @@ export function apiUrl(path: string): string {
  * The browser automatically sends the same-origin HttpOnly session cookie.
  */
 export function screenshotUrl(absolutePath: string): string {
+  // v1 screenshot links are protected API routes, not filesystem locations.
+  if (absolutePath.startsWith('/api/')) return apiUrl(absolutePath);
   const params = new URLSearchParams({ path: absolutePath });
   return apiUrl(`/screenshots?${params.toString()}`);
 }

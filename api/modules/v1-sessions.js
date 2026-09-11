@@ -1,7 +1,27 @@
 'use strict';
 
 const crypto = require('crypto');
+const fs = require('fs/promises');
+const path = require('path');
 const { getPool, withTransaction } = require('../db');
+
+const DATA_ROOT = path.resolve(process.env.DATA_ROOT || (process.platform === 'win32'
+  ? path.join(process.cwd(), 'data')
+  : '/opt/teler/data'));
+
+function safeUploadId(value) {
+  const normalized = String(value || '').trim();
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$/.test(normalized) ? normalized : crypto.randomUUID();
+}
+
+function decodeMetadataHeader(value, maxLength = 500) {
+  if (!value) return '';
+  try {
+    return Buffer.from(String(value), 'base64url').toString('utf8').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, maxLength);
+  } catch {
+    return '';
+  }
+}
 
 function secondsBetween(a, b) {
   return Math.max(0, Math.floor((new Date(b).getTime() - new Date(a).getTime()) / 1000));
@@ -87,6 +107,58 @@ function serializeTrackingSession(row, timing, events) {
 
 function createTrackingSessionsRouter(express) {
   const router = express.Router();
+
+  // A capture is a raw PNG so it never enters the JSON parser. The client event
+  // id becomes the filename, making network retries idempotent.
+  router.post('/:id/screenshots', express.raw({ type: ['image/png', 'image/jpeg'], limit: '20mb' }), async (req, res) => {
+    const contentType = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
+    if (!['image/png', 'image/jpeg'].includes(contentType) || !Buffer.isBuffer(req.body) || !req.body.length) {
+      return res.status(400).json({ error: 'A PNG or JPEG screenshot is required' });
+    }
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database is not configured' });
+
+    const eventId = safeUploadId(req.headers['x-client-event-id']);
+    const extension = contentType === 'image/jpeg' ? 'jpg' : 'png';
+    try {
+      const session = await pool.query(
+        `select id,organization_id from app.work_sessions where id=$1 and user_profile_id=$2 limit 1`,
+        [req.params.id, req.authUser.id]
+      );
+      if (!session.rowCount) return res.status(404).json({ error: 'Session not found' });
+
+      const row = session.rows[0];
+      const storagePath = path.posix.join('screenshots', row.organization_id, row.id, `${eventId}.${extension}`);
+      const destination = path.resolve(DATA_ROOT, storagePath);
+      if (!destination.startsWith(`${DATA_ROOT}${path.sep}`)) return res.status(400).json({ error: 'Invalid screenshot destination' });
+
+      await fs.mkdir(path.dirname(destination), { recursive: true });
+      try {
+        await fs.access(destination);
+      } catch {
+        const temporary = `${destination}.${crypto.randomUUID()}.uploading`;
+        await fs.writeFile(temporary, req.body, { mode: 0o600 });
+        await fs.rename(temporary, destination);
+      }
+
+      const capturedAt = new Date(String(req.headers['x-captured-at'] || Date.now()));
+      const metadata = await pool.query(
+        `insert into app.screenshots
+          (organization_id,session_id,storage_path,active_window,active_app,captured_at)
+         values ($1,$2,$3,$4,$5,$6)
+         on conflict (organization_id,storage_path) do update set storage_path=excluded.storage_path
+         returning id,storage_path,captured_at`,
+        [row.organization_id, row.id, storagePath,
+         decodeMetadataHeader(req.headers['x-active-window']),
+         decodeMetadataHeader(req.headers['x-active-app']),
+         Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt]
+      );
+      return res.status(201).json({ data: metadata.rows[0] });
+    } catch (error) {
+      console.error('[tracking/screenshot-upload]', error.message);
+      return res.status(500).json({ error: 'Unable to save screenshot' });
+    }
+  });
 
   router.get('/current', async (req, res) => {
     const pool = getPool();
@@ -232,7 +304,8 @@ function createTrackingSessionsRouter(express) {
         const updated = await client.query(
           `update app.work_sessions
               set tracking_status=$3,status=$4,ended_at=coalesce($5,ended_at),
-                  total_duration_seconds=$6,total_paused_seconds=$7,total_minutes=$6::numeric/60
+                  total_duration_seconds=$6::bigint,total_paused_seconds=$7::bigint,
+                  total_minutes=($6::bigint::numeric/60),updated_at=now()
             where organization_id=$1 and id=$2 returning *`,
           [row.organization_id, row.id, nextStatus, lifecycle, endedAt,
            timing.total_duration_seconds, timing.total_paused_seconds]
@@ -276,8 +349,22 @@ function createSessionsRouter(express) {
         from app.work_sessions ws join app.employees e on e.organization_id=ws.organization_id and e.id=ws.employee_id
         left join app.session_metrics sm on sm.organization_id=ws.organization_id and sm.session_id=ws.id
         where ${filters.join(' and ')} order by ws.started_at desc limit $${values.length-1} offset $${values.length}`, values);
+      const sessionIds = rows.rows.map(row => row.id);
+      const screenshots = sessionIds.length ? await pool.query(
+        `select id,session_id,captured_at from app.screenshots
+          where organization_id=$1 and session_id = any($2::uuid[])
+          order by captured_at asc`,
+        [organizationId, sessionIds]
+      ) : { rows: [] };
+      const screenshotsBySession = new Map();
+      for (const screenshot of screenshots.rows) {
+        const existing = screenshotsBySession.get(screenshot.session_id) || [];
+        existing.push(screenshot);
+        screenshotsBySession.set(screenshot.session_id, existing);
+      }
+      const data = rows.rows.map(row => ({ ...row, screenshots: screenshotsBySession.get(row.id) || [] }));
       const total = await pool.query(`select count(*)::int as count from app.work_sessions ws where ${filters.join(' and ')}`, values.slice(0, values.length - 2));
-      res.json({ data: rows.rows, pagination: { limit, offset, total: total.rows[0].count } });
+      res.json({ data, pagination: { limit, offset, total: total.rows[0].count } });
     } catch (error) { console.error('[v1/sessions]', error.message); res.status(500).json({ error: 'Unable to load sessions' }); }
   });
   router.get('/:id', async (req, res) => {
@@ -299,4 +386,28 @@ function createSessionsRouter(express) {
   return router;
 }
 
-module.exports = { createSessionsRouter, createTrackingSessionsRouter, deriveTiming };
+function createScreenshotsRouter(express) {
+  const router = express.Router();
+  router.get('/:id/content', async (req, res) => {
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database is not configured' });
+    try {
+      const result = await pool.query('select storage_path from app.screenshots where id=$1 limit 1', [req.params.id]);
+      if (!result.rowCount) return res.status(404).json({ error: 'Screenshot not found' });
+      const storagePath = String(result.rows[0].storage_path || '');
+      const filePath = path.resolve(DATA_ROOT, storagePath);
+      if (!filePath.startsWith(`${DATA_ROOT}${path.sep}`)) return res.status(400).json({ error: 'Invalid screenshot path' });
+      await fs.access(filePath);
+      res.set('Cache-Control', 'private, no-store');
+      res.type(path.extname(filePath) === '.jpg' ? 'image/jpeg' : 'image/png');
+      return res.sendFile(filePath);
+    } catch (error) {
+      if (error && error.code === 'ENOENT') return res.status(404).json({ error: 'Screenshot file not found' });
+      console.error('[screenshots/content]', error.message);
+      return res.status(500).json({ error: 'Unable to load screenshot' });
+    }
+  });
+  return router;
+}
+
+module.exports = { createSessionsRouter, createTrackingSessionsRouter, createScreenshotsRouter, deriveTiming };

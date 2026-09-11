@@ -6,6 +6,7 @@ const DEFAULT_ORGANIZATION_KEY = (import.meta.env.VITE_ORGANIZATION_KEY || 'COMP
 interface ApiEnvelope<T> { data: T; pagination?: { limit:number; offset:number; total:number } }
 interface V1Company { id:string; external_key?:string|null; slug:string; name:string; status:string }
 interface V1Employee { id:string; external_key:string; display_name:string; job_role:string; status:string }
+interface V1Screenshot { id:string; session_id:string; captured_at?:string|null }
 interface V1SessionRow {
   id:string;
   external_session_id:string;
@@ -22,6 +23,7 @@ interface V1SessionRow {
   app_switch_count?:number|string|null;
   key_count?:number|string|null;
   mouse_clicks?:number|string|null;
+  screenshots?:V1Screenshot[];
 }
 export interface V1PersistedAlert {
   id:string;
@@ -53,6 +55,10 @@ const numberOr=(value:unknown,fallback=0):number=>{
   const parsed=typeof value==='number'?value:Number(value);
   return Number.isFinite(parsed)?parsed:fallback;
 };
+
+const screenshotUrls=(row:V1SessionRow):string[]=>(row.screenshots??[])
+  .map(screenshot=>screenshot.id?`/api/v1/screenshots/${encodeURIComponent(screenshot.id)}/content`:null)
+  .filter((url):url is string=>Boolean(url));
 
 export async function resolveOrganization(force=false):Promise<V1Company|null>{
   if(force)organizationPromise=null;
@@ -101,7 +107,7 @@ function minimalSession(row:V1SessionRow,employee?:V1Employee):SessionWithPersis
     key_count:numberOr(row.key_count),mouse_clicks:numberOr(row.mouse_clicks),
     app_switches:Array.from({length:switches},(_,index)=>({atMin:index,from:'',to:''})),
     claimed_task:'Tracked via TELER',
-    evidence:{screenshot_count:0,screenshot_urls:[],ocr_sample:'',keystroke_per_minute:[],peak_wpm:0,top_apps_minutes:[]},
+    evidence:{screenshot_count:screenshotUrls(row).length,screenshot_urls:screenshotUrls(row),ocr_sample:'',keystroke_per_minute:[],peak_wpm:0,top_apps_minutes:[]},
   };
 }
 
@@ -132,6 +138,11 @@ function mergeAuthoritative(legacy:Session,row:V1SessionRow,employee?:V1Employee
     app_switches:switches,
     userName:row.employee_name||legacy.userName||employee?.display_name,
     role:legacy.role||employee?.job_role,
+    evidence:{
+      ...legacy.evidence,
+      screenshot_count:screenshotUrls(row).length,
+      screenshot_urls:screenshotUrls(row),
+    },
     analytics:legacy.analytics?{...legacy.analytics,deep_work_minutes:numberOr(row.deep_work_minutes,legacy.analytics.deep_work_minutes)}:legacy.analytics,
   };
 }
