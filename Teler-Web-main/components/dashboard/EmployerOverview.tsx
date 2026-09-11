@@ -211,7 +211,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
       <PageHeader
         eyebrow="Workforce Intelligence"
         title="Dashboard"
-        meta={<span>{clientName} · {employees.length} employee{employees.length===1?'':'s'} · {sessions.length} session{sessions.length===1?'':'s'} · current telemetry window</span>}
+        meta={<span>{loading && !sessions.length ? `${clientName} · loading workforce telemetry…` : `${clientName} · ${employees.length} employee${employees.length===1?'':'s'} · ${sessions.length} session${sessions.length===1?'':'s'} · current telemetry window`}</span>}
         actions={<>
           <span className={`hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-subtle bg-surface-raised ${error ? 'text-danger' : usingMock ? 'text-warning' : 'text-success'}`}>{statusIcon}{statusText}</span>
           <span className="hidden md:block text-xs text-muted font-mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

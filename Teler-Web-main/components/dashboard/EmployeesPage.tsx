@@ -50,7 +50,7 @@ export const EmployeesPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionN
       <PageHeader
         eyebrow="Workforce Intelligence"
         title="Employees"
-        meta={`${rows.length} team member${rows.length===1?'':'s'} · ${counts.working} working · ${counts.idle} idle · ${counts.offline} offline`}
+        meta={loading && !rows.length ? 'Loading workforce…' : `${rows.length} team member${rows.length===1?'':'s'} · ${counts.working} working · ${counts.idle} idle · ${counts.offline} offline`}
         actions={<IconButton label="Refresh employees" onClick={()=>refetch(true)}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton>}
       />
       <PageContainer>
