@@ -10,6 +10,10 @@ function sourceList(value) {
   return Array.isArray(value) ? value.slice(0, 8) : [];
 }
 
+function canReadOrganizationAnalyses(authUser) {
+  return ['owner', 'admin'].includes(String(authUser?.organization?.role || '').toLowerCase());
+}
+
 function createAiAnalysesRouter(express) {
   const router = express.Router();
 
@@ -54,10 +58,13 @@ function createAiAnalysesRouter(express) {
     if (!pool) return res.status(503).json({ error: 'Database is not configured' });
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 30));
     try {
+      const manager = canReadOrganizationAnalyses(req.authUser);
       const result = await pool.query(
         `select id,session_id,provider,model,question,answer,sources,created_at
-           from app.ai_analyses where organization_id=$1 order by created_at desc limit $2`,
-        [req.authUser.organization.id, limit],
+           from app.ai_analyses
+          where organization_id=$1${manager ? '' : ' and user_profile_id=$2'}
+          order by created_at desc limit $${manager ? 2 : 3}`,
+        manager ? [req.authUser.organization.id, limit] : [req.authUser.organization.id, req.authUser.id, limit],
       );
       return res.json({ data: result.rows });
     } catch (error) {
@@ -68,4 +75,4 @@ function createAiAnalysesRouter(express) {
   return router;
 }
 
-module.exports = { createAiAnalysesRouter };
+module.exports = { createAiAnalysesRouter, canReadOrganizationAnalyses };

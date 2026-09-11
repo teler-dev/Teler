@@ -25,6 +25,24 @@ function decodeMetadataHeader(value, maxLength = 500) {
   }
 }
 
+function canManageOrganizationEvidence(authUser) {
+  return ['owner', 'admin'].includes(String(authUser?.organization?.role || '').toLowerCase());
+}
+
+function screenshotReadQuery(screenshotId, authUser) {
+  if (authUser && !canManageOrganizationEvidence(authUser)) {
+    return {
+      text: `select ss.storage_path
+               from app.screenshots ss
+               join app.work_sessions ws
+                 on ws.organization_id=ss.organization_id and ws.id=ss.session_id
+              where ss.id=$1 and ws.user_profile_id=$2 limit 1`,
+      values: [screenshotId, authUser.id],
+    };
+  }
+  return { text: 'select storage_path from app.screenshots where id=$1 limit 1', values: [screenshotId] };
+}
+
 function secondsBetween(a, b) {
   return Math.max(0, Math.floor((new Date(b).getTime() - new Date(a).getTime()) / 1000));
 }
@@ -394,7 +412,8 @@ function createScreenshotsRouter(express) {
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database is not configured' });
     try {
-      const result = await pool.query('select storage_path from app.screenshots where id=$1 limit 1', [req.params.id]);
+      const query = screenshotReadQuery(req.params.id, req.authUser);
+      const result = await pool.query(query.text, query.values);
       if (!result.rowCount) return res.status(404).json({ error: 'Screenshot not found' });
       const storagePath = String(result.rows[0].storage_path || '');
       const filePath = path.resolve(DATA_ROOT, storagePath);
@@ -419,4 +438,6 @@ module.exports = {
   deriveTiming,
   safeUploadId,
   decodeMetadataHeader,
+  canManageOrganizationEvidence,
+  screenshotReadQuery,
 };

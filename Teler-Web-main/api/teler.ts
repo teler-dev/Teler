@@ -53,8 +53,8 @@ function allowedTarget(rawTarget: string): URL | null {
   }
 }
 
-function isTrackingTarget(pathname: string): boolean {
-  return /^\/api\/v1\/tracking-sessions(?:\/|$)/.test(pathname);
+function isUserOwnedTarget(pathname: string): boolean {
+  return /^\/api\/v1\/(?:tracking-sessions|screenshots)(?:\/|$)/.test(pathname);
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -205,13 +205,13 @@ export default {
     const target = allowedTarget(requestUrl.searchParams.get('target') ?? '');
     if (!target) return noStoreJson({ error: 'API route is not allowed' }, 400);
 
-    const trackingTarget = isTrackingTarget(target.pathname);
+    const userOwnedTarget = isUserOwnedTarget(target.pathname);
     const methodAllowed = request.method === 'GET'
       || request.method === 'HEAD'
-      || (trackingTarget && request.method === 'POST');
+      || (userOwnedTarget && request.method === 'POST');
     if (!methodAllowed) {
       return noStoreJson({ error: 'Method not allowed' }, 405, {
-        Allow: trackingTarget ? 'GET, HEAD, POST' : 'GET, HEAD',
+        Allow: userOwnedTarget ? 'GET, HEAD, POST' : 'GET, HEAD',
       });
     }
 
@@ -221,7 +221,7 @@ export default {
 
       const apiBase = process.env.TELER_API_BASE?.trim().replace(/\/+$/, '');
       const apiToken = process.env.TELER_API_TOKEN?.trim();
-      if (!apiBase || (!trackingTarget && !apiToken)) {
+      if (!apiBase || (!userOwnedTarget && !apiToken)) {
         console.error('TELER proxy configuration error: required backend configuration is missing');
         return noStoreJson({ error: 'Oracle API connection is not configured in Vercel' }, 503);
       }
@@ -229,7 +229,7 @@ export default {
       const upstreamUrl = new URL(`${target.pathname}${target.search}`, `${apiBase}/`);
       const headers = new Headers();
       headers.set('Accept', request.headers.get('accept') ?? 'application/json');
-      headers.set('Authorization', `Bearer ${trackingTarget ? userToken : apiToken}`);
+      headers.set('Authorization', `Bearer ${userOwnedTarget ? userToken : apiToken}`);
       if (request.method === 'POST') headers.set('Content-Type', request.headers.get('content-type') ?? 'application/json');
       const upstreamBody = request.method === 'POST' ? await request.text() : undefined;
       const upstream = await fetch(upstreamUrl, {
