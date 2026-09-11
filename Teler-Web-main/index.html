@@ -73,8 +73,31 @@
           extend: {
             colors: {
               navy: { 900: "#0A0F1A", 800: "#111827", 700: "#1A2235" },
-              cyan: { 400: "#3DF2FF", 500: "#13D6FF" }
+              cyan: { 400: "#3DF2FF", 500: "#13D6FF" },
+              "surface-page": "rgb(var(--surface-page) / <alpha-value>)",
+              "surface-sidebar": "rgb(var(--surface-sidebar) / <alpha-value>)",
+              "surface-card": "rgb(var(--surface-card) / <alpha-value>)",
+              "surface-raised": "rgb(var(--surface-raised) / <alpha-value>)",
+              "surface-input": "rgb(var(--surface-input) / <alpha-value>)",
+              "surface-hover": "rgb(var(--surface-hover) / <alpha-value>)",
+              primary: "rgb(var(--text-primary) / <alpha-value>)",
+              secondary: "rgb(var(--text-secondary) / <alpha-value>)",
+              muted: "rgb(var(--text-muted) / <alpha-value>)",
+              subtle: "rgb(var(--border-subtle) / <alpha-value>)",
+              strong: "rgb(var(--border-strong) / <alpha-value>)",
+              accent: "rgb(var(--accent) / <alpha-value>)",
+              "accent-hover": "rgb(var(--accent-hover) / <alpha-value>)",
+              "accent-soft": "rgb(var(--accent-soft) / <alpha-value>)",
+              success: "rgb(var(--success) / <alpha-value>)",
+              "success-soft": "rgb(var(--success-soft) / <alpha-value>)",
+              warning: "rgb(var(--warning) / <alpha-value>)",
+              "warning-soft": "rgb(var(--warning-soft) / <alpha-value>)",
+              danger: "rgb(var(--danger) / <alpha-value>)",
+              "danger-soft": "rgb(var(--danger-soft) / <alpha-value>)",
+              info: "rgb(var(--info) / <alpha-value>)",
+              "info-soft": "rgb(var(--info-soft) / <alpha-value>)"
             },
+            boxShadow: { card: "var(--shadow-card)" },
             animation: {
               "pulse-slow": "pulse 4s cubic-bezier(0.4,0,0.6,1) infinite",
               "spin-slow": "spin 12s linear infinite",

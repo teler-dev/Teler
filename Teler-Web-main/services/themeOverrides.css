@@ -37,17 +37,6 @@ body {
 }
 
 /* Surface hierarchy */
-.bg-surface-card.border.border-subtle {
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / .06),
-    0 10px 28px rgb(0 0 0 / .035);
-}
-
-.bg-surface-card.rounded-2xl,
-.bg-surface-card.border.border-subtle.rounded-2xl {
-  border-radius: 1rem;
-}
-
 .bg-surface-raised {
   transition:
     background-color .16s ease,
