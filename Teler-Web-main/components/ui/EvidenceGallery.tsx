@@ -99,29 +99,27 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
       kind="center"
       className="w-[calc(100vw-2rem)] max-w-[1540px] h-[calc(100vh-2rem)] max-h-[940px] bg-surface-card border border-strong rounded-[26px] shadow-2xl overflow-hidden flex flex-col"
     >
-      <header className="shrink-0 flex items-center justify-between gap-4 px-4 md:px-6 py-4 border-b border-subtle bg-surface-card/95 backdrop-blur-xl">
-        <div className="min-w-0 flex items-center gap-3">
-          <span className="w-10 h-10 rounded-2xl bg-accent-soft border border-accent flex items-center justify-center shrink-0">
-            <Images className="w-5 h-5 text-accent" />
+      <header className="shrink-0 flex items-center justify-between gap-3 px-3.5 md:px-5 py-2.5 border-b border-subtle bg-surface-card/95 backdrop-blur-xl">
+        <div className="min-w-0 flex items-center gap-2.5">
+          <span className="w-8 h-8 rounded-xl bg-accent-soft border border-accent flex items-center justify-center shrink-0">
+            <Images className="w-4 h-4 text-accent" />
           </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2 className="font-semibold text-primary truncate">{title} Studio</h2>
-              <span className="hidden sm:inline-flex rounded-full border border-subtle bg-surface-raised px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-secondary">
-                Review mode
-              </span>
-            </div>
-            <p className="text-xs text-secondary mt-1">
-              {previewIndex == null ? `${imageUrls.length} captured screenshots` : `Screenshot ${previewIndex + 1} of ${imageUrls.length}`}
-            </p>
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
+            <h2 className="font-semibold text-primary truncate">{title} Studio</h2>
+            <span className="hidden sm:inline-flex rounded-full border border-subtle bg-surface-raised px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-secondary">
+              Review
+            </span>
+            <span className="text-[11px] text-secondary">
+              {previewIndex == null ? `${imageUrls.length} screenshots` : `${previewIndex + 1} / ${imageUrls.length}`}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {previewIndex != null && <Button variant="secondary" size="sm" onClick={() => setPreviewIndex(null)}>
-            <Grid3X3 className="w-4 h-4" /> <span className="hidden sm:inline">Grid</span>
+        <div className="flex items-center gap-1.5">
+          {previewIndex != null && <Button className="h-8 px-2.5" variant="secondary" size="sm" onClick={() => setPreviewIndex(null)}>
+            <Grid3X3 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Grid</span>
           </Button>}
-          <IconButton label="Close evidence studio" size="sm" variant="ghost" onClick={close}><X className="w-4 h-4" /></IconButton>
+          <IconButton className="w-8 h-8" label="Close evidence studio" size="sm" variant="ghost" onClick={close}><X className="w-3.5 h-3.5" /></IconButton>
         </div>
       </header>
 
