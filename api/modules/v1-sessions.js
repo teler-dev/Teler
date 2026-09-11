@@ -17,7 +17,9 @@ function safeUploadId(value) {
 function decodeMetadataHeader(value, maxLength = 500) {
   if (!value) return '';
   try {
-    return Buffer.from(String(value), 'base64url').toString('utf8').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, maxLength);
+    const encoded = String(value).trim();
+    if (!/^[A-Za-z0-9_-]+={0,2}$/.test(encoded)) return '';
+    return Buffer.from(encoded, 'base64url').toString('utf8').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, maxLength);
   } catch {
     return '';
   }
@@ -410,4 +412,11 @@ function createScreenshotsRouter(express) {
   return router;
 }
 
-module.exports = { createSessionsRouter, createTrackingSessionsRouter, createScreenshotsRouter, deriveTiming };
+module.exports = {
+  createSessionsRouter,
+  createTrackingSessionsRouter,
+  createScreenshotsRouter,
+  deriveTiming,
+  safeUploadId,
+  decodeMetadataHeader,
+};

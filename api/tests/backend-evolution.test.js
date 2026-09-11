@@ -11,7 +11,7 @@ const { normalizeTelemetry } = require('../lib/telemetry-normalizer');
 const { conditionMatches } = require('../workers/session-normalizer');
 const { processReportGeneration } = require('../workers/report-generator');
 const { processRetentionCleanup, safeDelete } = require('../workers/retention-cleanup');
-const { deriveTiming } = require('../modules/v1-sessions');
+const { deriveTiming, safeUploadId, decodeMetadataHeader } = require('../modules/v1-sessions');
 
 test('tracking session timing freezes active duration while paused', () => {
   const events = [
@@ -132,4 +132,11 @@ test('server entry preserves legacy health and isolates v1 sync/read tokens', { 
     body: JSON.stringify({ organization_external_key: 'COMP_DEV_001', employee_external_key: 'EMP_DEV', external_session_id: 'smoke', started_at: '2026-09-04T10:00:00Z', events: [] }),
   });
   assert.equal(syncTokenAccepted.status, 500, stderr);
+});
+
+test('screenshot upload metadata accepts only safe client event IDs and strips control characters', () => {
+  assert.equal(safeUploadId('desktop-capture_01.png'), 'desktop-capture_01.png');
+  assert.match(safeUploadId('../escape-attempt'), /^[a-f0-9-]{36}$/);
+  assert.equal(decodeMetadataHeader(Buffer.from('Chrome\u0000\n').toString('base64url')), 'Chrome');
+  assert.equal(decodeMetadataHeader('not base64!!!'), '');
 });
