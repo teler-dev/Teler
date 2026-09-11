@@ -49,8 +49,10 @@ export function useSessions(employeeName?:string,enabled=true){
       try{
         next=await fetchAndMergeV1Sessions(legacy,employeeName);
         v1Worked=next.length>0;
-      }catch{
+      }catch(v1Error){
+        console.error('[TELER] v1 session synchronization failed', v1Error);
         next=legacy;
+        if(!next.length)throw v1Error;
       }
 
       if(!next.length&&legacyError)throw legacyError;
