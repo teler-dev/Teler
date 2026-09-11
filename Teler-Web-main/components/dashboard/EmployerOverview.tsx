@@ -17,6 +17,8 @@ import { InlineAlert } from '../ui/InlineAlert';
 import { StatusDot } from '../ui/StatusBadge';
 import { KpiGrid, MetricCard, PageContainer } from '../ui/AnalyticsLayout';
 import { MetricValue } from '../ui/MetricValue';
+import { LoadingState } from '../ui/LoadingState';
+import { DataList, DataListHeader, DataListRow } from '../ui/DataList';
 
 const CHART_TEXT = 'rgb(var(--text-muted))';
 const CHART_GRID = 'rgb(var(--border-subtle))';
@@ -157,12 +159,6 @@ const ThemedTooltip: React.FC<any> = ({ active, payload, label }) => {
   </div>;
 };
 
-const Skeleton = () => <div className="p-4 md:p-6 space-y-5" role="status" aria-label="Loading dashboard">
-  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[0, 1, 2, 3].map(item => <div key={item} className="h-28 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card" />)}</div>
-  <div className="grid lg:grid-cols-3 gap-4"><div className="lg:col-span-2 h-52 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card"/><div className="h-52 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card"/></div>
-  <div className="h-56 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card"/>
-</div>;
-
 export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, onSectionNavigate, clientName = 'Your Company' }) => {
   const { sessions, loading, usingMock, error, refetch } = useSessions();
   const [search, setSearch] = useState('');
@@ -222,7 +218,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
         </>}
       />
 
-      {loading && !sessions.length ? <Skeleton/> : <PageContainer>
+      {loading && !sessions.length ? <LoadingState variant="dashboard" label="Loading dashboard" /> : <PageContainer>
         {error && <InlineAlert tone="danger" title="Live session data unavailable">{error}</InlineAlert>}
 
         <section className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 py-1">
@@ -258,9 +254,12 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
         <details className="group bg-surface-card border border-subtle rounded-2xl shadow-card">
           <summary className="list-none cursor-pointer p-5 flex items-center justify-between gap-4"><div><h3 className="font-semibold text-primary">More workforce trends</h3><p className="text-sm text-muted mt-1">Productivity distribution, weekly trend and derived metrics</p></div><span className="text-xs font-semibold text-accent group-open:hidden">Show</span><span className="text-xs font-semibold text-accent hidden group-open:inline">Hide</span></summary>
           <div className="px-5 pb-5 border-t border-subtle pt-4 space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[
-              ['Average productivity', `${avgScore || 0}/100`], ['Average focus', `${avgFocus || 0}/100`], ['Average idle', `${idlePct}%`], ['Tracked time', fmtMinutes(totalTracked)],
-            ].map(([label,value]) => <div key={label} className="bg-surface-raised border border-subtle rounded-xl p-4"><p className="text-xs text-muted">{label}</p><p className="text-xl font-bold text-primary mt-2">{value}</p></div>)}</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-surface-raised border border-subtle rounded-xl p-4"><p className="text-xs text-muted">Average productivity</p><div className="mt-2"><MetricValue value={avgScore} state={avgScore>0?'value':'unscored'} suffix="/100" compact /></div></div>
+              <div className="bg-surface-raised border border-subtle rounded-xl p-4"><p className="text-xs text-muted">Average focus</p><div className="mt-2"><MetricValue value={avgFocus} state={avgFocus>0?'value':'unscored'} suffix="/100" compact /></div></div>
+              <div className="bg-surface-raised border border-subtle rounded-xl p-4"><p className="text-xs text-muted">Average idle</p><p className="text-xl font-bold text-primary mt-2">{idlePct}%</p></div>
+              <div className="bg-surface-raised border border-subtle rounded-xl p-4"><p className="text-xs text-muted">Tracked time</p><p className="text-xl font-bold text-primary mt-2">{fmtMinutes(totalTracked)}</p></div>
+            </div>
             <div className="grid xl:grid-cols-2 gap-4">
               <article className="bg-surface-raised border border-subtle rounded-xl p-4 md:p-5"><h4 className="font-semibold text-primary">Productivity Distribution</h4><p className="text-sm text-muted mt-1 mb-4">Average score per employee</p>{distribution.length ? <ResponsiveContainer width="100%" height={210}><BarChart data={distribution}><CartesianGrid stroke={CHART_GRID} vertical={false}/><XAxis dataKey="name" tick={{ fill: CHART_TEXT, fontSize: 11 }} axisLine={false} tickLine={false}/><YAxis domain={[0,100]} tick={{ fill: CHART_TEXT, fontSize: 11 }} axisLine={false} tickLine={false}/><Tooltip content={<ThemedTooltip/>}/><Bar dataKey="score" name="Productivity" radius={[5,5,0,0]} onClick={(row:any) => {const employee=employees.find(item=>item.employee.name===row.fullName);if(employee) onEmployeeClick(employee.employee)}}>{distribution.map(item => {const level=classifyScore(item.score).label;const fill=level==='Elite'?CHART_ACCENT:level==='Strong'?CHART_SUCCESS:level==='Moderate'?CHART_WARNING:CHART_DANGER;return <Cell key={item.fullName} fill={fill}/>})}</Bar></BarChart></ResponsiveContainer>:<div className="rounded-xl border border-dashed border-subtle bg-surface-card px-5 py-7 text-center"><p className="text-sm font-semibold">No productivity data</p><p className="text-xs text-secondary mt-1">Distribution appears after scored sessions are available.</p></div>}</article>
               <article className="bg-surface-raised border border-subtle rounded-xl p-4 md:p-5"><h4 className="font-semibold text-primary">Weekly Trend</h4><p className="text-sm text-muted mt-1 mb-4">Productivity, focus and idle percentage</p>{hasTrendData ? <ResponsiveContainer width="100%" height={210}><LineChart data={trend}><CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3"/><XAxis dataKey="label" tick={{ fill: CHART_TEXT, fontSize: 11 }} axisLine={false} tickLine={false}/><YAxis domain={[0,100]} tick={{ fill: CHART_TEXT, fontSize: 11 }} axisLine={false} tickLine={false}/><Tooltip content={<ThemedTooltip/>}/><Line type="monotone" dataKey="productivity" name="Productivity" stroke={CHART_ACCENT} strokeWidth={2} connectNulls={false}/><Line type="monotone" dataKey="focus" name="Focus" stroke={CHART_SUCCESS} strokeWidth={2} connectNulls={false}/><Line type="monotone" dataKey="idle" name="Idle %" stroke={CHART_WARNING} strokeWidth={2} connectNulls={false}/></LineChart></ResponsiveContainer> : <div className="rounded-xl border border-dashed border-subtle bg-surface-card px-5 py-7 text-center"><p className="text-sm font-semibold">No weekly trend yet</p><p className="text-xs text-secondary mt-1">Trend lines appear when the selected week contains scored telemetry.</p></div>}</article>
@@ -268,10 +267,18 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
           </div>
         </details>
 
-        <section className="bg-surface-card border border-subtle rounded-2xl overflow-hidden shadow-card">
+        <DataList>
           <div className="p-4 md:p-5 border-b border-subtle flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"><div><h3 className="font-semibold text-primary">Employee Performance</h3><p className="text-sm text-muted mt-1">Open an employee for supporting session evidence.</p></div><div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto"><div className="relative flex-1 sm:flex-none"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"/><input value={search} onChange={event=>setSearch(event.target.value)} aria-label="Search employees" placeholder="Search employees…" className="bg-surface-input border border-subtle text-primary rounded-xl pl-9 pr-3 py-2.5 text-sm w-full sm:w-56 focus:border-accent"/></div><select value={sort} onChange={event=>setSort(event.target.value as typeof sort)} aria-label="Sort employees" className="bg-surface-input border border-subtle text-primary rounded-xl px-3 py-2.5 text-sm min-w-[120px]"><option value="risk">Risk</option><option value="score">Score</option><option value="name">Name</option></select></div></div>
-          <div className="overflow-x-auto"><div className="min-w-[760px]"><div className="grid grid-cols-[1.4fr_100px_100px_100px_90px] gap-4 px-5 py-3 border-b border-subtle text-xs text-muted"><span>Employee</span><span>Score</span><span>Active</span><span>Idle</span><span>Risk</span></div>{filteredEmployees.map(item => <button key={item.employee.name} type="button" onClick={()=>onEmployeeClick(item.employee)} className="w-full grid grid-cols-[1.4fr_100px_100px_100px_90px] gap-4 items-center px-5 py-4 border-b border-subtle hover:bg-surface-hover text-left transition-colors"><span className="min-w-0"><span className="block text-sm font-semibold text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate mt-0.5">{item.employee.role || 'Role not provided'} · {item.sessions.length} sessions</span></span><MetricValue value={item.score} state={item.score>0?'value':'unscored'} compact /><span className="text-sm text-secondary">{fmtMinutes(item.activeMinutes)}</span><span className="text-sm text-secondary">{item.idlePct}%</span><span className={`text-xs font-semibold capitalize ${item.score===0&&item.alertCount===0?'text-secondary':item.risk==='high'?'text-danger':item.risk==='medium'?'text-warning':'text-success'}`}>{item.score===0&&item.alertCount===0?'—':item.risk}</span></button>)}{!filteredEmployees.length&&<div className="p-10 text-center text-muted">No employees match the current search.</div>}</div></div>
-        </section>
+          <DataListHeader className="hidden md:grid grid-cols-[1.4fr_100px_100px_100px_90px] gap-4"><span>Employee</span><span>Score</span><span>Active</span><span>Idle</span><span>Risk</span></DataListHeader>
+          {filteredEmployees.map(item => <DataListRow key={item.employee.name} onClick={()=>onEmployeeClick(item.employee)} className="grid grid-cols-2 md:grid-cols-[1.4fr_100px_100px_100px_90px] gap-3 md:gap-4 items-center">
+            <span className="min-w-0 col-span-2 md:col-span-1"><span className="block text-sm font-semibold text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate mt-0.5">{item.employee.role || 'Role not provided'} · {item.sessions.length} sessions</span></span>
+            <span><span className="block md:hidden text-[10px] uppercase tracking-wide text-muted mb-1">Score</span><MetricValue value={item.score} state={item.score>0?'value':'unscored'} compact /></span>
+            <span className="text-sm text-secondary"><span className="block md:hidden text-[10px] uppercase tracking-wide text-muted mb-1">Active</span>{fmtMinutes(item.activeMinutes)}</span>
+            <span className="text-sm text-secondary"><span className="block md:hidden text-[10px] uppercase tracking-wide text-muted mb-1">Idle</span>{item.idlePct}%</span>
+            <span className={`text-xs font-semibold capitalize ${item.score===0&&item.alertCount===0?'text-secondary':item.risk==='high'?'text-danger':item.risk==='medium'?'text-warning':'text-success'}`}><span className="block md:hidden text-[10px] uppercase tracking-wide text-muted mb-1">Risk</span>{item.score===0&&item.alertCount===0?'—':item.risk}</span>
+          </DataListRow>)}
+          {!filteredEmployees.length&&<div className="p-10 text-center text-muted">No employees match the current search.</div>}
+        </DataList>
       </PageContainer>}
     </div>
   </div>;

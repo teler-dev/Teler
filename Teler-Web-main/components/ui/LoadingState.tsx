@@ -3,7 +3,7 @@ import { cx } from './Surface';
 
 interface LoadingStateProps {
   rows?: number;
-  variant?: 'rows' | 'cards' | 'detail';
+  variant?: 'rows' | 'cards' | 'detail' | 'dashboard';
   className?: string;
   label?: string;
 }
@@ -20,6 +20,23 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
         {Array.from({ length: rows }).map((_, index) => (
           <div key={index} className="h-28 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer" />
         ))}
+      </div>
+    );
+  }
+
+  if (variant === 'dashboard') {
+    return (
+      <div role="status" aria-label={label} className={cx('p-4 md:p-6 space-y-5', className)}>
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-28 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card" />
+          ))}
+        </div>
+        <div className="grid lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 h-52 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card" />
+          <div className="h-52 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card" />
+        </div>
+        <div className="h-56 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer shadow-card" />
       </div>
     );
   }

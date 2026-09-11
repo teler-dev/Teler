@@ -14,6 +14,8 @@ import { Select } from '../ui/FormControls';
 import { Card } from '../ui/Card';
 import { KpiGrid, MetricCard, PageContainer, SectionCard } from '../ui/AnalyticsLayout';
 import { MetricValue } from '../ui/MetricValue';
+import { DataList, DataListLink } from '../ui/DataList';
+import { LoadingState } from '../ui/LoadingState';
 
 export type WorkspaceRouteKind = 'analytics' | 'compare' | 'reports' | 'custom-dashboard' | 'saved-views' | 'notifications' | 'security-admin';
 
@@ -92,7 +94,7 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
       />
       <PageContainer>
         {['analytics','compare','reports'].includes(kind) && <WorkspaceToolbar sessions={sessions} />}
-        {loading && <div className="h-24 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer" />}
+        {loading && <LoadingState rows={1} label="Loading workspace data" />}
         {error && <InlineAlert tone="danger" title="Workspace data unavailable">{error}</InlineAlert>}
 
         {kind === 'analytics' && <>
@@ -103,9 +105,9 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
             <MetricCard label="Active alerts" value={<MetricValue value={alerts.length} />} />
           </KpiGrid>
           <SectionCard title="Employee drill-down" description="Open supporting sessions in a shareable employee view.">
-            <div className="-mx-4 md:-mx-5 -my-4 md:-my-5">
-              {employees.map(name => { const stats=statsFor(name); const hasScore=sessions.some(session => (session.userName || session.role)===name && session.overall_productivity_score>0); return <a key={name} href={employeePath(name)} onClick={event => { event.preventDefault(); navigate(employeePath(name)); }} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 p-4 md:px-5 border-b border-subtle last:border-b-0 hover:bg-surface-raised transition-colors"><span><span className="block font-semibold">{name}</span><span className="text-xs text-secondary">{stats.count} supporting sessions</span></span>{hasScore ? <span className="text-sm text-secondary flex items-center gap-1"><MetricValue value={stats.score} state="value" compact /><span>score</span></span> : <MetricValue value={stats.score} state="unscored" showClassification />}<span className="text-sm text-secondary"><b className="text-primary">{stats.idle}%</b> idle</span></a>})}
-            </div>
+            <DataList className="-mx-4 md:-mx-5 -my-4 md:-my-5 rounded-none border-0 shadow-none">
+              {employees.map(name => { const stats=statsFor(name); const hasScore=sessions.some(session => (session.userName || session.role)===name && session.overall_productivity_score>0); return <DataListLink key={name} href={employeePath(name)} onClick={event => { event.preventDefault(); navigate(employeePath(name)); }} className="grid grid-cols-2 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 items-center"><span className="col-span-2 sm:col-span-1"><span className="block font-semibold">{name}</span><span className="text-xs text-secondary">{stats.count} supporting sessions</span></span><span>{hasScore ? <span className="text-sm text-secondary flex items-center gap-1"><MetricValue value={stats.score} state="value" compact /><span>score</span></span> : <MetricValue value={stats.score} state="unscored" showClassification />}</span><span className="text-sm text-secondary"><b className="text-primary">{stats.idle}%</b> idle</span></DataListLink>})}
+            </DataList>
           </SectionCard>
         </>}
 
