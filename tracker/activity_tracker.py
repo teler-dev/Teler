@@ -414,24 +414,30 @@ class ActivityTracker:
                 ts = datetime.now().strftime("%H-%M-%S"); filename = f"{self.today}_{ts}.png"; filepath = os.path.join(self._screenshot_dir, filename)
                 img = pyautogui.screenshot(); img.save(filepath); self.screenshots_taken += 1
                 snapshot_entry = {"screenshot_path": filepath, "screenshot_type": "image", "active_window": self.active_window, "active_url": self.active_url, "idle_seconds_this_period": self.idle_seconds, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "process_name": ""}
-                if self.ocr_enabled:
-                    top_crop = img.crop((0, 0, img.width, 80)); text = pytesseract.image_to_string(top_crop, timeout=5); text_raw = text or ""; text_norm = re.sub(r"\s+", " ", text_raw).strip().lower()
-                    if text_norm:
-                        text_hash = hashlib.sha1(text_norm.encode("utf-8")).hexdigest()
-                        if text_hash != self._last_ocr_hash:
-                            self.last_ocr_snippet = text_raw.strip()[:500]; url = self._extract_url_from_ocr(text_raw)
-                            if url: self.active_url = url; snapshot_entry["active_url"] = url
-                            if self._ocr_path:
-                                try:
-                                    with open(self._ocr_path, "a", encoding="utf-8") as of: of.write(json.dumps({"timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "ocr_text": text_raw.strip(), "active_window": self.active_window, "active_url": self.active_url}) + "\n")
-                                except Exception as fe: print(f"[Tracker] OCR append error: {fe}")
-                            self._last_ocr_hash = text_hash
-                    else: snapshot_entry["screenshot_type"] = "duplicate"
+                # Upload eligibility must not depend on optional OCR succeeding.
+                # Some machines can capture a PNG while Tesseract times out or is absent.
                 with self.lock:
                     self._snapshots.append(snapshot_entry)
                     if self.server_session_id:
                         snapshot_entry["server_session_id"] = self.server_session_id
                         self._pending_screenshots.append(snapshot_entry)
+                if self.ocr_enabled:
+                    try:
+                        top_crop = img.crop((0, 0, img.width, 80)); text = pytesseract.image_to_string(top_crop, timeout=5); text_raw = text or ""; text_norm = re.sub(r"\s+", " ", text_raw).strip().lower()
+                        if text_norm:
+                            text_hash = hashlib.sha1(text_norm.encode("utf-8")).hexdigest()
+                            if text_hash != self._last_ocr_hash:
+                                self.last_ocr_snippet = text_raw.strip()[:500]; url = self._extract_url_from_ocr(text_raw)
+                                if url: self.active_url = url; snapshot_entry["active_url"] = url
+                                if self._ocr_path:
+                                    try:
+                                        with open(self._ocr_path, "a", encoding="utf-8") as of: of.write(json.dumps({"timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "ocr_text": text_raw.strip(), "active_window": self.active_window, "active_url": self.active_url}) + "\n")
+                                    except Exception as fe: print(f"[Tracker] OCR append error: {fe}")
+                                self._last_ocr_hash = text_hash
+                        else: snapshot_entry["screenshot_type"] = "duplicate"
+                    except Exception as ocr_error:
+                        snapshot_entry["ocr_error"] = str(ocr_error)[:160]
+                        print(f"[Tracker] OCR error (screenshot will still upload): {ocr_error}")
             except Exception as e: print(f"[Tracker] Screenshot error: {e}")
             for _ in range(self.screenshot_interval):
                 if self._stop_event.is_set() or self.paused: break
