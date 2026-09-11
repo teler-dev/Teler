@@ -130,7 +130,7 @@ export const SecurityPage: React.FC = () => {
               title="Privacy-Centric Telemetry"
               description="Our technology is built to provide workforce intelligence without surveillance."
               bullets={[
-                "Zero capture of screenshots or recordings",
+                "Access-controlled screenshots for verified sessions",
                 "Automated filtering of personal activity",
                 "AI-driven signal analysis (No human review of raw data)"
               ]}

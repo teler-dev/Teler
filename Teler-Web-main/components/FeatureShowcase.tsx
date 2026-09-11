@@ -78,7 +78,7 @@ const features: FeatureContent[] = [
   {
     label: "Daily AI Reports",
     title: "Executive Workflow Summaries",
-    description: "AI generates clear end-of-day reports so there is no need to review screenshots or raw activity logs.",
+    description: "AI generates clear end-of-day reports alongside access-controlled evidence for verified sessions.",
     renderVisual: () => (
       <div className="p-8 bg-navy-900/50 rounded-2xl border border-white/10 w-full max-w-md mx-auto shadow-2xl">
         <div className="flex justify-between items-center mb-6">
@@ -106,7 +106,7 @@ const features: FeatureContent[] = [
   {
     label: "Privacy & Confidentiality",
     title: "Enterprise Trust Architecture",
-    description: "No screenshots or personal content are visible to managers. Sensitive information is processed by AI only, preserving confidentiality and trust.",
+    description: "Screenshots and personal content are restricted to authorized workspace access, preserving confidentiality and trust.",
     renderVisual: () => (
       <div className="p-8 bg-navy-900/50 rounded-2xl border border-white/10 w-full max-w-md mx-auto shadow-2xl flex flex-col items-center justify-center">
         <div className="relative mb-8">

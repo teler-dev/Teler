@@ -205,7 +205,7 @@ export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({ onScrollToDemo, 
             />
             <FAQItem 
               question="Does TELER take screenshots?" 
-              answer="No. TELER does not capture or store screenshots. It analyzes activity signals to protect user privacy while providing performance insights."
+              answer="When an organization enables evidence capture, TELER stores session screenshots securely and shows them only to authorized workspace members."
             />
             <FAQItem 
               question="How is TELER different from time tracking?" 

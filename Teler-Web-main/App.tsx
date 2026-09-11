@@ -346,7 +346,7 @@ const DemoSection: React.FC = () => {
                   Request Demo
                 </Button>
                 <p className="text-xs text-gray-500 pt-2">
-                  Objective insights for remote teams. No screenshots. No micromanagement.
+                  Objective insights for remote teams. Evidence is visible only to authorized workspace members.
                 </p>
               </form>
             </div>
@@ -379,7 +379,7 @@ const PrivacyPromise: React.FC = () => (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
           <div className="space-y-3 p-6 bg-white/5 rounded-2xl border border-white/5">
             <h4 className="text-white font-semibold">Privacy by Design</h4>
-            <p className="text-gray-400 text-sm leading-relaxed">No screenshots or desktop recordings. TELER captures work signals, not visual data.</p>
+              <p className="text-gray-400 text-sm leading-relaxed">Screenshots are captured only for authorized tracking sessions and are protected inside the workspace.</p>
           </div>
           <div className="space-y-3 p-6 bg-white/5 rounded-2xl border border-white/5">
             <h4 className="text-white font-semibold">Signal Filtering</h4>

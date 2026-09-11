@@ -32,7 +32,10 @@ const routeForSection: Record<NavSection, string> = {
 
 function resolveEmployee(route: AppRoute, sessions: ReturnType<typeof useSessions>['sessions']): Employee | null {
   if (route.kind !== 'employee' && route.kind !== 'session') return null;
-  const match = sessions.find(session => employeeSlug(session.userName || session.role || '') === route.employeeId);
+  const match = sessions.find(session => {
+    const slug = employeeSlug(session.userName || session.role || '');
+    return slug === route.employeeId || slug.split('-').includes(route.employeeId);
+  });
   return match ? { name: match.userName || match.role || route.employeeId, role: match.role ?? '', client: match.client ?? '' } : null;
 }
 

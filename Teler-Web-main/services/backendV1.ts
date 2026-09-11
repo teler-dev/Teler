@@ -60,6 +60,14 @@ const screenshotUrls=(row:V1SessionRow):string[]=>(row.screenshots??[])
   .map(screenshot=>screenshot.id?`/api/v1/screenshots/${encodeURIComponent(screenshot.id)}/content`:null)
   .filter((url):url is string=>Boolean(url));
 
+const employeeKey=(value:string)=>value.trim().toLowerCase().replace(/[-_]+/g,' ').replace(/\s+/g,' ');
+const employeeMatches=(employee:V1Employee,requested:string)=>{
+  const target=employeeKey(requested);
+  const name=employeeKey(employee.display_name||'');
+  const external=employeeKey(employee.external_key||'');
+  return name===target||external===target||name.split(' ').includes(target);
+};
+
 export async function resolveOrganization(force=false):Promise<V1Company|null>{
   if(force)organizationPromise=null;
   if(!organizationPromise){
@@ -159,15 +167,16 @@ export async function fetchAndMergeV1Sessions(legacy:Session[],employeeName?:str
   const org=await resolveOrganization();
   if(!org)return legacy;
   const employees=await fetchV1Employees().catch(()=>[]);
-  const employee=employeeName?employees.find(item=>item.display_name===employeeName||item.external_key===employeeName):undefined;
-  if(employeeName&&!employee)return legacy;
+  const candidates=employeeName?employees.filter(item=>employeeMatches(item,employeeName)):employees;
+  if(employeeName&&!candidates.length)return legacy;
 
   const query=new URLSearchParams({organization_id:org.id,limit:'200'});
-  if(employee)query.set('employee_id',employee.id);
   const response=await apiFetch(`/api/v1/sessions?${query.toString()}`);
   if(response.status===503)return legacy;
   const payload=await jsonOrThrow<ApiEnvelope<V1SessionRow[]>>(response);
-  const rows=payload.data??[];
+  const allRows=payload.data??[];
+  const candidateIds=new Set(candidates.map(item=>item.id));
+  const rows=employeeName?allRows.filter(row=>candidateIds.has(row.employee_id)):allRows;
   if(!rows.length)return legacy;
 
   const alerts=await fetchPersistedAlerts().catch(()=>[]);

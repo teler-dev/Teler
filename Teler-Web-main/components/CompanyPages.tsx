@@ -23,7 +23,7 @@ export const AboutPage: React.FC = () => {
               Traditional tools focus on hours and activity volume. TELER focuses on alignment, context, and outcomes by using AI to analyze work patterns in a privacy-first way.
             </p>
             <p>
-              Our approach is built on trust. Managers see AI-generated insights and summaries, not screenshots or personal activity. Employees keep their privacy, while organizations gain clarity.
+              Our approach is built on trust. Authorized workspace members can review protected session evidence alongside AI-generated insights, while access controls preserve employee privacy.
             </p>
           </div>
 

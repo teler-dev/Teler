@@ -6,7 +6,7 @@ const steps = [
   {
     icon: SignalCaptureIcon,
     title: "Data Validation",
-    desc: "AI identifies professional work patterns in the background. No raw data or visuals are ever presented to management."
+    desc: "AI identifies professional work patterns in the background. Session evidence is available only to authorized workspace members."
   },
   {
     icon: SessionIcon,
