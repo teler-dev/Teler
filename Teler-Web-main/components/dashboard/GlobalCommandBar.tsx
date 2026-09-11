@@ -3,6 +3,7 @@ import { Search, Command, Users, Bell, LayoutDashboard, Settings, BrainCircuit, 
 import { Employee, Session } from '../../types';
 import { NavSection } from './DashboardSidebar';
 import { IconButton } from '../ui/IconButton';
+import { OverlaySurface } from '../ui/Overlay';
 
 interface Props {
   sessions: Session[];
@@ -68,7 +69,7 @@ export const GlobalCommandBar: React.FC<Props> = ({ sessions, onNavigate, onEmpl
       { id:'settings', label:'AI Settings', description:'Configure model and behavior', icon:<Settings className="w-4 h-4" />, action:() => onNavigate('ai-settings') },
     ];
     const employeeResults: Result[] = employees.map(employee => ({ id:`employee-${employee.name}`, label:employee.name, description:[employee.role, employee.client].filter(Boolean).join(' · ') || 'Employee detail', icon:<Users className="w-4 h-4" />, action:() => onEmployee(employee) }));
-    const sessionResults: Result[] = sessions.slice(0,30).map(session => ({ id:`session-${session.id}`, label:`${session.userName || session.role || 'Employee'} · ${new Date(session.created_at).toLocaleDateString()}`, description:`Session ${session.id} · ${session.overall_productivity_score}/100 · ${session.total_minutes}m`, icon:<Command className="w-4 h-4" />, action:() => onEmployee({ name:session.userName || session.role || 'Unknown', role:session.role ?? '', client:session.client ?? '' }) }));
+    const sessionResults: Result[] = sessions.slice(0,30).map(session => { const score = session.overall_productivity_score > 0 ? `${session.overall_productivity_score}/100` : 'Not scored'; const duration = session.total_minutes >= 60 ? `${Math.floor(session.total_minutes/60)}h ${Math.round(session.total_minutes%60)}m` : `${Math.round(session.total_minutes)}m`; return { id:`session-${session.id}`, label:`${session.userName || session.role || 'Employee'} · ${new Date(session.created_at).toLocaleDateString()}`, description:`${duration} · ${score} · supporting session`, icon:<Command className="w-4 h-4" />, action:() => onEmployee({ name:session.userName || session.role || 'Unknown', role:session.role ?? '', client:session.client ?? '' }) }; });
     const all = [...actions, ...employeeResults, ...sessionResults];
     const q = query.trim().toLowerCase();
     return q ? all.filter(item => `${item.label} ${item.description}`.toLowerCase().includes(q)).slice(0,12) : all.slice(0,10);
@@ -80,11 +81,9 @@ export const GlobalCommandBar: React.FC<Props> = ({ sessions, onNavigate, onEmpl
   };
 
   return <>
-    {open && <div className="fixed inset-0 z-[100] bg-black/45 backdrop-blur-sm flex items-start justify-center p-4 pt-[12vh]" onMouseDown={() => setOpen(false)}>
-      <div role="dialog" aria-modal="true" aria-label="TELER command bar" className="w-full max-w-2xl bg-surface-card border border-subtle rounded-2xl shadow-2xl overflow-hidden" onMouseDown={event => event.stopPropagation()}>
-        <div className="flex items-center gap-3 px-4 border-b border-subtle"><Search className="w-5 h-5 text-secondary shrink-0" /><input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} aria-label="Search TELER" placeholder="Search employees, sessions, alerts, actions, settings…" className="flex-1 min-w-0 bg-transparent py-4 outline-none text-primary placeholder:text-secondary text-sm" /><IconButton label="Close command bar" size="sm" variant="ghost" onClick={() => setOpen(false)}><X className="w-4 h-4" /></IconButton></div>
-        <div className="p-2 max-h-[55vh] overflow-y-auto">{results.length ? results.map(result => <button key={result.id} type="button" onClick={() => run(result)} className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-surface-raised transition-colors"><span className="w-9 h-9 rounded-xl bg-surface-raised border border-subtle flex items-center justify-center text-secondary shrink-0">{result.icon}</span><span className="min-w-0"><span className="block text-sm font-semibold text-primary truncate">{result.label}</span><span className="block text-xs text-secondary truncate mt-0.5">{result.description}</span></span></button>) : <div className="px-4 py-10 text-center text-sm text-secondary">No matching TELER results.</div>}</div>
-      </div>
-    </div>}
+    {open && <OverlaySurface label="TELER command bar" onClose={() => setOpen(false)} className="w-full max-w-2xl bg-surface-card border border-subtle rounded-2xl shadow-2xl overflow-hidden">
+      <div className="flex items-center gap-3 px-4 border-b border-subtle"><Search className="w-5 h-5 text-secondary shrink-0" /><input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} aria-label="Search TELER" placeholder="Search employees, sessions, alerts, actions, settings…" className="flex-1 min-w-0 bg-transparent py-4 outline-none text-primary placeholder:text-secondary text-sm" /><IconButton label="Close command bar" size="sm" variant="ghost" onClick={() => setOpen(false)}><X className="w-4 h-4" /></IconButton></div>
+      <div className="p-2 max-h-[55vh] overflow-y-auto">{results.length ? results.map(result => <button key={result.id} type="button" onClick={() => run(result)} className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-surface-raised transition-colors"><span className="w-9 h-9 rounded-xl bg-surface-raised border border-subtle flex items-center justify-center text-secondary shrink-0">{result.icon}</span><span className="min-w-0"><span className="block text-sm font-semibold text-primary truncate">{result.label}</span><span className="block text-xs text-secondary truncate mt-0.5">{result.description}</span></span></button>) : <div className="px-4 py-10 text-center text-sm text-secondary">No matching TELER results.</div>}</div>
+    </OverlaySurface>}
   </>;
 };

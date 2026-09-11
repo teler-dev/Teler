@@ -8,7 +8,7 @@ export const AiSourceCard: React.FC<{ source: AiSource; onEmployee?: () => void;
   <div className="p-3 rounded-xl border border-subtle bg-surface-raised">
     <div className="flex flex-wrap gap-2 items-center justify-between">
       {onEmployee ? <button type="button" onClick={onEmployee} className="text-sm font-semibold text-accent hover:underline">{source.employee}</button> : <p className="text-sm font-semibold text-primary truncate">{source.employee}</p>}
-      {onSession ? <button type="button" onClick={onSession} className="text-xs text-secondary hover:text-primary">Session {source.sessionId}</button> : <span className="text-xs text-secondary">Session {source.sessionId}</span>}
+      {onSession ? <button type="button" onClick={onSession} className="text-xs text-secondary hover:text-primary">Open session</button> : <span className="text-xs text-secondary">Supporting session</span>}
     </div>
     <p className="text-xs text-secondary mt-1">{source.timeRange}</p>
     <div className="flex flex-wrap gap-1.5 mt-2">
