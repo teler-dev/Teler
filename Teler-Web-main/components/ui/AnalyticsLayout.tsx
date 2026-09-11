@@ -58,3 +58,20 @@ export const SectionCard: React.FC<SectionCardProps> = ({ title, description, ac
     <div className="p-4 md:p-5">{children}</div>
   </Card>
 );
+
+interface EmptyStateProps {
+  icon?: React.ReactNode;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  className?: string;
+}
+
+export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, action, className }) => (
+  <div className={cx('bg-surface-card border border-subtle rounded-2xl px-6 py-12 text-center shadow-card', className)}>
+    {icon && <div className="w-12 h-12 rounded-2xl bg-surface-raised border border-subtle flex items-center justify-center mx-auto">{icon}</div>}
+    <h2 className="text-lg font-semibold text-primary mt-4">{title}</h2>
+    {description && <p className="text-sm text-secondary mt-2 max-w-md mx-auto">{description}</p>}
+    {action && <div className="mt-5 flex justify-center">{action}</div>}
+  </div>
+);
