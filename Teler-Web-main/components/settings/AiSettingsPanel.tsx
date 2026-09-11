@@ -18,6 +18,7 @@ type Toast = { type: 'success' | 'error'; message: string };
 
 interface Props {
   onClose: () => void;
+  showHeader?: boolean;
 }
 
 function KeyField({
@@ -56,7 +57,7 @@ const STATUS_CFG: Record<ConnStatus, { dot: string; label: string; text: string 
   error:     { dot: 'bg-red-400',    label: 'Error',       text: 'text-red-400'   },
 };
 
-export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
+export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true }) => {
   const [settings, setSettings]   = useState<AiSettings>(() => getAiSettings());
   const [connStatus, setConn]     = useState<ConnStatus>('idle');
   const [toast, setToast]         = useState<Toast | null>(null);
@@ -189,8 +190,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-subtle bg-surface-card shrink-0">
+      {showHeader && <div className="flex items-center justify-between px-5 py-4 border-b border-subtle bg-surface-card shrink-0">
         <div>
           <h3 className="text-primary font-black text-sm tracking-tight">AI Settings</h3>
           <p className="text-secondary text-xs mt-0.5">Configure model, keys &amp; behaviour</p>
@@ -198,7 +198,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
         <button type="button" onClick={handleClose} aria-label="Close AI settings" title="Close AI settings" className="w-9 h-9 rounded-lg border border-transparent text-secondary hover:text-primary hover:bg-surface-raised hover:border-subtle transition-colors flex items-center justify-center">
           <X className="w-4 h-4" />
         </button>
-      </div>
+      </div>}
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
@@ -252,6 +252,12 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
           </div>
         </div>
 
+        <details className="group rounded-xl border border-subtle bg-surface-raised">
+          <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3">
+            <span><span className="block text-xs font-bold text-primary uppercase tracking-widest">Advanced settings</span><span className="block text-[11px] text-secondary mt-1">Retrieval, generation controls and system prompt</span></span>
+            <span className="text-xs font-semibold text-accent group-open:hidden">Show</span><span className="text-xs font-semibold text-accent hidden group-open:inline">Hide</span>
+          </summary>
+          <div className="px-4 pb-4 pt-1 space-y-5 border-t border-subtle">
         {/* OpenRouter retrieval reranking */}
         {settings.provider === 'openrouter' && (
           <div className="space-y-3 rounded-xl border border-subtle bg-surface-raised p-3.5">
@@ -325,6 +331,8 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
             className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-xs text-primary focus:outline-none focus:border-accent resize-none font-mono leading-relaxed"
           />
         </div>
+          </div>
+        </details>
       </div>
 
       {/* Footer — right-aligned: [Test Connection] [Reset] [Save] */}

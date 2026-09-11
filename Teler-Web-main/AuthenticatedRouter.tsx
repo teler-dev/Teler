@@ -46,12 +46,12 @@ const AiSettingsRoute: React.FC<{ onLogout: () => void; clientName: string; onNa
     <DashboardSidebar activeSection="ai-settings" onNavigate={onNavigate} alertCount={alertCount} onLogout={onLogout} clientName={clientName} />
     <div className="flex-1 ml-56 min-w-0 min-h-screen">
       <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle">
-        <div className="px-4 md:px-6 py-4 flex items-center gap-3">
+        <div className="px-4 md:px-6 py-3 flex items-center gap-3">
           <a href="/dashboard" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/dashboard'); } }} aria-label="Back to dashboard" className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></a>
-          <div><h1 className="text-xl md:text-2xl font-bold">AI Settings</h1><p className="text-sm text-secondary mt-1">Provider, models, retrieval, response behavior, privacy, diagnostics and usage configuration.</p></div>
+          <div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Configuration</p><h1 className="text-2xl md:text-3xl font-bold mt-1">AI Settings</h1><p className="text-sm text-secondary mt-1">Choose the provider and model. Advanced generation controls stay out of the way until needed.</p></div>
         </div>
       </header>
-      <main className="p-4 md:p-6 max-w-5xl"><div className="teler-ai-settings-panel theme-form-surface bg-surface-card border border-subtle rounded-2xl overflow-hidden min-h-[680px] shadow-card"><AiSettingsPanel onClose={() => navigate('/dashboard')} /></div></main>
+      <main className="p-4 md:p-6 max-w-4xl"><div className="teler-ai-settings-panel theme-form-surface bg-surface-card border border-subtle rounded-2xl overflow-hidden shadow-card"><AiSettingsPanel showHeader={false} onClose={() => navigate('/dashboard')} /></div></main>
     </div>
   </div>;
 };
