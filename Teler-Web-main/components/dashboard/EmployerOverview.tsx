@@ -15,6 +15,8 @@ import { PageHeader } from '../ui/PageHeader';
 import { IconButton } from '../ui/IconButton';
 import { InlineAlert } from '../ui/InlineAlert';
 import { StatusDot } from '../ui/StatusBadge';
+import { KpiGrid, MetricCard, PageContainer } from '../ui/AnalyticsLayout';
+import { MetricValue } from '../ui/MetricValue';
 
 const CHART_TEXT = 'rgb(var(--text-muted))';
 const CHART_GRID = 'rgb(var(--border-subtle))';
@@ -147,23 +149,6 @@ function buildHourly(sessions: Session[]) {
   return hours.map(item => ({ label: `${item.hour}:00`, active: Math.round(item.active), idle: Math.round(item.idle) }));
 }
 
-const MetricCard: React.FC<{
-  label: string;
-  value: string;
-  sub: string;
-  icon: React.ReactNode;
-  tone?: 'accent' | 'success' | 'warning' | 'danger';
-  onClick?: () => void;
-}> = ({ label, value, sub, icon, tone = 'accent', onClick }) => {
-  const toneClass = tone === 'success' ? 'text-success' : tone === 'warning' ? 'text-warning' : tone === 'danger' ? 'text-danger' : 'text-accent';
-  const Component: React.ElementType = onClick ? 'button' : 'div';
-  return <Component onClick={onClick} className={`bg-surface-card border border-subtle rounded-2xl p-4 md:p-5 text-left shadow-card transition-colors ${onClick ? 'hover:border-strong cursor-pointer' : ''}`}>
-    <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold text-muted uppercase tracking-wide">{label}</p><span className={toneClass}>{icon}</span></div>
-    <p className={`text-2xl md:text-3xl font-bold mt-3 ${toneClass}`}>{value}</p>
-    <p className="text-xs text-muted mt-1.5 leading-5">{sub}</p>
-  </Component>;
-};
-
 const ThemedTooltip: React.FC<any> = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return <div style={{ background: CHART_TOOLTIP_BG, color: CHART_TOOLTIP_TEXT, border: `1px solid ${CHART_GRID}`, borderRadius: 12, padding: '10px 12px', boxShadow: 'var(--shadow-card)', fontSize: 12 }}>
@@ -237,7 +222,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
         </>}
       />
 
-      {loading && !sessions.length ? <Skeleton/> : <main className="p-4 md:p-6 space-y-5">
+      {loading && !sessions.length ? <Skeleton/> : <PageContainer>
         {error && <InlineAlert tone="danger" title="Live session data unavailable">{error}</InlineAlert>}
 
         <section className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 py-1">
@@ -245,12 +230,12 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
           <span className="inline-flex w-fit items-center rounded-lg border border-subtle bg-surface-raised px-3 py-2 text-xs font-semibold text-secondary">{sessions.length} total sessions on record</span>
         </section>
 
-        <section aria-label="Key performance indicators" className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          <MetricCard label="Workforce Health" value={health ? `${health}/100` : '—'} sub="Composite of productivity, focus, participation and active risk." icon={<Activity className="w-5 h-5"/>} tone={health >= 70 ? 'accent' : health >= 50 ? 'warning' : 'danger'} onClick={() => onSectionNavigate('workspace')}/>
-          <MetricCard label="Active Workforce" value={`${activeToday} / ${employees.length}`} sub="Employees with activity recorded in the active window." icon={<Users className="w-5 h-5"/>} tone="success" onClick={() => onSectionNavigate('employees')}/>
-          <MetricCard label="Deep Work Hours" value={deepWorkMinutes ? `${(deepWorkMinutes / 60).toFixed(1)}h` : '—'} sub="Evidence-backed deep work recorded across supporting sessions." icon={<BrainCircuit className="w-5 h-5"/>}/>
-          <MetricCard label="Alerts / Risks" value={`${alerts.length}`} sub="Rule-generated signals requiring manager review and supporting evidence." icon={<AlertTriangle className="w-5 h-5"/>} tone={alerts.length ? 'danger' : 'success'} onClick={() => onSectionNavigate('alerts')}/>
-        </section>
+        <KpiGrid>
+          <MetricCard label="Workforce Health" value={<MetricValue value={health} state={health>0?'value':'unscored'} suffix="/100" />} helper="Composite of productivity, focus, participation and active risk." icon={<Activity className="w-5 h-5"/>} tone={health>0?(health >= 70 ? 'accent' : health >= 50 ? 'warning' : 'danger'):'neutral'} onClick={() => onSectionNavigate('workspace')}/>
+          <MetricCard label="Active Workforce" value={<span className="text-2xl md:text-3xl font-bold">{activeToday} / {employees.length}</span>} helper="Employees with activity recorded in the active window." icon={<Users className="w-5 h-5"/>} tone="success" onClick={() => onSectionNavigate('employees')}/>
+          <MetricCard label="Deep Work Hours" value={<span className="text-2xl md:text-3xl font-bold">{deepWorkMinutes ? `${(deepWorkMinutes / 60).toFixed(1)}h` : '—'}</span>} helper="Evidence-backed deep work recorded across supporting sessions." icon={<BrainCircuit className="w-5 h-5"/>} tone={deepWorkMinutes?'accent':'neutral'}/>
+          <MetricCard label="Alerts / Risks" value={<span className="text-2xl md:text-3xl font-bold">{alerts.length}</span>} helper="Rule-generated signals requiring manager review and supporting evidence." icon={<AlertTriangle className="w-5 h-5"/>} tone={alerts.length ? 'danger' : 'success'} onClick={() => onSectionNavigate('alerts')}/>
+        </KpiGrid>
 
         <section className="grid xl:grid-cols-[1.35fr_.65fr] gap-4">
           <article className="bg-surface-card border border-subtle rounded-2xl p-5 md:p-6 shadow-card">
@@ -285,9 +270,9 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
 
         <section className="bg-surface-card border border-subtle rounded-2xl overflow-hidden shadow-card">
           <div className="p-4 md:p-5 border-b border-subtle flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"><div><h3 className="font-semibold text-primary">Employee Performance</h3><p className="text-sm text-muted mt-1">Open an employee for supporting session evidence.</p></div><div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto"><div className="relative flex-1 sm:flex-none"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"/><input value={search} onChange={event=>setSearch(event.target.value)} aria-label="Search employees" placeholder="Search employees…" className="bg-surface-input border border-subtle text-primary rounded-xl pl-9 pr-3 py-2.5 text-sm w-full sm:w-56 focus:border-accent"/></div><select value={sort} onChange={event=>setSort(event.target.value as typeof sort)} aria-label="Sort employees" className="bg-surface-input border border-subtle text-primary rounded-xl px-3 py-2.5 text-sm min-w-[120px]"><option value="risk">Risk</option><option value="score">Score</option><option value="name">Name</option></select></div></div>
-          <div className="overflow-x-auto"><div className="min-w-[760px]"><div className="grid grid-cols-[1.4fr_100px_100px_100px_90px] gap-4 px-5 py-3 border-b border-subtle text-xs text-muted"><span>Employee</span><span>Score</span><span>Active</span><span>Idle</span><span>Risk</span></div>{filteredEmployees.map(item => <button key={item.employee.name} type="button" onClick={()=>onEmployeeClick(item.employee)} className="w-full grid grid-cols-[1.4fr_100px_100px_100px_90px] gap-4 items-center px-5 py-4 border-b border-subtle hover:bg-surface-hover text-left transition-colors"><span className="min-w-0"><span className="block text-sm font-semibold text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate mt-0.5">{item.employee.role || 'Role not provided'} · {item.sessions.length} sessions</span></span><span className="text-sm text-secondary">{item.score || '—'}</span><span className="text-sm text-secondary">{fmtMinutes(item.activeMinutes)}</span><span className="text-sm text-secondary">{item.idlePct}%</span><span className={`text-xs font-semibold capitalize ${item.risk==='high'?'text-danger':item.risk==='medium'?'text-warning':'text-success'}`}>{item.risk}</span></button>)}{!filteredEmployees.length&&<div className="p-10 text-center text-muted">No employees match the current search.</div>}</div></div>
+          <div className="overflow-x-auto"><div className="min-w-[760px]"><div className="grid grid-cols-[1.4fr_100px_100px_100px_90px] gap-4 px-5 py-3 border-b border-subtle text-xs text-muted"><span>Employee</span><span>Score</span><span>Active</span><span>Idle</span><span>Risk</span></div>{filteredEmployees.map(item => <button key={item.employee.name} type="button" onClick={()=>onEmployeeClick(item.employee)} className="w-full grid grid-cols-[1.4fr_100px_100px_100px_90px] gap-4 items-center px-5 py-4 border-b border-subtle hover:bg-surface-hover text-left transition-colors"><span className="min-w-0"><span className="block text-sm font-semibold text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate mt-0.5">{item.employee.role || 'Role not provided'} · {item.sessions.length} sessions</span></span><MetricValue value={item.score} state={item.score>0?'value':'unscored'} compact /><span className="text-sm text-secondary">{fmtMinutes(item.activeMinutes)}</span><span className="text-sm text-secondary">{item.idlePct}%</span><span className={`text-xs font-semibold capitalize ${item.score===0&&item.alertCount===0?'text-secondary':item.risk==='high'?'text-danger':item.risk==='medium'?'text-warning':'text-success'}`}>{item.score===0&&item.alertCount===0?'—':item.risk}</span></button>)}{!filteredEmployees.length&&<div className="p-10 text-center text-muted">No employees match the current search.</div>}</div></div>
         </section>
-      </main>}
+      </PageContainer>}
     </div>
   </div>;
 };

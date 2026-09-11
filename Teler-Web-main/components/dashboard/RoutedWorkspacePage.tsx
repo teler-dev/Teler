@@ -13,6 +13,8 @@ import { Button } from '../ui/Button';
 import { Select } from '../ui/FormControls';
 import { Card } from '../ui/Card';
 import { IconButton } from '../ui/IconButton';
+import { KpiGrid, MetricCard, PageContainer, SectionCard } from '../ui/AnalyticsLayout';
+import { MetricValue } from '../ui/MetricValue';
 
 export type WorkspaceRouteKind = 'analytics' | 'compare' | 'reports' | 'custom-dashboard' | 'saved-views' | 'notifications' | 'security-admin';
 
@@ -62,6 +64,8 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
 
   const employees = useMemo(() => [...new Set(sessions.map(session => session.userName || session.role).filter(Boolean) as string[])].sort(), [sessions]);
   const alerts = useMemo(() => generateAlerts(sessions), [sessions]);
+  const scoredSessions = useMemo(() => sessions.filter(session => session.overall_productivity_score > 0), [sessions]);
+  const avgProductivity = scoredSessions.length ? Math.round(scoredSessions.reduce((sum, session) => sum + session.overall_productivity_score, 0) / scoredSessions.length) : 0;
   const meta = ROUTE_META[kind];
   const statsFor = (name: string) => {
     const list = sessions.filter(session => (session.userName || session.role) === name);
@@ -87,17 +91,24 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
         title={meta.title}
         description={meta.description}
       />
-      <main className="p-4 md:p-6 space-y-5 min-w-0">
+      <PageContainer>
         {['analytics','compare','reports'].includes(kind) && <WorkspaceToolbar sessions={sessions} />}
         {loading && <div className="h-24 rounded-2xl bg-surface-card border border-subtle skeleton-shimmer animate-shimmer" />}
         {error && <InlineAlert tone="danger" title="Workspace data unavailable">{error}</InlineAlert>}
 
-        {kind === 'analytics' && <section className="grid gap-4 xl:grid-cols-[.72fr_1.28fr]">
-          <div className="grid grid-cols-2 gap-3">{[
-            ['Employees', employees.length], ['Sessions', sessions.length], ['Avg productivity', sessions.length ? `${Math.round(sessions.reduce((sum,s)=>sum+s.overall_productivity_score,0)/sessions.length)}/100` : '—'], ['Active alerts', alerts.length],
-          ].map(([label,value]) => <div key={label} className="bg-surface-card border border-subtle rounded-2xl p-4 md:p-5 shadow-card"><p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p><p className="text-2xl md:text-3xl font-bold mt-3">{value}</p></div>)}</div>
-          <div className="bg-surface-card border border-subtle rounded-2xl overflow-hidden shadow-card"><div className="p-4 md:p-5 border-b border-subtle bg-surface-raised/40"><h2 className="font-semibold">Employee drill-down</h2><p className="text-sm text-secondary mt-1">Open supporting sessions in a shareable employee view.</p></div>{employees.map(name => { const stats=statsFor(name); return <a key={name} href={employeePath(name)} onClick={event => { event.preventDefault(); navigate(employeePath(name)); }} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 p-4 md:px-5 border-b border-subtle hover:bg-surface-raised transition-colors"><span><span className="block font-semibold">{name}</span><span className="text-xs text-secondary">{stats.count} supporting sessions</span></span><span className="text-sm text-secondary"><b className="text-primary">{stats.score}</b> score</span><span className="text-sm text-secondary"><b className="text-primary">{stats.idle}%</b> idle</span></a>})}</div>
-        </section>}
+        {kind === 'analytics' && <>
+          <KpiGrid>
+            <MetricCard label="Employees" value={<MetricValue value={employees.length} />} />
+            <MetricCard label="Sessions" value={<MetricValue value={sessions.length} />} />
+            <MetricCard label="Avg productivity" value={<MetricValue value={avgProductivity} state={scoredSessions.length?'value':'unscored'} suffix="/100" />} helper={scoredSessions.length ? `${scoredSessions.length} scored session${scoredSessions.length===1?'':'s'}` : 'No scored sessions'} />
+            <MetricCard label="Active alerts" value={<MetricValue value={alerts.length} />} />
+          </KpiGrid>
+          <SectionCard title="Employee drill-down" description="Open supporting sessions in a shareable employee view.">
+            <div className="-mx-4 md:-mx-5 -my-4 md:-my-5">
+              {employees.map(name => { const stats=statsFor(name); const hasScore=sessions.some(session => (session.userName || session.role)===name && session.overall_productivity_score>0); return <a key={name} href={employeePath(name)} onClick={event => { event.preventDefault(); navigate(employeePath(name)); }} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 p-4 md:px-5 border-b border-subtle last:border-b-0 hover:bg-surface-raised transition-colors"><span><span className="block font-semibold">{name}</span><span className="text-xs text-secondary">{stats.count} supporting sessions</span></span><span className="text-sm text-secondary flex items-center gap-1"><MetricValue value={stats.score} state={hasScore?'value':'unscored'} compact /> <span>score</span></span><span className="text-sm text-secondary"><b className="text-primary">{stats.idle}%</b> idle</span></a>})}
+            </div>
+          </SectionCard>
+        </>}
 
         {kind === 'compare' && <section className="bg-surface-card border border-subtle rounded-2xl p-5"><div className="flex items-center gap-2 mb-4"><ArrowUpDown className="w-4 h-4 text-accent" /><h2 className="font-semibold">Session comparison</h2></div><div className="flex flex-wrap gap-3 mb-5"><Select aria-label="First employee" value={compareA} onChange={event => setCompareA(event.target.value)} className="w-full sm:w-auto"><option value="">First employee</option>{employees.map(name => <option key={name}>{name}</option>)}</Select><Select aria-label="Comparison employee" value={compareB} onChange={event => setCompareB(event.target.value)} className="w-full sm:w-auto"><option value="">Comparison employee</option>{employees.map(name => <option key={name}>{name}</option>)}</Select></div>{compareA && compareB ? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-secondary border-b border-subtle"><th className="text-left py-3">Metric</th><th className="text-right">{compareA}</th><th className="text-right">{compareB}</th><th className="text-right">Delta</th></tr></thead><tbody>{[['Sessions',a.count,b.count],['Productivity',a.score,b.score],['Focus',a.focus,b.focus],['Idle %',a.idle,b.idle],['Context switches',a.switches,b.switches]].map(([label,av,bv]) => <tr key={String(label)} className="border-b border-subtle"><td className="py-3">{label}</td><td className="text-right">{av}</td><td className="text-right">{bv}</td><td className="text-right font-semibold">{Number(av)-Number(bv)>0?'+':''}{Number(av)-Number(bv)}</td></tr>)}</tbody></table></div> : <p className="text-sm text-secondary">Choose two employees to compare their current filtered evidence.</p>}</section>}
 
@@ -110,7 +121,7 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
         {kind === 'notifications' && <section className="bg-surface-card border border-subtle rounded-2xl p-5"><div className="flex gap-2 items-center"><Bell className="w-4 h-4 text-secondary" /><h2 className="font-semibold">Notification routing</h2></div><p className="text-sm text-secondary mt-2 max-w-2xl">Slack, Teams, email and webhook routing requires a server-side delivery worker. Configuration is disabled until that service is connected.</p><div className="mt-5 grid gap-3 sm:grid-cols-2">{['Email','Slack','Microsoft Teams','Webhook'].map(channel => <div key={channel} className="p-4 rounded-xl border border-subtle bg-surface-raised opacity-70"><p className="font-semibold text-sm">{channel}</p><p className="text-xs text-secondary mt-1">Delivery service not connected</p><button disabled className="mt-3 px-3 py-2 rounded-xl border border-subtle bg-surface-raised text-xs cursor-not-allowed">Connect service first</button></div>)}</div></section>}
 
         {kind === 'security-admin' && <section className="grid gap-4 lg:grid-cols-2"><div className="bg-surface-card border border-subtle rounded-2xl p-5"><div className="flex gap-2 items-center"><ShieldCheck className="w-4 h-4 text-accent" /><h2 className="font-semibold">Identity & access</h2></div><p className="text-sm text-secondary mt-2">SSO, enforced MFA and role-based access require organization administration endpoints before they can be enabled from this console.</p>{['Single sign-on','Enforced MFA','Role-based access control'].map(item => <div key={item} className="flex items-center justify-between gap-3 py-3 border-b border-subtle"><span className="text-sm">{item}</span><span className="text-xs text-secondary">Setup required</span></div>)}</div><div className="bg-surface-card border border-subtle rounded-2xl p-5"><div className="flex gap-2 items-center"><LockKeyhole className="w-4 h-4 text-secondary" /><h2 className="font-semibold">Data governance</h2></div><p className="text-sm text-secondary mt-2">Retention, consent, audit and redaction policies remain read-only until organization policy enforcement is connected.</p>{['Retention policy','Employee consent','Audit logging','Sensitive-data redaction'].map(item => <div key={item} className="flex items-center justify-between gap-3 py-3 border-b border-subtle"><span className="text-sm">{item}</span><span className="text-xs text-secondary">Setup required</span></div>)}</div></section>}
-      </main>
+      </PageContainer>
     </div>
   </div>;
 };

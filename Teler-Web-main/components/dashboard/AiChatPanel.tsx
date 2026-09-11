@@ -6,9 +6,8 @@ import { AiSettingsPanel } from '../settings/AiSettingsPanel';
 import { TelerIcon } from '../ui/TelerIcon';
 import { IconButton } from '../ui/IconButton';
 import { InlineAlert } from '../ui/InlineAlert';
-import { Textarea } from '../ui/FormControls';
-import { Button } from '../ui/Button';
-import { X, Settings, Send, RotateCcw, User, ChevronDown, ChevronUp, FileSearch } from 'lucide-react';
+import { AiComposer, AiSourceCard } from '../ui/AiPrimitives';
+import { X, Settings, RotateCcw, User, ChevronDown, ChevronUp, FileSearch } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant' | 'error';
@@ -26,12 +25,6 @@ const EXAMPLE_PROMPTS = [
 ];
 
 interface Props { sessions: Session[]; onClose: () => void; }
-
-const SourceCard: React.FC<{ source: AiSource }> = ({ source }) => <div className="bg-surface-raised border border-subtle rounded-xl p-3">
-  <div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold text-primary truncate">{source.employee}</p><span className="text-[11px] text-secondary shrink-0">{source.confidence}% confidence</span></div>
-  <p className="text-[11px] text-secondary mt-1">Session {source.sessionId} · {source.timeRange}</p>
-  <div className="flex flex-wrap gap-1.5 mt-2">{source.metrics.map(metric => <span key={metric} className="text-[11px] px-2 py-1 rounded-md border border-subtle bg-surface-card text-secondary">{metric}</span>)}</div>
-</div>;
 
 export const AiChatPanel: React.FC<Props> = ({ sessions, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
@@ -91,7 +84,7 @@ export const AiChatPanel: React.FC<Props> = ({ sessions, onClose }) => {
               <div className={`rounded-xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words border ${message.role === 'user' ? 'bg-accent-soft border-accent text-primary' : message.role === 'error' ? 'bg-danger-soft border-danger text-danger' : 'bg-surface-raised border-subtle text-primary'}`}>{message.content}</div>
               {message.role === 'assistant' && message.sources?.length ? <div className="mt-2">
                 <button type="button" onClick={() => setExpanded(current => ({ ...current, [index]: !current[index] }))} className="flex items-center gap-1.5 text-xs text-accent hover:underline"><FileSearch className="w-3.5 h-3.5" />Why this conclusion? · {message.confidence}% confidence {expanded[index] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}</button>
-                {expanded[index] && <div className="mt-2 space-y-2">{message.sources.map(source => <SourceCard key={source.id} source={source} />)}</div>}
+                {expanded[index] && <div className="mt-2 space-y-2">{message.sources.map(source => <AiSourceCard key={source.id} source={source} />)}</div>}
               </div> : null}
             </div>
             {message.role === 'user' && <div className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center mt-0.5 bg-surface-raised border border-subtle"><User className="w-3.5 h-3.5 text-secondary" /></div>}
@@ -103,7 +96,7 @@ export const AiChatPanel: React.FC<Props> = ({ sessions, onClose }) => {
           <div ref={bottomRef} />
         </div>
 
-        <footer className="px-3 sm:px-4 pb-3 sm:pb-4 pt-3 shrink-0 border-t border-subtle"><div className="flex gap-2 items-end"><Textarea ref={inputRef} aria-label="Ask TELER AI" value={input} onChange={event => setInput(event.target.value)} onKeyDown={handleKey} placeholder="Ask about your team's productivity…" rows={1} disabled={loading} className="flex-1 min-w-0" style={{ minHeight: 42, maxHeight: 100 }} /><Button aria-label="Send message" onClick={() => send(input)} disabled={!input.trim() || loading} className="w-10 px-0 shrink-0"><Send className="w-4 h-4" /></Button></div><p className="text-[11px] text-secondary mt-1.5 text-center hidden sm:block">Enter to send · Shift+Enter for new line</p></footer>
+        <footer className="px-3 sm:px-4 pb-3 sm:pb-4 pt-3 shrink-0 border-t border-subtle"><AiComposer compact inputRef={inputRef} value={input} onChange={setInput} onSend={() => send(input)} onKeyDown={handleKey} disabled={loading} /><p className="text-[11px] text-secondary mt-1.5 text-center hidden sm:block">Enter to send · Shift+Enter for new line</p></footer>
       </>}
     </div>
   </div>;
