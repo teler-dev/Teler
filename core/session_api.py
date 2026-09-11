@@ -25,8 +25,8 @@ class SessionClient(QObject):
     def _event_id(self):
         return str(uuid.uuid4())
 
-    def _request(self, action, method, path, payload=None, attempt=0):
-        request = QNetworkRequest(QUrl(f"{self.auth_client.api_base}{path}"))
+    def _request(self, action, method, path, payload=None, attempt=0, failovered=False):
+        request = QNetworkRequest(QUrl(self.auth_client.request_url(path)))
         request.setTransferTimeout(12_000)
         request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
         if self.auth_client.token:
@@ -35,11 +35,11 @@ class SessionClient(QObject):
         reply = self._network.get(request) if method == "GET" else self._network.post(request, body)
         self._replies.add(reply)
         reply.finished.connect(
-            lambda r=reply, a=action, m=method, p=path, b=payload, n=attempt:
-                self._finished(r, a, m, p, b, n)
+            lambda r=reply, a=action, m=method, p=path, b=payload, n=attempt, f=failovered:
+                self._finished(r, a, m, p, b, n, f)
         )
 
-    def _finished(self, reply, action, method, path, payload, attempt):
+    def _finished(self, reply, action, method, path, payload, attempt, failovered):
         self._replies.discard(reply)
         status = int(reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) or 0)
         raw = bytes(reply.readAll()).decode("utf-8", errors="replace")
@@ -54,12 +54,17 @@ class SessionClient(QObject):
             reply.deleteLater()
             return
 
+        if status == 0 and not failovered and self.auth_client.switch_to_desktop_relay():
+            reply.deleteLater()
+            self._request(action, method, path, payload, attempt, failovered=True)
+            return
+
         retryable = status == 0 or status >= 500
         if retryable and attempt < 2:
             next_attempt = attempt + 1
             self.retrying.emit(action, next_attempt)
             delay = 400 * (2 ** attempt)
-            QTimer.singleShot(delay, lambda: self._request(action, method, path, payload, next_attempt))
+            QTimer.singleShot(delay, lambda: self._request(action, method, path, payload, next_attempt, failovered))
             reply.deleteLater()
             return
 
@@ -109,7 +114,7 @@ class SessionClient(QObject):
     def _metadata_header(value):
         return base64.urlsafe_b64encode(str(value or "").encode("utf-8")).rstrip(b"=")
 
-    def upload_screenshot(self, screenshot, attempt=0):
+    def upload_screenshot(self, screenshot, attempt=0, failovered=False):
         """Upload one locally captured image with the signed-in user's bearer session."""
         if not screenshot.get("_upload_event_id"):
             screenshot = {**screenshot, "_upload_event_id": self._event_id()}
@@ -124,7 +129,8 @@ class SessionClient(QObject):
             self.screenshot_failed.emit(screenshot, f"Could not read screenshot: {error}")
             return
 
-        request = QNetworkRequest(QUrl(f"{self.auth_client.api_base}/api/v1/tracking-sessions/{session_id}/screenshots"))
+        upload_path = f"/api/v1/tracking-sessions/{session_id}/screenshots"
+        request = QNetworkRequest(QUrl(self.auth_client.request_url(upload_path)))
         request.setTransferTimeout(30_000)
         request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "image/png")
         request.setRawHeader(b"X-Client-Event-Id", str(screenshot["_upload_event_id"]).encode("ascii"))
@@ -135,9 +141,12 @@ class SessionClient(QObject):
             request.setRawHeader(b"Authorization", f"Bearer {self.auth_client.token}".encode("utf-8"))
         reply = self._network.post(request, image)
         self._replies.add(reply)
-        reply.finished.connect(lambda r=reply, item=dict(screenshot), n=attempt: self._screenshot_finished(r, item, n))
+        reply.finished.connect(
+            lambda r=reply, item=dict(screenshot), n=attempt, f=failovered:
+                self._screenshot_finished(r, item, n, f)
+        )
 
-    def _screenshot_finished(self, reply, screenshot, attempt):
+    def _screenshot_finished(self, reply, screenshot, attempt, failovered):
         self._replies.discard(reply)
         status = int(reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) or 0)
         raw = bytes(reply.readAll()).decode("utf-8", errors="replace")
@@ -148,8 +157,15 @@ class SessionClient(QObject):
         ok = reply.error() == QNetworkReply.NetworkError.NoError and 200 <= status < 300
         if ok:
             self.screenshot_uploaded.emit(screenshot, body.get("data") if isinstance(body, dict) else {})
+        elif status == 0 and not failovered and self.auth_client.switch_to_desktop_relay():
+            reply.deleteLater()
+            self.upload_screenshot(screenshot, attempt, failovered=True)
+            return
         elif (status == 0 or status >= 500) and attempt < 2:
-            QTimer.singleShot(800 * (2 ** attempt), lambda: self.upload_screenshot(screenshot, attempt + 1))
+            QTimer.singleShot(
+                800 * (2 ** attempt),
+                lambda: self.upload_screenshot(screenshot, attempt + 1, failovered),
+            )
         else:
             message = body.get("error") if isinstance(body, dict) else None
             self.screenshot_failed.emit(screenshot, str(message or reply.errorString() or "Screenshot upload failed"))
