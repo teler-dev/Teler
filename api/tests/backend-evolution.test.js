@@ -143,13 +143,14 @@ test('screenshot upload metadata accepts only safe client event IDs and strips c
 });
 
 test('multi-user evidence and AI history respect employee and organization roles', () => {
-  const employee = { id: 'employee-a', organization: { role: 'member' } };
-  const manager = { id: 'manager-a', organization: { role: 'owner' } };
+  const employee = { id: 'employee-a', organization: { id: 'org-a', role: 'member' } };
+  const manager = { id: 'manager-a', organization: { id: 'org-a', role: 'owner' } };
   const employeeQuery = screenshotReadQuery('screenshot-a', employee);
   const managerQuery = screenshotReadQuery('screenshot-a', manager);
   assert.match(employeeQuery.text, /ws\.user_profile_id=\$2/);
-  assert.deepEqual(employeeQuery.values, ['screenshot-a', 'employee-a']);
-  assert.doesNotMatch(managerQuery.text, /user_profile_id/);
+  assert.deepEqual(employeeQuery.values, ['screenshot-a', 'employee-a', 'org-a']);
+  assert.match(managerQuery.text, /organization_id=\$2/);
+  assert.deepEqual(managerQuery.values, ['screenshot-a', 'org-a']);
   assert.equal(canManageOrganizationEvidence(employee), false);
   assert.equal(canManageOrganizationEvidence(manager), true);
   assert.equal(canReadOrganizationAnalyses(employee), false);

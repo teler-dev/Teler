@@ -30,14 +30,20 @@ function canManageOrganizationEvidence(authUser) {
 }
 
 function screenshotReadQuery(screenshotId, authUser) {
-  if (authUser && !canManageOrganizationEvidence(authUser)) {
+  if (authUser && canManageOrganizationEvidence(authUser)) {
+    return {
+      text: 'select storage_path from app.screenshots where id=$1 and organization_id=$2 limit 1',
+      values: [screenshotId, authUser.organization.id],
+    };
+  }
+  if (authUser) {
     return {
       text: `select ss.storage_path
                from app.screenshots ss
                join app.work_sessions ws
                  on ws.organization_id=ss.organization_id and ws.id=ss.session_id
-              where ss.id=$1 and ws.user_profile_id=$2 limit 1`,
-      values: [screenshotId, authUser.id],
+              where ss.id=$1 and ws.user_profile_id=$2 and ss.organization_id=$3 limit 1`,
+      values: [screenshotId, authUser.id, authUser.organization.id],
     };
   }
   return { text: 'select storage_path from app.screenshots where id=$1 limit 1', values: [screenshotId] };
