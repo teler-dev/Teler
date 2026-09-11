@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   AiSettings,
   DEFAULT_SETTINGS,
-  CUSTOM_MODEL_VALUE,
   OPENROUTER_MODELS,
   OPENROUTER_RERANK_MODELS,
-  OPENAI_MODELS,
   getAiSettings,
   saveAiSettings,
   getActiveApiKey,
@@ -151,18 +149,16 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
     }
   };
 
-  const modelOptions = settings.provider === 'openai' ? OPENAI_MODELS : OPENROUTER_MODELS;
-  const selectedModel = settings.customModel.trim() ? CUSTOM_MODEL_VALUE : settings.model;
-  const selectedRerankModel = settings.customRerankModel.trim()
-    ? CUSTOM_MODEL_VALUE
-    : settings.rerankModel;
+  const modelOptions = OPENROUTER_MODELS;
+  const selectedModel = settings.model;
+  const selectedRerankModel = settings.rerankModel;
   const sc = STATUS_CFG[connStatus];
 
   const handleModelChange = (value: string) => {
     setSettings(current => ({
       ...current,
       model: value,
-      customModel: value === CUSTOM_MODEL_VALUE ? current.customModel : '',
+      customModel: '',
     }));
   };
 
@@ -170,7 +166,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
     setSettings(current => ({
       ...current,
       rerankModel: value,
-      customRerankModel: value === CUSTOM_MODEL_VALUE ? current.customRerankModel : '',
+      customRerankModel: '',
     }));
   };
 
@@ -211,7 +207,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">AI Provider</label>
           <div className="flex gap-2">
-            {(['openrouter', 'openai', 'local'] as const).map(p => (
+            {(['openrouter'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => update('provider', p)}
@@ -221,7 +217,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
                     : 'bg-white/3 border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300'
                 }`}
               >
-                {p === 'openrouter' ? 'OpenRouter' : p === 'openai' ? 'OpenAI' : 'Local'}
+                OpenRouter — free models only
               </button>
             ))}
           </div>
@@ -237,20 +233,6 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
           </div>
         )}
 
-        {settings.provider === 'openai' && (
-          <>
-            <KeyField
-              label="OpenAI API Key"
-              value={settings.openAiApiKey}
-              placeholder="sk-..."
-              onChange={v => update('openAiApiKey', v)}
-            />
-            <p className="text-[10px] text-gray-600 -mt-3">
-              Stored in this browser only.
-            </p>
-          </>
-        )}
-
         {/* Model + status indicator */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Model</label>
@@ -262,7 +244,6 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
             {modelOptions.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
-            <option value={CUSTOM_MODEL_VALUE}>Custom model ID…</option>
           </select>
           {/* Connection status dot */}
           <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${sc.text}`}>
@@ -270,23 +251,6 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
             {sc.label}
           </div>
         </div>
-
-        {/* Custom chat model */}
-        {selectedModel === CUSTOM_MODEL_VALUE && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Custom chat model ID
-            </label>
-            <input
-              type="text"
-              value={settings.customModel}
-              onChange={e => update('customModel', e.target.value)}
-              placeholder="e.g. mistralai/mistral-large"
-              className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
-            />
-            <p className="text-[10px] text-gray-600">Paste an exact model ID supported by the selected provider.</p>
-          </div>
-        )}
 
         {/* OpenRouter retrieval reranking */}
         {settings.provider === 'openrouter' && (
@@ -314,18 +278,8 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
                   {OPENROUTER_RERANK_MODELS.map(model => (
                     <option key={model.value} value={model.value}>{model.label}</option>
                   ))}
-                  <option value={CUSTOM_MODEL_VALUE}>Custom rerank model ID…</option>
                 </select>
 
-                {selectedRerankModel === CUSTOM_MODEL_VALUE && (
-                  <input
-                    type="text"
-                    value={settings.customRerankModel}
-                    onChange={e => update('customRerankModel', e.target.value)}
-                    placeholder="e.g. provider/rerank-model"
-                    className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
-                  />
-                )}
               </>
             )}
           </div>

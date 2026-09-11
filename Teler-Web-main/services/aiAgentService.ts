@@ -40,10 +40,6 @@ export const DEFAULT_SETTINGS: AiSettings = {
 export const OPENROUTER_MODELS = [
   { value: 'google/gemma-4-26b-a4b-it:free',        label: 'Gemma 4 26B A4B (Free) — Recommended' },
   { value: 'nvidia/nemotron-3-nano-30b-a3b:free', label: 'Nemotron 3 Nano 30B (Free)' },
-  { value: 'deepseek/deepseek-chat',              label: 'DeepSeek Chat'              },
-  { value: 'openai/gpt-4o-mini',                  label: 'GPT-4o Mini'                },
-  { value: 'anthropic/claude-3.5-sonnet',          label: 'Claude 3.5 Sonnet'          },
-  { value: 'google/gemini-pro',                    label: 'Gemini Pro'                 },
 ];
 
 export const OPENROUTER_RERANK_MODELS = [
@@ -74,6 +70,15 @@ export function getAiSettings(): AiSettings {
     ) {
       merged.model = DEFAULT_OPENROUTER_MODEL;
     }
+    if (!merged.model.endsWith(':free') || merged.customModel.trim()) {
+      merged.model = DEFAULT_OPENROUTER_MODEL;
+      merged.customModel = '';
+    }
+    if (!merged.rerankModel.endsWith(':free') || merged.customRerankModel.trim()) {
+      merged.rerankModel = DEFAULT_RERANK_MODEL;
+      merged.customRerankModel = '';
+    }
+    merged.provider = 'openrouter';
     if (saved.openRouterApiKey) localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     return merged;
   } catch {

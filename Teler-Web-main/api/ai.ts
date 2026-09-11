@@ -3,6 +3,11 @@ import { backendJson, noStoreJson, readSession, unauthorized } from './_auth.js'
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 const MAX_CONTEXT_BYTES = 750_000;
 const MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]{1,160}$/i;
+const FREE_OPENROUTER_MODEL_PATTERN = /:free$/i;
+
+export function isFreeOpenRouterModel(model: string): boolean {
+  return MODEL_ID_PATTERN.test(model) && FREE_OPENROUTER_MODEL_PATTERN.test(model);
+}
 
 type AiRequest = {
   question?: unknown;
@@ -128,10 +133,12 @@ export default {
         : 2_000;
 
       if (!question || question.length > 8_000) return noStoreJson({ error: 'Question is required' }, 400);
-      if (!MODEL_ID_PATTERN.test(model)) return noStoreJson({ error: 'Invalid OpenRouter model ID' }, 400);
+      if (!isFreeOpenRouterModel(model)) {
+        return noStoreJson({ error: 'Only OpenRouter models explicitly marked :free are allowed' }, 400);
+      }
       if (!systemPrompt || systemPrompt.length > 12_000) return noStoreJson({ error: 'Invalid system prompt' }, 400);
-      if (body.settings?.useReranking && !MODEL_ID_PATTERN.test(rerankModel)) {
-        return noStoreJson({ error: 'Invalid rerank model ID' }, 400);
+      if (body.settings?.useReranking && !isFreeOpenRouterModel(rerankModel)) {
+        return noStoreJson({ error: 'Only OpenRouter rerank models explicitly marked :free are allowed' }, 400);
       }
 
       const context = body.context && typeof body.context === 'object'
