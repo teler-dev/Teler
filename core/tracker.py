@@ -109,6 +109,7 @@ class MainWindow(QMainWindow):
         self._server_session = None
         self._server_sync_monotonic = time.monotonic()
         self._out_of_sync = False
+        self._local_stop_notice = False
         self._fade_animation = None
 
         self.setWindowTitle(f"TELER — {self._username}")
@@ -655,6 +656,7 @@ class MainWindow(QMainWindow):
                 self._server_session = None
                 self._server_sync_monotonic = time.monotonic()
                 self._out_of_sync = False
+                self._local_stop_notice = True
                 self._show_action_error("Session ended from another TELER client. Finishing local capture…")
                 self._start_local_stop()
                 self._apply_state("saved")
@@ -750,11 +752,15 @@ class MainWindow(QMainWindow):
 
     def _tracking_stop_failed(self, message):
         self._stop_error = message
+        self._local_stop_notice = False
         self._show_action_error(f"Session was saved on the server, but local telemetry cleanup failed: {message}")
 
     def _tracking_stopped(self):
         self._stop_worker.deleteLater()
         self._stop_worker = None
+        if self._local_stop_notice:
+            self._local_stop_notice = False
+            self.action_error.hide()
         action, self._after_stop = self._after_stop, None
         if action:
             action()
