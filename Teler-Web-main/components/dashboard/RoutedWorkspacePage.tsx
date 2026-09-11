@@ -12,7 +12,6 @@ import { InlineAlert } from '../ui/InlineAlert';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/FormControls';
 import { Card } from '../ui/Card';
-import { IconButton } from '../ui/IconButton';
 import { KpiGrid, MetricCard, PageContainer, SectionCard } from '../ui/AnalyticsLayout';
 import { MetricValue } from '../ui/MetricValue';
 
@@ -105,7 +104,7 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
           </KpiGrid>
           <SectionCard title="Employee drill-down" description="Open supporting sessions in a shareable employee view.">
             <div className="-mx-4 md:-mx-5 -my-4 md:-my-5">
-              {employees.map(name => { const stats=statsFor(name); const hasScore=sessions.some(session => (session.userName || session.role)===name && session.overall_productivity_score>0); return <a key={name} href={employeePath(name)} onClick={event => { event.preventDefault(); navigate(employeePath(name)); }} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 p-4 md:px-5 border-b border-subtle last:border-b-0 hover:bg-surface-raised transition-colors"><span><span className="block font-semibold">{name}</span><span className="text-xs text-secondary">{stats.count} supporting sessions</span></span><span className="text-sm text-secondary flex items-center gap-1"><MetricValue value={stats.score} state={hasScore?'value':'unscored'} compact /> <span>score</span></span><span className="text-sm text-secondary"><b className="text-primary">{stats.idle}%</b> idle</span></a>})}
+              {employees.map(name => { const stats=statsFor(name); const hasScore=sessions.some(session => (session.userName || session.role)===name && session.overall_productivity_score>0); return <a key={name} href={employeePath(name)} onClick={event => { event.preventDefault(); navigate(employeePath(name)); }} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 p-4 md:px-5 border-b border-subtle last:border-b-0 hover:bg-surface-raised transition-colors"><span><span className="block font-semibold">{name}</span><span className="text-xs text-secondary">{stats.count} supporting sessions</span></span>{hasScore ? <span className="text-sm text-secondary flex items-center gap-1"><MetricValue value={stats.score} state="value" compact /><span>score</span></span> : <MetricValue value={stats.score} state="unscored" showClassification />}<span className="text-sm text-secondary"><b className="text-primary">{stats.idle}%</b> idle</span></a>})}
             </div>
           </SectionCard>
         </>}
