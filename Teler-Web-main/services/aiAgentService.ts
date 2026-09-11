@@ -116,6 +116,7 @@ function getApiBase(provider: AiSettings['provider']): string {
 export async function askAiAgent(
   question: string,
   context: object,
+  sources: object[] = [],
   settings?: AiSettings
 ): Promise<string> {
   const s = settings ?? getAiSettings();
@@ -129,6 +130,7 @@ export async function askAiAgent(
       body: JSON.stringify({
         question,
         context,
+        sources,
         settings: {
           model: getActiveModel(s),
           useReranking: s.useReranking,

@@ -12,6 +12,7 @@ const { createDirectoryRouter } = require('./modules/v1-directory');
 const { createTasksRouter } = require('./modules/v1-tasks');
 const { createReportsRouter } = require('./modules/v1-reports');
 const { createSettingsRouter } = require('./modules/v1-settings');
+const { createAiAnalysesRouter } = require('./modules/v1-ai-analyses');
 
 const PORT = Number(process.env.PORT) || 7001;
 const API_TOKEN = (process.env.API_TOKEN || '').trim();
@@ -71,6 +72,7 @@ const v1 = express.Router();
 v1.use(express.json({ limit: '20mb' }));
 const userSession = createUserSessionMiddleware(getPool());
 v1.use('/tracking-sessions', userSession, createTrackingSessionsRouter(express));
+v1.use('/ai-analyses', userSession, createAiAnalysesRouter(express));
 v1.use('/ingest', requireBearer(SYNC_TOKEN), createIngestionRouter(express));
 v1.use('/', requireBearer(API_TOKEN), createDirectoryRouter(express));
 v1.use('/sessions', requireBearer(API_TOKEN), createSessionsRouter(express));

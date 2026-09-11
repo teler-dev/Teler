@@ -1,4 +1,4 @@
-import { noStoreJson, readSession, unauthorized } from './_auth.js';
+import { backendJson, noStoreJson, readSession, unauthorized } from './_auth.js';
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 const MAX_CONTEXT_BYTES = 750_000;
@@ -7,6 +7,7 @@ const MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]{1,160}$/i;
 type AiRequest = {
   question?: unknown;
   context?: unknown;
+  sources?: unknown;
   settings?: {
     model?: unknown;
     useReranking?: unknown;
@@ -98,7 +99,8 @@ export default {
     }
 
     try {
-      if (!readSession(request)) return unauthorized();
+      const session = readSession(request);
+      if (!session) return unauthorized();
 
       const apiKey = process.env.OPENROUTER_API_KEY?.trim();
       if (!apiKey) return noStoreJson({ error: 'OPENROUTER_API_KEY is not configured in Vercel' }, 503);
@@ -181,7 +183,16 @@ export default {
       if (typeof content !== 'string' || !content.trim()) {
         return noStoreJson({ error: 'OpenRouter returned an empty response' }, 502);
       }
-      return noStoreJson({ answer: content });
+      const sources = Array.isArray(body.sources) ? body.sources.slice(0, 8) : [];
+      const sessionId = typeof (sources[0] as { sessionId?: unknown } | undefined)?.sessionId === 'string'
+        ? (sources[0] as { sessionId: string }).sessionId
+        : '';
+      const saved = await backendJson('/api/v1/ai-analyses', {
+        method: 'POST',
+        body: JSON.stringify({ question, answer: content, provider: 'openrouter', model, sources, session_id: sessionId }),
+      }, session.token);
+      if (!saved.response.ok) return noStoreJson({ error: typeof saved.body.error === 'string' ? saved.body.error : 'Unable to save AI analysis' }, 502);
+      return noStoreJson({ answer: content, analysis: saved.body.data });
     } catch (error) {
       console.error('TELER AI error', error);
       const message = error instanceof Error && error.name === 'TimeoutError'

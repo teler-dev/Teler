@@ -80,8 +80,8 @@ export async function aiAgentHandler(req: AiAgentRequest): Promise<AiAgentRespon
     ? sessions.filter(session => session.userName === employeeFilter || session.role === employeeFilter)
     : sessions;
   const context = buildRagContext(filtered);
-  const answer = await askAiAgent(question, context, settings);
   const sources = buildSources(filtered, question);
+  const answer = await askAiAgent(question, context, sources, settings);
   const confidence = sources.length
     ? Math.round(sources.reduce((sum, source) => sum + source.confidence, 0) / sources.length)
     : 0;
