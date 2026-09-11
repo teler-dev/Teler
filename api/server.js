@@ -67,7 +67,13 @@ if (authPool) {
   authPool.on('error', error => console.error('[database/pool]', error));
 }
 
-const MACHINE_USER = os.userInfo().username;  // fallback for sessions without meta.user_name
+// Some constrained Windows/service processes cannot resolve the OS account via
+// os.userInfo(). Keep the legacy fallback available without preventing the API
+// from starting when that optional lookup fails.
+const MACHINE_USER = (() => {
+  try { return os.userInfo().username; }
+  catch { return process.env.USERNAME || process.env.USER || 'unknown'; }
+})(); // fallback for sessions without meta.user_name
 
 const COMPANY_ID = 'COMP_DEV_001';
 const ROLE_TO_EMP = {
