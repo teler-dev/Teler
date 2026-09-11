@@ -161,37 +161,39 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
       ) : (
         <div className="flex-1 min-h-0 flex flex-col bg-surface-page">
           <div
-            className="flex-1 min-h-0 relative flex items-center justify-center p-4 md:p-7 overflow-hidden"
+            className="flex-1 min-h-0 relative flex items-center justify-center px-3 md:px-5 py-3 md:py-4 overflow-hidden"
             style={{
               backgroundImage:
                 'radial-gradient(circle at 50% 42%, rgba(34,211,238,0.08), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.012), transparent)',
             }}
           >
-            <div className="absolute top-4 left-4 md:top-6 md:left-6 inline-flex items-center gap-2 rounded-full border border-subtle bg-surface-card/85 backdrop-blur px-3 py-1.5 text-[11px] text-secondary">
+            <div className="absolute top-4 left-4 md:top-5 md:left-5 inline-flex items-center gap-2 rounded-full border border-subtle bg-surface-card/85 backdrop-blur px-3 py-1.5 text-[11px] text-secondary">
               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
               Studio preview
             </div>
 
-            <div className="relative max-w-[min(1120px,84vw)] max-h-[calc(100%-1rem)] p-2 md:p-3 rounded-[24px] border border-subtle bg-surface-card/65 backdrop-blur-sm shadow-2xl">
-              <img
-                src={imageUrls[previewIndex]}
-                alt={`Screenshot ${previewIndex + 1} full preview`}
-                className="block max-w-full max-h-[calc(100vh-250px)] object-contain rounded-2xl bg-surface-card"
-              />
+            <div className="relative w-full h-full flex items-center justify-center px-10 md:px-16">
+              <div className="relative w-full h-full max-w-[1420px] max-h-full p-2 md:p-3 rounded-[24px] border border-subtle bg-surface-card/65 backdrop-blur-sm shadow-2xl flex items-center justify-center">
+                <img
+                  src={imageUrls[previewIndex]}
+                  alt={`Screenshot ${previewIndex + 1} full preview`}
+                  className="block max-w-full max-h-[calc(100vh-180px)] object-contain rounded-2xl bg-surface-card"
+                />
+              </div>
             </div>
 
             {imageUrls.length > 1 && <>
               <IconButton
                 label="Previous screenshot"
                 onClick={previous}
-                className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-surface-card/90 backdrop-blur border-strong shadow-2xl hover:bg-surface-raised"
+                className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-surface-card/90 backdrop-blur border-strong shadow-2xl hover:bg-surface-raised"
               >
                 <ChevronLeft className="w-5 h-5" />
               </IconButton>
               <IconButton
                 label="Next screenshot"
                 onClick={next}
-                className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-surface-card/90 backdrop-blur border-strong shadow-2xl hover:bg-surface-raised"
+                className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-surface-card/90 backdrop-blur border-strong shadow-2xl hover:bg-surface-raised"
               >
                 <ChevronRight className="w-5 h-5" />
               </IconButton>
@@ -199,25 +201,11 @@ export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ imageUrls, tit
           </div>
 
           <footer className="shrink-0 border-t border-subtle bg-surface-card/96 backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-3 px-4 md:px-6 pt-3">
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-2.5">
               <span className="text-[11px] text-secondary">Use ← and → to navigate</span>
               <span className="rounded-full border border-subtle bg-surface-raised px-2.5 py-1 text-[11px] font-semibold text-primary">
                 {previewIndex + 1} / {imageUrls.length}
               </span>
-            </div>
-            <div className="overflow-x-auto px-4 md:px-6 py-3">
-              <div className="flex gap-2 min-w-max">
-                {imageUrls.map((url, index) => <button
-                  key={url}
-                  type="button"
-                  onClick={() => setPreviewIndex(index)}
-                  aria-label={`Preview screenshot ${index + 1}`}
-                  className={`relative w-24 md:w-28 aspect-video overflow-hidden rounded-xl border transition-all ${index === previewIndex ? 'border-accent ring-2 ring-accent/20 bg-accent-soft' : 'border-subtle opacity-65 hover:opacity-100 hover:border-strong'}`}
-                >
-                  <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-1 right-1 rounded bg-surface-card/90 px-1.5 py-0.5 text-[9px] font-semibold text-primary">{index + 1}</span>
-                </button>)}
-              </div>
             </div>
           </footer>
         </div>
