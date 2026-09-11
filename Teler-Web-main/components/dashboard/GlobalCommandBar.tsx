@@ -35,9 +35,11 @@ export const GlobalCommandBar: React.FC<Props> = ({ sessions, onNavigate, onEmpl
     const onOpen = () => setOpen(true);
     window.addEventListener('keydown', onKey);
     window.addEventListener('teler:open-command', onOpen);
+    document.addEventListener('teler:open-command', onOpen);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('teler:open-command', onOpen);
+      document.removeEventListener('teler:open-command', onOpen);
     };
   }, []);
 

@@ -74,7 +74,11 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
 
   const openSearch = () => {
     setMobileOpen(false);
-    window.dispatchEvent(new Event('teler:open-command'));
+    window.setTimeout(() => {
+      const event = new CustomEvent('teler:open-command');
+      window.dispatchEvent(event);
+      document.dispatchEvent(new CustomEvent('teler:open-command'));
+    }, 0);
   };
 
   const navItem = (item: typeof PRIMARY_NAV[number]) => {
