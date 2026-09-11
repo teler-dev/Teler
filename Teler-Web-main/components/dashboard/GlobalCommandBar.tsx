@@ -4,6 +4,7 @@ import { Employee, Session } from '../../types';
 import { NavSection } from './DashboardSidebar';
 import { IconButton } from '../ui/IconButton';
 import { OverlaySurface } from '../ui/Overlay';
+import { subscribeCommandPalette } from '../../services/commandPaletteService';
 
 interface Props {
   sessions: Session[];
@@ -33,14 +34,11 @@ export const GlobalCommandBar: React.FC<Props> = ({ sessions, onNavigate, onEmpl
       }
       if (event.key === 'Escape') setOpen(false);
     };
-    const onOpen = () => setOpen(true);
+    const unsubscribe = subscribeCommandPalette(() => setOpen(true));
     window.addEventListener('keydown', onKey);
-    window.addEventListener('teler:open-command', onOpen);
-    document.addEventListener('teler:open-command', onOpen);
     return () => {
       window.removeEventListener('keydown', onKey);
-      window.removeEventListener('teler:open-command', onOpen);
-      document.removeEventListener('teler:open-command', onOpen);
+      unsubscribe();
     };
   }, []);
 

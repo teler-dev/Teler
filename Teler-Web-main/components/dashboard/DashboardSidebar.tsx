@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, Bell, BrainCircuit, LayoutDashboard, LogOut, Menu, MessageSquareText, Monitor, Moon, Search, Sun, Users, X } from 'lucide-react';
 import { Logo } from '../Logo';
 import { applyTheme, getThemeMode, setThemeMode, subscribeTheme, ThemeMode } from '../../services/themeService';
+import { openCommandPalette } from '../../services/commandPaletteService';
 
 export type NavSection = 'dashboard' | 'employees' | 'sessions' | 'reports' | 'alerts' | 'settings' | 'ai-settings' | 'workspace';
 
@@ -74,11 +75,7 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
 
   const openSearch = () => {
     setMobileOpen(false);
-    window.setTimeout(() => {
-      const event = new CustomEvent('teler:open-command');
-      window.dispatchEvent(event);
-      document.dispatchEvent(new CustomEvent('teler:open-command'));
-    }, 0);
+    openCommandPalette();
   };
 
   const navItem = (item: typeof PRIMARY_NAV[number]) => {
