@@ -26,21 +26,21 @@ function KeyField({
   const [show, setShow] = useState(false);
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">{label}</label>
+      <label className="text-xs font-bold text-secondary uppercase tracking-widest">{label}</label>
       <div className="relative">
         <input
           type={show ? 'text' : 'password'}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 pr-9"
+          className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent pr-9"
         />
         <button
           type="button"
           onClick={() => setShow(v => !v)}
           aria-label={show ? `Hide ${label}` : `Show ${label}`}
           title={show ? `Hide ${label}` : `Show ${label}`}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
         >
           {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
@@ -50,7 +50,7 @@ function KeyField({
 }
 
 const STATUS_CFG: Record<ConnStatus, { dot: string; label: string; text: string }> = {
-  idle:      { dot: 'bg-gray-500',   label: 'Not Tested', text: 'text-gray-500'  },
+  idle:      { dot: 'bg-gray-500',   label: 'Not Tested', text: 'text-secondary'  },
   testing:   { dot: 'bg-amber-400 animate-pulse', label: 'Testing…', text: 'text-amber-400' },
   connected: { dot: 'bg-green-400',  label: 'Connected',  text: 'text-green-400' },
   error:     { dot: 'bg-red-400',    label: 'Error',       text: 'text-red-400'   },
@@ -190,12 +190,12 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/8 shrink-0">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-subtle bg-surface-card shrink-0">
         <div>
-          <h3 className="text-white font-black text-sm tracking-tight">AI Settings</h3>
-          <p className="text-gray-500 text-xs mt-0.5">Configure model, keys &amp; behaviour</p>
+          <h3 className="text-primary font-black text-sm tracking-tight">AI Settings</h3>
+          <p className="text-secondary text-xs mt-0.5">Configure model, keys &amp; behaviour</p>
         </div>
-        <button type="button" onClick={handleClose} aria-label="Close AI settings" title="Close AI settings" className="text-gray-500 hover:text-white transition-colors">
+        <button type="button" onClick={handleClose} aria-label="Close AI settings" title="Close AI settings" className="w-9 h-9 rounded-lg border border-transparent text-secondary hover:text-primary hover:bg-surface-raised hover:border-subtle transition-colors flex items-center justify-center">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -205,7 +205,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
 
         {/* Provider */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">AI Provider</label>
+          <label className="text-xs font-bold text-secondary uppercase tracking-widest">AI Provider</label>
           <div className="flex gap-2">
             {(['openrouter'] as const).map(p => (
               <button
@@ -213,8 +213,8 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
                 onClick={() => update('provider', p)}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
                   settings.provider === p
-                    ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-400'
-                    : 'bg-white/3 border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300'
+                    ? 'bg-accent-soft border-accent text-accent'
+                    : 'bg-surface-raised border-subtle text-secondary hover:border-accent hover:text-primary'
                 }`}
               >
                 OpenRouter — free models only
@@ -225,9 +225,9 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
 
         {/* API Keys */}
         {settings.provider === 'openrouter' && (
-          <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5">
-            <p className="text-xs font-bold text-cyan-300">Managed securely by TELER</p>
-            <p className="text-[10px] text-gray-500 mt-1">
+          <div className="rounded-xl border border-accent bg-accent-soft px-3.5 py-3">
+            <p className="text-xs font-bold text-accent">Managed securely by TELER</p>
+            <p className="text-[11px] text-secondary mt-1">
               The OpenRouter key is stored server-side in Vercel and is never exposed to this browser.
             </p>
           </div>
@@ -235,11 +235,11 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
 
         {/* Model + status indicator */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Model</label>
+          <label className="text-xs font-bold text-secondary uppercase tracking-widest">Model</label>
           <select
             value={selectedModel}
             onChange={e => handleModelChange(e.target.value)}
-            className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500/50 appearance-none"
+            className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-accent appearance-none"
           >
             {modelOptions.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -254,11 +254,11 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
 
         {/* OpenRouter retrieval reranking */}
         {settings.provider === 'openrouter' && (
-          <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <div className="space-y-3 rounded-xl border border-subtle bg-surface-raised p-3.5">
             <label className="flex items-center justify-between gap-3 cursor-pointer">
               <span>
-                <span className="block text-xs font-bold text-gray-300 uppercase tracking-widest">Context reranking</span>
-                <span className="block text-[10px] text-gray-600 mt-1">Selects the most relevant sessions before Gemma answers.</span>
+                <span className="block text-xs font-bold text-primary uppercase tracking-widest">Context reranking</span>
+                <span className="block text-[11px] text-secondary mt-1">Selects the most relevant sessions before Gemma answers.</span>
               </span>
               <input
                 type="checkbox"
@@ -273,7 +273,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
                 <select
                   value={selectedRerankModel}
                   onChange={e => handleRerankModelChange(e.target.value)}
-                  className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500/50 appearance-none"
+                  className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-accent appearance-none"
                 >
                   {OPENROUTER_RERANK_MODELS.map(model => (
                     <option key={model.value} value={model.value}>{model.label}</option>
@@ -287,8 +287,8 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
 
         {/* Temperature */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-            Temperature <span className="text-cyan-400 ml-1">{settings.temperature.toFixed(1)}</span>
+          <label className="text-xs font-bold text-secondary uppercase tracking-widest">
+            Temperature <span className="text-accent ml-1">{settings.temperature.toFixed(1)}</span>
           </label>
           <input
             type="range" min={0} max={1} step={0.1}
@@ -296,45 +296,45 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
             onChange={e => update('temperature', parseFloat(e.target.value))}
             className="w-full accent-cyan-500"
           />
-          <div className="flex justify-between text-[10px] text-gray-600">
+          <div className="flex justify-between text-[10px] text-muted">
             <span>Precise (0.0)</span><span>Creative (1.0)</span>
           </div>
         </div>
 
         {/* Max Tokens */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-            Max Tokens <span className="text-cyan-400 ml-1">{settings.maxTokens}</span>
+          <label className="text-xs font-bold text-secondary uppercase tracking-widest">
+            Max Tokens <span className="text-accent ml-1">{settings.maxTokens}</span>
           </label>
           <input
             type="number"
             min={256} max={8000} step={256}
             value={settings.maxTokens}
             onChange={e => update('maxTokens', parseInt(e.target.value) || 2000)}
-            className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-cyan-500/50"
+            className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-accent"
           />
         </div>
 
         {/* System Prompt */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">System Prompt</label>
+          <label className="text-xs font-bold text-secondary uppercase tracking-widest">System Prompt</label>
           <textarea
             value={settings.systemPrompt}
             onChange={e => update('systemPrompt', e.target.value)}
             rows={6}
-            className="w-full bg-navy-900/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-500/50 resize-none font-mono leading-relaxed"
+            className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-xs text-primary focus:outline-none focus:border-accent resize-none font-mono leading-relaxed"
           />
         </div>
       </div>
 
       {/* Footer — right-aligned: [Test Connection] [Reset] [Save] */}
-      <div className="px-5 py-4 border-t border-white/8 flex items-center justify-end gap-2 shrink-0">
+      <div className="px-5 py-4 border-t border-subtle bg-surface-card flex items-center justify-end gap-2 shrink-0">
         {/* Test Connection */}
         <button
           onClick={handleTest}
           disabled={testing}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-            bg-white/3 border-white/10 text-gray-400 hover:border-cyan-500/30 hover:text-cyan-400 hover:bg-cyan-500/5"
+            bg-surface-raised border-subtle text-secondary hover:border-accent hover:text-accent hover:bg-accent-soft"
         >
           {testing
             ? <Loader className="w-3 h-3 animate-spin" />
@@ -346,7 +346,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
         <button
           onClick={handleReset}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors
-            bg-white/3 border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20"
+            bg-surface-raised border-subtle text-secondary hover:text-primary hover:border-accent"
         >
           <RotateCcw className="w-3 h-3" />
           Reset
@@ -356,7 +356,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose }) => {
         <button
           onClick={handleSave}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black border transition-colors
-            bg-cyan-500/15 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/25"
+            bg-accent-soft border-accent text-accent hover:bg-surface-hover"
         >
           <Save className="w-3 h-3" />
           Save Settings
