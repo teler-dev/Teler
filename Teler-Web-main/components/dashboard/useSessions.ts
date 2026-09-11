@@ -14,7 +14,9 @@ function normalizeError(error:unknown):string{
 }
 
 async function fetchLegacy(employeeName?:string):Promise<Session[]>{
-  const url=employeeName?apiUrl(`/api/employee/${encodeURIComponent(employeeName)}`):apiUrl('/api/sessions');
+  // Use the same workspace-wide source for employee views as the dashboard.
+  // The legacy employee-specific endpoint can lag behind v1 synchronization.
+  const url=apiUrl('/api/sessions');
   const response=await fetch(url,{headers:authHeaders(),credentials:'same-origin',signal:AbortSignal.timeout(FETCH_TIMEOUT_MS)});
   if(response.status===401)window.dispatchEvent(new Event('teler:unauthorized'));
   if(!response.ok){
@@ -23,7 +25,10 @@ async function fetchLegacy(employeeName?:string):Promise<Session[]>{
   }
   const payload:unknown=await response.json();
   if(!Array.isArray(payload))throw new Error('API returned unexpected format (expected array)');
-  return payload as Session[];
+  const sessions=payload as Session[];
+  if(!employeeName)return sessions;
+  const target=employeeName.trim().toLowerCase();
+  return sessions.filter(session=>String(session.userName||'').trim().toLowerCase()===target);
 }
 
 export function useSessions(employeeName?:string,enabled=true){
