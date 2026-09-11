@@ -16,10 +16,10 @@ export const SEVERITY_ORDER: Record<AlertSeverity, number> = {
 export const SEVERITY_CONFIG: Record<AlertSeverity, {
   color: string; bg: string; border: string; dot: string; label: string;
 }> = {
-  critical: { color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/20',    dot: 'bg-red-400 animate-pulse', label: 'CRITICAL' },
-  high:     { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', dot: 'bg-orange-400',             label: 'HIGH'     },
-  medium:   { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', dot: 'bg-yellow-400',             label: 'MEDIUM'   },
-  low:      { color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/20',  dot: 'bg-green-400',              label: 'LOW'      },
+  critical: { color: 'text-danger',  bg: 'bg-danger-soft',  border: 'border-danger',  dot: 'bg-danger animate-pulse', label: 'CRITICAL' },
+  high:     { color: 'text-danger',  bg: 'bg-danger-soft',  border: 'border-danger',  dot: 'bg-danger',               label: 'HIGH'     },
+  medium:   { color: 'text-warning', bg: 'bg-warning-soft', border: 'border-warning', dot: 'bg-warning',              label: 'MEDIUM'   },
+  low:      { color: 'text-info',    bg: 'bg-info-soft',    border: 'border-info',    dot: 'bg-info',                 label: 'LOW'      },
 };
 
 export interface Alert {

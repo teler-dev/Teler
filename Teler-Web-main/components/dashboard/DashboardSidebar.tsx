@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Bell, BrainCircuit, LayoutDashboard, LogOut, Menu, MessageSquareText, Monitor, Moon, Sun, Users, X } from 'lucide-react';
+import { BarChart3, Bell, BrainCircuit, LayoutDashboard, LogOut, Menu, MessageSquareText, Monitor, Moon, Search, Sun, Users, X } from 'lucide-react';
 import { Logo } from '../Logo';
 import { applyTheme, getThemeMode, setThemeMode, subscribeTheme, ThemeMode } from '../../services/themeService';
 
@@ -72,6 +72,11 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
     window.dispatchEvent(new Event('teler:open-ai'));
   };
 
+  const openSearch = () => {
+    setMobileOpen(false);
+    window.dispatchEvent(new Event('teler:open-command'));
+  };
+
   const navItem = (item: typeof PRIMARY_NAV[number]) => {
     const Icon = item.icon;
     const active = activeSection === item.key;
@@ -84,7 +89,7 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
     >
       <Icon className="w-4 h-4 shrink-0" />
       <span className="flex-1">{item.label}</span>
-      {item.key === 'alerts' && alertCount > 0 && <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" aria-label={`${alertCount} active alerts`}>{alertCount > 99 ? '99+' : alertCount}</span>}
+      {item.key === 'alerts' && alertCount > 0 && <span className="bg-danger text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" aria-label={`${alertCount} active alerts`}>{alertCount > 99 ? '99+' : alertCount}</span>}
     </a>;
   };
 
@@ -92,7 +97,7 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
     <style>{`@media (max-width:767px){.ml-56{margin-left:0!important}.min-h-screen>.ml-56{padding-top:3.5rem;min-width:0}.ml-56>header.sticky.top-0{top:3.5rem!important}.ml-56>main{min-width:0;overflow-x:hidden;padding-left:1rem;padding-right:1rem}}`}</style>
     <div className="fixed inset-x-0 top-0 h-14 bg-surface-card border-b border-subtle z-50 flex items-center justify-between px-4 md:hidden shadow-card">
       <Logo variant="navbar" />
-      <button type="button" onClick={() => setMobileOpen(value => !value)} aria-label={mobileOpen ? 'Close dashboard navigation' : 'Open dashboard navigation'} aria-expanded={mobileOpen} className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary hover:text-primary flex items-center justify-center">{mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}</button>
+      <button type="button" onClick={() => setMobileOpen(value => !value)} aria-label={mobileOpen ? 'Close dashboard navigation' : 'Open dashboard navigation'} aria-expanded={mobileOpen} className="w-10 h-10 rounded-xl border border-subtle bg-surface-raised text-secondary hover:text-primary flex items-center justify-center">{mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}</button>
     </div>
 
     {mobileOpen && <button type="button" aria-label="Close dashboard navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 bg-black/45 z-40 md:hidden" />}
@@ -106,6 +111,11 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
       <div className="teler-sidebar-nav flex-1 min-h-0 py-4 px-3 overflow-y-auto overscroll-contain">
         <div className="space-y-1">
           <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Workspace</p>
+          <button type="button" onClick={openSearch} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-secondary border border-transparent hover:text-primary hover:bg-surface-hover transition-colors">
+            <Search className="w-4 h-4 shrink-0" />
+            <span className="flex-1 text-left">Search</span>
+            <kbd className="text-[10px] border border-subtle rounded-md px-1.5 py-0.5 text-muted">⌘K</kbd>
+          </button>
           {PRIMARY_NAV.map(navItem)}
         </div>
 

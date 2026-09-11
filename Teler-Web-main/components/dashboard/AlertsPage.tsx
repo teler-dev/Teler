@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ChevronRight, RefreshCw, ShieldCheck, WifiOff, X } from 'lucide-react';
+import { AlertTriangle, ChevronRight, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { Employee } from '../../types';
 import { DashboardSidebar, NavSection } from './DashboardSidebar';
 import { Alert, AlertSeverity, ALERT_DESCRIPTION, ALERT_LABEL, generateAlerts, SEVERITY_CONFIG, SEVERITY_ORDER } from './alertUtils';
 import { AlertWorkflowPanel } from './AlertWorkflowPanel';
 import { useSessions } from './useSessions';
 import { alertPath, employeePath, navigate, sessionPath, updateQuery } from '../../services/routerService';
+import { PageHeader } from '../ui/PageHeader';
+import { IconButton } from '../ui/IconButton';
+import { InlineAlert } from '../ui/InlineAlert';
 
 interface Props { onLogout:()=>void; onEmployeeClick:(emp:Employee)=>void; onSectionNavigate:(section:NavSection)=>void; clientName?:string; }
 
@@ -18,7 +21,7 @@ const QuickPreview:React.FC<{alert:Alert|null;onClose:()=>void}>=({alert,onClose
   return <div className="fixed inset-0 z-[90] flex justify-end" role="dialog" aria-modal="true" aria-label={`Quick preview: ${alert.alertLabel}`}>
     <button type="button" aria-label="Close alert preview" onClick={onClose} className="absolute inset-0 bg-black/45 backdrop-blur-sm"/>
     <aside className="relative w-full max-w-md h-full bg-surface-page border-l border-subtle shadow-2xl flex flex-col">
-      <header className="p-5 border-b border-subtle flex items-start justify-between gap-3"><div><p className={`text-xs font-semibold uppercase ${config.color}`}>{alert.severity}</p><h2 className="font-bold text-lg mt-1">{alert.alertLabel}</h2><p className="text-sm text-secondary mt-1">{alert.employeeName}</p></div><button type="button" onClick={onClose} aria-label="Close alert preview" title="Close" className="w-9 h-9 rounded-lg border border-subtle bg-surface-raised text-secondary flex items-center justify-center"><X className="w-4 h-4"/></button></header>
+      <header className="p-5 border-b border-subtle flex items-start justify-between gap-3"><div><p className={`text-xs font-semibold uppercase ${config.color}`}>{alert.severity}</p><h2 className="font-bold text-lg mt-1">{alert.alertLabel}</h2><p className="text-sm text-secondary mt-1">{alert.employeeName}</p></div><IconButton label="Close alert preview" size="sm" onClick={onClose}><X className="w-4 h-4"/></IconButton></header>
       <div className="flex-1 overflow-y-auto p-5 space-y-4"><section className="bg-surface-card border border-subtle rounded-xl p-4"><p className="text-xs text-secondary">Detected metric</p><p className="font-semibold mt-2">{alert.details}</p><p className="text-xs text-secondary mt-3">{new Date(alert.timestamp).toLocaleString()}</p></section><section className="bg-surface-card border border-subtle rounded-xl p-4"><p className="text-xs text-secondary">Recommended context</p><p className="text-sm leading-6 mt-2">{ALERT_DESCRIPTION[alert.alertType]}</p></section><AlertWorkflowPanel alertId={alert.id}/></div>
       <footer className="p-4 border-t border-subtle space-y-2"><a href={alertPath(alert.id)} onClick={event=>{if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();onClose();navigate(alertPath(alert.id))}}} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold">Open full alert <ChevronRight className="w-4 h-4"/></a><div className="grid grid-cols-2 gap-2"><a href={employeePath(alert.employeeName)} className="text-center px-3 py-2 rounded-lg border border-subtle bg-surface-raised text-xs">Employee</a><a href={sessionPath(alert.employeeName,alert.sessionId)} className="text-center px-3 py-2 rounded-lg border border-subtle bg-surface-raised text-xs">Session</a></div></footer>
     </aside>
@@ -42,31 +45,17 @@ export const AlertsPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionNavi
   const openPreview=(event:React.MouseEvent<HTMLAnchorElement>,alert:Alert)=>{if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;event.preventDefault();setSelected(alert)};
 
   return <div className="min-h-screen bg-surface-page text-primary flex">
-    <style>{`
-      :root[data-theme="light"] .teler-alert-summary{box-shadow:0 6px 18px rgba(15,23,42,.06)}
-      :root[data-theme="light"] .teler-alert-summary-critical{background:#ffe4e6!important;border-color:#fda4af!important}
-      :root[data-theme="light"] .teler-alert-summary-critical :is(p,span){color:#be123c!important}
-      :root[data-theme="light"] .teler-alert-summary-high{background:#ffedd5!important;border-color:#fdba74!important}
-      :root[data-theme="light"] .teler-alert-summary-high :is(p,span){color:#c2410c!important}
-      :root[data-theme="light"] .teler-alert-summary-medium{background:#fef3c7!important;border-color:#facc15!important}
-      :root[data-theme="light"] .teler-alert-summary-medium :is(p,span){color:#a16207!important}
-      :root[data-theme="light"] .teler-alert-summary-low{background:#dcfce7!important;border-color:#86efac!important}
-      :root[data-theme="light"] .teler-alert-summary-low :is(p,span){color:#15803d!important}
-      :root[data-theme="light"] .teler-alert-filter{background:#f8fafc!important;border-color:#cbd5e1!important;color:#475569!important}
-      :root[data-theme="light"] .teler-alert-filter:hover{background:#f1f5f9!important;border-color:#94a3b8!important;color:#0f172a!important}
-      :root[data-theme="light"] .teler-alert-filter.is-active{background:#ecfdf5!important;border-color:#0f766e!important;color:#0f766e!important}
-      :root[data-theme="light"] .teler-alert-select{background:#f8fafc!important;border-color:#cbd5e1!important;color:#0f172a!important}
-      :root[data-theme="light"] .teler-alert-segmented{background:#fff!important;border-color:#cbd5e1!important}
-      :root[data-theme="light"] .teler-alert-segment{background:#fff!important;color:#475569!important}
-      :root[data-theme="light"] .teler-alert-segment.is-active{background:#ecfdf5!important;color:#0f766e!important}
-      :root[data-theme="light"] .teler-alert-row{background:#fff!important}
-      :root[data-theme="light"] .teler-alert-row:hover{background:#f8fafc!important}
-    `}</style>
+
     <DashboardSidebar activeSection="alerts" onNavigate={onSectionNavigate} alertCount={alerts.length} onLogout={onLogout} clientName={clientName}/>
     <div className="flex-1 ml-56 min-w-0 min-h-screen">
-      <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle"><div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Workforce Intelligence</p><h1 className="text-2xl md:text-3xl font-bold mt-1">Alerts</h1><p className="text-sm text-secondary mt-1 max-w-2xl">{alerts.length} active alerts · quick preview or open a full shareable investigation.</p></div><button type="button" onClick={()=>refetch(true)} aria-label="Refresh alerts" title="Refresh alerts" className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary flex items-center justify-center"><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></button></div></header>
+      <PageHeader
+        eyebrow="Workforce Intelligence"
+        title="Alerts"
+        description={`${alerts.length} active alerts · review severity, evidence and ownership.`}
+        actions={<IconButton label="Refresh alerts" onClick={()=>refetch(true)}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton>}
+      />
       <main className="p-4 md:p-6 space-y-5">
-        {error&&<div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm flex gap-2"><WifiOff className="w-4 h-4 shrink-0 mt-0.5"/>{error}</div>}
+        {error&&<InlineAlert tone="danger" title="Alert data unavailable">{error}</InlineAlert>}
         {alerts.length > 0 && <>
           <section className="grid grid-cols-2 md:grid-cols-4 gap-3">{(['critical','high','medium','low'] as AlertSeverity[]).map(level=>{const config=SEVERITY_CONFIG[level],count=alerts.filter(alert=>alert.severity===level).length;return <button key={level} type="button" onClick={()=>setSeverity(severity===level?'all':level)} className={`teler-alert-summary teler-alert-summary-${level} p-4 md:p-5 rounded-2xl border text-left ${config.bg} ${config.border} ${severity===level?'ring-2 ring-accent':''}`}><p className={`text-xs font-semibold uppercase ${config.color}`}>{level}</p><p className={`text-2xl font-bold mt-2 ${config.color}`}>{count}</p></button>})}</section>
           <section className="bg-surface-card border border-subtle rounded-2xl p-4 flex flex-col lg:flex-row gap-3 lg:items-center"><div className="flex flex-wrap gap-2">{severityOptions.map(value=><button key={value} type="button" onClick={()=>setSeverity(value)} className={`teler-alert-filter ${severity===value?'is-active':''} px-3 py-2 rounded-lg border text-xs ${severity===value?'border-accent bg-accent/10 text-accent':'border-subtle bg-surface-raised text-secondary'}`}>{value==='all'?'All severities':value}</button>)}</div><select aria-label="Alert type" value={type} onChange={event=>setType(event.target.value as Alert['alertType']|'all')} className="teler-alert-select bg-surface-raised border border-subtle rounded-xl px-3 py-2.5 text-xs w-full sm:w-auto"><option value="all">All alert types</option>{typeOptions.filter(value=>value!=='all').map(value=><option key={value} value={value}>{ALERT_LABEL[value as Alert['alertType']]}</option>)}</select><div className="teler-alert-segmented flex w-full sm:w-auto lg:ml-auto rounded-xl border border-subtle overflow-hidden"><button type="button" onClick={()=>setGroup(false)} className={`teler-alert-segment ${!group?'is-active':''} flex-1 sm:flex-none px-3 py-2.5 text-xs ${!group?'bg-accent/10 text-accent':'text-secondary'}`}>All alerts</button><button type="button" onClick={()=>setGroup(true)} className={`teler-alert-segment ${group?'is-active':''} flex-1 sm:flex-none px-3 py-2.5 text-xs ${group?'bg-accent/10 text-accent':'text-secondary'}`}>By employee</button></div></section>

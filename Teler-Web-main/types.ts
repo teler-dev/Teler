@@ -386,8 +386,8 @@ export interface AnomalySummary {
 export type ScoreClassification = 'Low' | 'Moderate' | 'Strong' | 'Elite';
 
 export function classifyScore(score: number): { label: ScoreClassification; color: string; bg: string; border: string; dot: string } {
-  if (score >= 86) return { label: 'Elite',    color: 'text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/30',   dot: 'bg-cyan-400' };
-  if (score >= 71) return { label: 'Strong',   color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  dot: 'bg-green-400' };
-  if (score >= 41) return { label: 'Moderate', color: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  dot: 'bg-amber-400' };
-  return               { label: 'Low',      color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/30',    dot: 'bg-red-400' };
+  if (score >= 86) return { label: 'Elite',    color: 'text-accent',  bg: 'bg-accent-soft',  border: 'border-accent',  dot: 'bg-accent' };
+  if (score >= 71) return { label: 'Strong',   color: 'text-success', bg: 'bg-success-soft', border: 'border-success', dot: 'bg-success' };
+  if (score >= 41) return { label: 'Moderate', color: 'text-warning', bg: 'bg-warning-soft', border: 'border-warning', dot: 'bg-warning' };
+  return               { label: 'Low',      color: 'text-danger',  bg: 'bg-danger-soft',  border: 'border-danger',  dot: 'bg-danger' };
 }

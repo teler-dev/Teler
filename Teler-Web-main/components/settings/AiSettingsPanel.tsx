@@ -12,6 +12,10 @@ import {
   askAiAgent,
 } from '../../services/aiAgentService';
 import { Eye, EyeOff, X, Save, RotateCcw, Zap, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
+import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
+import { FieldLabel, Select, Textarea, TextInput } from '../ui/FormControls';
+import { StatusBadge, StatusTone } from '../ui/StatusBadge';
 
 type ConnStatus = 'idle' | 'testing' | 'connected' | 'error';
 type Toast = { type: 'success' | 'error'; message: string };
@@ -27,34 +31,34 @@ function KeyField({
   const [show, setShow] = useState(false);
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-bold text-secondary uppercase tracking-widest">{label}</label>
+      <FieldLabel className="uppercase tracking-widest">{label}</FieldLabel>
       <div className="relative">
-        <input
+        <TextInput
           type={show ? 'text' : 'password'}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent pr-9"
+          className="pr-11"
         />
-        <button
-          type="button"
+        <IconButton
+          label={show ? `Hide ${label}` : `Show ${label}`}
+          size="sm"
+          variant="ghost"
           onClick={() => setShow(v => !v)}
-          aria-label={show ? `Hide ${label}` : `Show ${label}`}
-          title={show ? `Hide ${label}` : `Show ${label}`}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
+          className="absolute right-1 top-1/2 -translate-y-1/2"
         >
           {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-        </button>
+        </IconButton>
       </div>
     </div>
   );
 }
 
-const STATUS_CFG: Record<ConnStatus, { dot: string; label: string; text: string }> = {
-  idle:      { dot: 'bg-gray-500',   label: 'Not Tested', text: 'text-secondary'  },
-  testing:   { dot: 'bg-amber-400 animate-pulse', label: 'Testing…', text: 'text-amber-400' },
-  connected: { dot: 'bg-green-400',  label: 'Connected',  text: 'text-green-400' },
-  error:     { dot: 'bg-red-400',    label: 'Error',       text: 'text-red-400'   },
+const STATUS_CFG: Record<ConnStatus, { label: string; tone: StatusTone }> = {
+  idle:      { label: 'Not tested', tone: 'neutral' },
+  testing:   { label: 'Testing…', tone: 'warning' },
+  connected: { label: 'Connected', tone: 'success' },
+  error:     { label: 'Error', tone: 'danger' },
 };
 
 export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true }) => {
@@ -176,10 +180,10 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
       {/* Toast */}
       {toast && (
         <div
-          className={`absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold shadow-2xl transition-all ${
+          className={`absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold shadow-card ${
             toast.type === 'success'
-              ? 'bg-green-500/15 border-green-500/30 text-green-400'
-              : 'bg-red-500/15 border-red-500/30 text-red-400'
+              ? 'bg-success-soft border-success text-success'
+              : 'bg-danger-soft border-danger text-danger'
           }`}
           style={{ whiteSpace: 'nowrap' }}
         >
@@ -195,9 +199,9 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
           <h3 className="text-primary font-black text-sm tracking-tight">AI Settings</h3>
           <p className="text-secondary text-xs mt-0.5">Configure model, keys &amp; behaviour</p>
         </div>
-        <button type="button" onClick={handleClose} aria-label="Close AI settings" title="Close AI settings" className="w-9 h-9 rounded-lg border border-transparent text-secondary hover:text-primary hover:bg-surface-raised hover:border-subtle transition-colors flex items-center justify-center">
+        <IconButton label="Close AI settings" size="sm" variant="ghost" onClick={handleClose}>
           <X className="w-4 h-4" />
-        </button>
+        </IconButton>
       </div>}
 
       {/* Body */}
@@ -205,13 +209,13 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
 
         {/* Provider */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-secondary uppercase tracking-widest">AI Provider</label>
+          <FieldLabel className="uppercase tracking-widest">AI Provider</FieldLabel>
           <div className="flex gap-2">
             {(['openrouter'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => update('provider', p)}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                className={`flex-1 min-h-10 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
                   settings.provider === p
                     ? 'bg-accent-soft border-accent text-accent'
                     : 'bg-surface-raised border-subtle text-secondary hover:border-accent hover:text-primary'
@@ -235,21 +239,13 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
 
         {/* Model + status indicator */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-secondary uppercase tracking-widest">Model</label>
-          <select
-            value={selectedModel}
-            onChange={e => handleModelChange(e.target.value)}
-            className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-accent appearance-none"
-          >
+          <FieldLabel className="uppercase tracking-widest">Model</FieldLabel>
+          <Select value={selectedModel} onChange={e => handleModelChange(e.target.value)}>
             {modelOptions.map(m => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
-          </select>
-          {/* Connection status dot */}
-          <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${sc.text}`}>
-            <span className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
-            {sc.label}
-          </div>
+          </Select>
+          <StatusBadge tone={sc.tone} dot>{sc.label}</StatusBadge>
         </div>
 
         <details className="group rounded-xl border border-subtle bg-surface-raised">
@@ -270,21 +266,17 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
                 type="checkbox"
                 checked={settings.useReranking}
                 onChange={e => update('useReranking', e.target.checked)}
-                className="w-4 h-4 accent-cyan-500"
+                className="w-4 h-4"
               />
             </label>
 
             {settings.useReranking && (
               <>
-                <select
-                  value={selectedRerankModel}
-                  onChange={e => handleRerankModelChange(e.target.value)}
-                  className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-accent appearance-none"
-                >
+                <Select value={selectedRerankModel} onChange={e => handleRerankModelChange(e.target.value)}>
                   {OPENROUTER_RERANK_MODELS.map(model => (
                     <option key={model.value} value={model.value}>{model.label}</option>
                   ))}
-                </select>
+                </Select>
 
               </>
             )}
@@ -293,14 +285,14 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
 
         {/* Temperature */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-secondary uppercase tracking-widest">
+          <FieldLabel className="uppercase tracking-widest">
             Temperature <span className="text-accent ml-1">{settings.temperature.toFixed(1)}</span>
-          </label>
+          </FieldLabel>
           <input
             type="range" min={0} max={1} step={0.1}
             value={settings.temperature}
             onChange={e => update('temperature', parseFloat(e.target.value))}
-            className="w-full accent-cyan-500"
+            className="w-full"
           />
           <div className="flex justify-between text-[10px] text-muted">
             <span>Precise (0.0)</span><span>Creative (1.0)</span>
@@ -309,66 +301,44 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
 
         {/* Max Tokens */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-secondary uppercase tracking-widest">
+          <FieldLabel className="uppercase tracking-widest">
             Max Tokens <span className="text-accent ml-1">{settings.maxTokens}</span>
-          </label>
-          <input
+          </FieldLabel>
+          <TextInput
             type="number"
             min={256} max={8000} step={256}
             value={settings.maxTokens}
             onChange={e => update('maxTokens', parseInt(e.target.value) || 2000)}
-            className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-accent"
           />
         </div>
 
         {/* System Prompt */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-secondary uppercase tracking-widest">System Prompt</label>
-          <textarea
+          <FieldLabel className="uppercase tracking-widest">System Prompt</FieldLabel>
+          <Textarea
             value={settings.systemPrompt}
             onChange={e => update('systemPrompt', e.target.value)}
             rows={6}
-            className="w-full bg-surface-input border border-subtle rounded-xl px-3 py-2.5 text-xs text-primary focus:outline-none focus:border-accent resize-none font-mono leading-relaxed"
+            className="text-xs font-mono leading-relaxed"
           />
         </div>
           </div>
         </details>
       </div>
 
-      {/* Footer — right-aligned: [Test Connection] [Reset] [Save] */}
-      <div className="px-5 py-4 border-t border-subtle bg-surface-card flex items-center justify-end gap-2 shrink-0">
-        {/* Test Connection */}
-        <button
-          onClick={handleTest}
-          disabled={testing}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-            bg-surface-raised border-subtle text-secondary hover:border-accent hover:text-accent hover:bg-accent-soft"
-        >
-          {testing
-            ? <Loader className="w-3 h-3 animate-spin" />
-            : <Zap className="w-3 h-3" />}
-          Test Connection
-        </button>
-
-        {/* Reset Defaults */}
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors
-            bg-surface-raised border-subtle text-secondary hover:text-primary hover:border-accent"
-        >
-          <RotateCcw className="w-3 h-3" />
+      <div className="px-5 py-4 border-t border-subtle bg-surface-card flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 shrink-0">
+        <Button variant="secondary" size="sm" onClick={handleTest} disabled={testing}>
+          {testing ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+          Test connection
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleReset}>
+          <RotateCcw className="w-3.5 h-3.5" />
           Reset
-        </button>
-
-        {/* Save Settings */}
-        <button
-          onClick={handleSave}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black border transition-colors
-            bg-accent-soft border-accent text-accent hover:bg-surface-hover"
-        >
-          <Save className="w-3 h-3" />
-          Save Settings
-        </button>
+        </Button>
+        <Button size="sm" onClick={handleSave}>
+          <Save className="w-3.5 h-3.5" />
+          Save settings
+        </Button>
       </div>
     </div>
   );

@@ -11,6 +11,10 @@ import { Employee, Session, classifyScore } from '../../types';
 import { DashboardSidebar, NavSection } from './DashboardSidebar';
 import { generateAlerts } from './alertUtils';
 import { useSessions } from './useSessions';
+import { PageHeader } from '../ui/PageHeader';
+import { IconButton } from '../ui/IconButton';
+import { InlineAlert } from '../ui/InlineAlert';
+import { StatusDot } from '../ui/StatusBadge';
 
 const CHART_TEXT = 'rgb(var(--text-muted))';
 const CHART_GRID = 'rgb(var(--border-subtle))';
@@ -223,19 +227,18 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
   return <div className="min-h-screen bg-surface-page text-primary flex">
     <DashboardSidebar activeSection="dashboard" onNavigate={onSectionNavigate} alertCount={alerts.length} onLogout={onLogout} clientName={clientName}/>
     <div className="flex-1 ml-56 min-w-0 min-h-screen flex flex-col">
-      <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle">
-        <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3">
-          <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Workforce Intelligence</p><h1 className="text-2xl md:text-3xl font-bold text-primary mt-1">Dashboard</h1></div>
-          <div className="flex items-center gap-2">
-            <span className={`hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-subtle bg-surface-raised ${error ? 'text-danger' : usingMock ? 'text-warning' : 'text-success'}`}>{statusIcon}{statusText}</span>
-            <span className="hidden md:block text-xs text-muted font-mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            <button type="button" onClick={() => refetch(true)} aria-label="Refresh dashboard" title="Refresh dashboard" className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary hover:text-primary hover:border-strong flex items-center justify-center"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/></button>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Workforce Intelligence"
+        title="Dashboard"
+        actions={<>
+          <span className={`hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-subtle bg-surface-raised ${error ? 'text-danger' : usingMock ? 'text-warning' : 'text-success'}`}>{statusIcon}{statusText}</span>
+          <span className="hidden md:block text-xs text-muted font-mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <IconButton label="Refresh dashboard" onClick={() => refetch(true)}><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/></IconButton>
+        </>}
+      />
 
       {loading && !sessions.length ? <Skeleton/> : <main className="p-4 md:p-6 space-y-5">
-        {error && <section className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 flex gap-3 text-danger"><WifiOff className="w-4 h-4 mt-0.5 shrink-0"/><div><p className="font-semibold text-sm">Live session data unavailable</p><p className="text-sm text-secondary mt-1">{error}</p></div></section>}
+        {error && <InlineAlert tone="danger" title="Live session data unavailable">{error}</InlineAlert>}
 
         <section className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 py-1">
           <div><h2 className="text-xl md:text-2xl font-bold text-primary">{clientName}</h2><p className="text-sm text-secondary mt-1 max-w-2xl">Workforce intelligence · {employees.length} employees · current telemetry window</p></div>
@@ -258,7 +261,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
           <article className="bg-surface-card border border-subtle rounded-2xl p-5 shadow-card">
             <div className="flex items-center justify-between"><div><h3 className="font-semibold text-primary">Team Status</h3><p className="text-xs text-muted mt-1">Recent activity state</p></div><button type="button" onClick={() => onSectionNavigate('employees')} className="text-sm text-accent inline-flex items-center gap-1">View all <ArrowRight className="w-3.5 h-3.5"/></button></div>
             <div className="grid grid-cols-3 gap-2 mt-4">{(['working','idle','offline'] as EmployeeStatus[]).map(status => {const count=employees.filter(item => item.status === status).length;const tone=status==='working'?'text-success':status==='idle'?'text-warning':'text-muted';return <div key={status} className="bg-surface-raised border border-subtle rounded-xl p-3 text-center"><p className={`text-xs font-semibold capitalize ${tone}`}>{status}</p><p className="text-xl font-bold text-primary mt-1">{count}</p></div>})}</div>
-            <div className="mt-4 space-y-1">{employees.filter(item => item.status !== 'offline').slice(0,4).map(item => <button key={item.employee.name} type="button" onClick={() => onEmployeeClick(item.employee)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover text-left"><span className={`w-2 h-2 rounded-full ${item.status==='working'?'bg-green-500':'bg-amber-500'}`}/><span className="min-w-0"><span className="block text-sm font-medium text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate">{item.employee.role || 'Role not provided'}</span></span></button>)}</div>
+            <div className="mt-4 space-y-1">{employees.filter(item => item.status !== 'offline').slice(0,4).map(item => <button key={item.employee.name} type="button" onClick={() => onEmployeeClick(item.employee)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover text-left"><StatusDot tone={item.status==='working'?'success':'warning'} /><span className="min-w-0"><span className="block text-sm font-medium text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate">{item.employee.role || 'Role not provided'}</span></span></button>)}</div>
           </article>
         </section>
 

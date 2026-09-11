@@ -16,6 +16,9 @@ import { useSessions } from './components/dashboard/useSessions';
 import { getCurrentUser, logout } from './services/authService';
 import { applyTheme } from './services/themeService';
 import { AppRoute, employeePath, employeeSlug, navigate, parseRoute, routeTitle } from './services/routerService';
+import { PageHeader } from './components/ui/PageHeader';
+import { IconButton } from './components/ui/IconButton';
+import { Button } from './components/ui/Button';
 
 declare const __TELER_BUILD_ID__: string;
 
@@ -45,13 +48,14 @@ const AiSettingsRoute: React.FC<{ onLogout: () => void; clientName: string; onNa
   return <div className="min-h-screen bg-surface-page text-primary flex">
     <DashboardSidebar activeSection="ai-settings" onNavigate={onNavigate} alertCount={alertCount} onLogout={onLogout} clientName={clientName} />
     <div className="flex-1 ml-56 min-w-0 min-h-screen">
-      <header className="sticky top-0 z-30 bg-surface-page/90 backdrop-blur-xl border-b border-subtle">
-        <div className="px-4 md:px-6 py-3 flex items-center gap-3">
-          <a href="/dashboard" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/dashboard'); } }} aria-label="Back to dashboard" className="w-10 h-10 rounded-lg border border-subtle bg-surface-raised text-secondary flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></a>
-          <div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Configuration</p><h1 className="text-2xl md:text-3xl font-bold mt-1">AI Settings</h1><p className="text-sm text-secondary mt-1">Choose the provider and model. Advanced generation controls stay out of the way until needed.</p></div>
-        </div>
-      </header>
-      <main className="p-4 md:p-6 max-w-4xl"><div className="teler-ai-settings-panel theme-form-surface bg-surface-card border border-subtle rounded-2xl overflow-hidden shadow-card"><AiSettingsPanel showHeader={false} onClose={() => navigate('/dashboard')} /></div></main>
+      <PageHeader
+        eyebrow="Configuration"
+        title="AI Settings"
+        description="Choose the provider and model. Advanced generation controls stay out of the way until needed."
+        leading={<IconButton label="Back to dashboard" onClick={() => navigate('/dashboard')}><ArrowLeft className="w-4 h-4" /></IconButton>}
+        compact
+      />
+      <main className="p-4 md:p-6 max-w-[800px] mx-auto w-full"><div className="teler-ai-settings-panel theme-form-surface bg-surface-card border border-subtle rounded-2xl overflow-hidden shadow-card"><AiSettingsPanel showHeader={false} onClose={() => navigate('/dashboard')} /></div></main>
     </div>
   </div>;
 };
@@ -140,9 +144,9 @@ export const AuthenticatedRouter: React.FC = () => {
     {page}
     {updateAvailable && <div role="status" aria-live="polite" className="fixed left-1/2 -translate-x-1/2 bottom-4 z-[120] max-w-[calc(100vw-2rem)] flex items-center gap-3 rounded-xl border border-subtle bg-surface-card shadow-card px-4 py-3 text-sm text-primary">
       <span>A new TELER version is available.</span>
-      <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-accent px-3 py-1.5 text-white font-semibold focus-visible:outline-none">Reload</button>
+      <Button size="sm" onClick={() => window.location.reload()}>Reload</Button>
     </div>}
-    {route.kind !== 'dashboard' && <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />}
+    <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />
     {showAiChat && <AiChatPanel sessions={globalSessions} onClose={() => setShowAiChat(false)} />}
   </div>;
 };
