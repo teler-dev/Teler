@@ -33,7 +33,7 @@ export const FullAlertPage: React.FC<Props> = ({ alertId, onLogout, clientName, 
       <PageHeader
         eyebrow="Workforce Intelligence"
         title="Alert Detail"
-        description="Evidence, ownership and activity history."
+        meta="Evidence, ownership and activity history"
         leading={<IconButton label="Back to alerts" onClick={() => navigate('/alerts')}><ArrowLeft className="w-4 h-4" /></IconButton>}
         compact
       />

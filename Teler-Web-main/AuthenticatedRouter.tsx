@@ -51,7 +51,7 @@ const AiSettingsRoute: React.FC<{ onLogout: () => void; clientName: string; onNa
       <PageHeader
         eyebrow="Configuration"
         title="AI Settings"
-        description="Choose the provider and model. Advanced generation controls stay out of the way until needed."
+        meta="Choose the provider and model · advanced controls stay out of the way until needed"
         leading={<IconButton label="Back to dashboard" onClick={() => navigate('/dashboard')}><ArrowLeft className="w-4 h-4" /></IconButton>}
         compact
       />

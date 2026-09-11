@@ -78,7 +78,7 @@ export const FullAiPage: React.FC<Props> = ({ onLogout, clientName, onSectionNav
       <PageHeader
         eyebrow="Workforce Intelligence"
         title="TELER AI Workspace"
-        description="Persistent conversations with employee, session, metric and time-range evidence."
+        meta="Persistent conversations with employee, session, metric and time-range evidence"
         actions={<><Button onClick={newConversation}>New conversation</Button><Button variant="secondary" onClick={exportConversation} disabled={!messages.length}><Download className="w-4 h-4" />Export</Button></>}
       />
       <div className="flex-1 grid lg:grid-cols-[260px_1fr] min-h-0">

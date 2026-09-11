@@ -211,6 +211,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
       <PageHeader
         eyebrow="Workforce Intelligence"
         title="Dashboard"
+        meta={<span>{clientName} · {employees.length} employee{employees.length===1?'':'s'} · {sessions.length} session{sessions.length===1?'':'s'} · current telemetry window</span>}
         actions={<>
           <span className={`hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-subtle bg-surface-raised ${error ? 'text-danger' : usingMock ? 'text-warning' : 'text-success'}`}>{statusIcon}{statusText}</span>
           <span className="hidden md:block text-xs text-muted font-mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -220,11 +221,6 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
 
       {loading && !sessions.length ? <LoadingState variant="dashboard" label="Loading dashboard" /> : <PageContainer>
         {error && <InlineAlert tone="danger" title="Live session data unavailable">{error}</InlineAlert>}
-
-        <section className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 py-1">
-          <div><h2 className="text-xl md:text-2xl font-bold text-primary">{clientName}</h2><p className="text-sm text-secondary mt-1 max-w-2xl">Workforce intelligence · {employees.length} employees · current telemetry window</p></div>
-          <span className="inline-flex w-fit items-center rounded-lg border border-subtle bg-surface-raised px-3 py-2 text-xs font-semibold text-secondary">{sessions.length} total sessions on record</span>
-        </section>
 
         <KpiGrid>
           <MetricCard label="Workforce Health" value={<MetricValue value={health} state={health>0?'value':'unscored'} suffix="/100" />} helper="Composite of productivity, focus, participation and active risk." icon={<Activity className="w-5 h-5"/>} tone={health>0?(health >= 70 ? 'accent' : health >= 50 ? 'warning' : 'danger'):'neutral'} onClick={() => onSectionNavigate('workspace')}/>

@@ -45,14 +45,14 @@ export const Dashboard:React.FC<Props>=({onLogout,userName='User',initialEmploye
       <PageHeader
         eyebrow="Employee Intelligence"
         title={employee.name}
-        description={employee.role ? `${employee.role}${employee.client ? ` · ${employee.client}` : ''}` : 'Supporting telemetry and session evidence'}
+        meta={<span>{employee.role||'Role not provided'}{employee.client?` · ${employee.client}`:''} · {loading && !sessions.length ? 'loading sessions…' : `${sessions.length} supporting session${sessions.length===1?'':'s'}`}</span>}
         leading={<IconButton label="Back to employees" onClick={() => navigate('/employees')}><ArrowLeft className="w-4 h-4"/></IconButton>}
-        actions={<IconButton label="Refresh employee telemetry" onClick={()=>refetch(true)} disabled={loading}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton>}
+        actions={<>{selected&&<MetricValue value={selected.overall_productivity_score} state={hasScore?'value':'unscored'} suffix="/100" showClassification />}<IconButton label="Refresh employee telemetry" onClick={()=>refetch(true)} disabled={loading}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton></>}
         compact
       />
       <PageContainer>
         <details className="bg-surface-card border border-subtle rounded-2xl shadow-card"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-primary">Employee filters</summary><div className="px-3 pb-3"><WorkspaceToolbar sessions={sessions} compact/></div></details>
-        <Card as="section" padding="lg" className="flex flex-wrap gap-5 items-start justify-between"><div className="flex gap-4 min-w-0"><div className="w-14 h-14 rounded-2xl bg-accent-soft border border-accent text-primary font-bold text-xl flex items-center justify-center shrink-0">{employee.name.slice(0,1).toUpperCase()}</div><div className="min-w-0"><h2 className="text-xl font-bold truncate">{employee.name}</h2><p className="text-sm text-secondary mt-1">{employee.role||'Role not provided'}{employee.client?` · ${employee.client}`:''}</p><p className="text-xs text-secondary mt-2">{loading && !sessions.length ? 'Loading supporting sessions…' : `${sessions.length} supporting session${sessions.length===1?'':'s'} in the current filter.`}</p></div></div>{selected&&<MetricValue value={selected.overall_productivity_score} state={hasScore?'value':'unscored'} suffix="/100" showClassification />}</Card>
+
         {error&&<InlineAlert tone="danger" title="Live employee data unavailable">{error}</InlineAlert>}
         {loading&&!selected?<LoadingState variant="detail" label="Loading employee telemetry" />:selected?<>
           <KpiGrid>

@@ -90,7 +90,7 @@ export const RoutedWorkspacePage: React.FC<Props> = ({ kind, onLogout, clientNam
       <PageHeader
         eyebrow={kind === 'analytics' ? 'Workforce Intelligence' : 'Workspace'}
         title={meta.title}
-        description={meta.description}
+        meta={meta.description}
       />
       <PageContainer>
         {['analytics','compare','reports'].includes(kind) && <WorkspaceToolbar sessions={sessions} />}

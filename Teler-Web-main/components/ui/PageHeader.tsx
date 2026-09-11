@@ -4,6 +4,7 @@ import { cx } from './Surface';
 interface PageHeaderProps {
   eyebrow?: string;
   title: React.ReactNode;
+  meta?: React.ReactNode;
   description?: React.ReactNode;
   leading?: React.ReactNode;
   actions?: React.ReactNode;
@@ -14,6 +15,7 @@ interface PageHeaderProps {
 export const PageHeader: React.FC<PageHeaderProps> = ({
   eyebrow,
   title,
+  meta,
   description,
   leading,
   actions,
@@ -26,8 +28,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         {leading}
         <div className="min-w-0">
           {eyebrow && <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">{eyebrow}</p>}
-          <h1 className={cx('font-bold text-primary truncate', compact ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl', eyebrow && 'mt-1')}>{title}</h1>
-          {description && <p className="text-sm text-secondary mt-1 max-w-3xl">{description}</p>}
+          <div className={cx('min-w-0 flex flex-col md:flex-row md:items-baseline gap-1 md:gap-3', eyebrow && 'mt-1')}>
+            <h1 className={cx('font-bold text-primary truncate shrink-0', compact ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl')}>{title}</h1>
+            {meta && <div className="text-sm text-secondary min-w-0 md:truncate">{meta}</div>}
+          </div>
+          {description && <p className="text-sm text-secondary mt-1 max-w-3xl md:hidden">{description}</p>}
         </div>
       </div>
       {actions && <div className="shrink-0 flex items-center gap-2">{actions}</div>}

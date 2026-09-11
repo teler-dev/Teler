@@ -51,7 +51,7 @@ export const AlertsPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionNavi
       <PageHeader
         eyebrow="Workforce Intelligence"
         title="Alerts"
-        description={`${alerts.length} active alerts · review severity, evidence and ownership.`}
+        meta={`${alerts.length} active alert${alerts.length===1?'':'s'} · review severity, evidence and ownership`}
         actions={<IconButton label="Refresh alerts" onClick={()=>refetch(true)}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton>}
       />
       <PageContainer>
