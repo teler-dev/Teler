@@ -216,7 +216,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
               <button
                 key={p}
                 onClick={() => setSettings(current => p === 'openai'
-                  ? { ...current, provider: p, model: 'gpt-4o-mini', customModel: '', useReranking: false }
+                  ? { ...current, provider: p, model: 'openai/gpt-4o-mini', customModel: '', useReranking: false }
                   : { ...current, provider: p, model: DEFAULT_SETTINGS.model, customModel: '', useReranking: true }
                 )}
                 className={`flex-1 min-h-10 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
@@ -243,7 +243,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
         {settings.provider === 'openai' && (
           <div className="rounded-xl border border-accent bg-accent-soft px-3.5 py-3">
             <p className="text-xs font-bold text-primary">Managed securely by TELER</p>
-            <p className="text-[11px] text-secondary mt-1">GPT-4o Mini uses the server-side OpenAI key. The key is never exposed to this browser.</p>
+            <p className="text-[11px] text-secondary mt-1">GPT-4o Mini uses TELER’s server-side provider key. The key is never exposed to this browser; paid usage may apply.</p>
           </div>
         )}
 

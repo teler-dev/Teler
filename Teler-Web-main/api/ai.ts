@@ -5,7 +5,7 @@ const OPENAI_BASE = 'https://api.openai.com/v1';
 const MAX_CONTEXT_BYTES = 750_000;
 const MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]{1,160}$/i;
 const FREE_OPENROUTER_MODEL_PATTERN = /:free$/i;
-const OPENAI_MODEL = 'gpt-4o-mini';
+const OPENAI_MODEL = 'openai/gpt-4o-mini';
 
 export function isFreeOpenRouterModel(model: string): boolean {
   return MODEL_ID_PATTERN.test(model) && FREE_OPENROUTER_MODEL_PATTERN.test(model);
@@ -136,11 +136,14 @@ export default {
       const maxTokens = typeof body.settings?.maxTokens === 'number'
         ? Math.min(8_000, Math.max(256, Math.round(body.settings.maxTokens)))
         : 2_000;
-      const apiKey = provider === 'openai'
-        ? process.env.OPENAI_API_KEY?.trim()
-        : process.env.OPENROUTER_API_KEY?.trim();
+      // GPT-4o Mini can use a dedicated OpenAI key when one is configured.
+      // Otherwise it is routed through the already configured OpenRouter
+      // account, which keeps the browser free of both provider credentials.
+      const directOpenAiKey = process.env.OPENAI_API_KEY?.trim();
+      const useDirectOpenAi = provider === 'openai' && Boolean(directOpenAiKey);
+      const apiKey = useDirectOpenAi ? directOpenAiKey : process.env.OPENROUTER_API_KEY?.trim();
       if (!apiKey) {
-        return noStoreJson({ error: provider === 'openai' ? 'OPENAI_API_KEY is not configured in Vercel' : 'OPENROUTER_API_KEY is not configured in Vercel' }, 503);
+        return noStoreJson({ error: 'OPENROUTER_API_KEY is not configured in Vercel' }, 503);
       }
 
       if (!question || question.length > 8_000) return noStoreJson({ error: 'Question is required' }, 400);
@@ -167,15 +170,17 @@ export default {
         ? await rerankContext(question, context, rerankModel, apiKey, appOrigin)
         : context;
 
-      const response = await fetch(`${provider === 'openai' ? OPENAI_BASE : OPENROUTER_BASE}/chat/completions`, {
+      const upstreamProvider = useDirectOpenAi ? 'openai' : 'openrouter';
+      const upstreamModel = useDirectOpenAi ? 'gpt-4o-mini' : model;
+      const response = await fetch(`${upstreamProvider === 'openai' ? OPENAI_BASE : OPENROUTER_BASE}/chat/completions`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          ...(provider === 'openrouter' ? { 'HTTP-Referer': appOrigin, 'X-Title': 'TELER Dashboard' } : {}),
+          ...(upstreamProvider === 'openrouter' ? { 'HTTP-Referer': appOrigin, 'X-Title': 'TELER Dashboard' } : {}),
         },
         body: JSON.stringify({
-          model,
+          model: upstreamModel,
           temperature,
           max_tokens: maxTokens,
           messages: [

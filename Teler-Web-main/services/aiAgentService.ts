@@ -50,7 +50,7 @@ export const OPENROUTER_RERANK_MODELS = [
 ];
 
 export const OPENAI_MODELS = [
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' },
+  { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' },
 ];
 
 
@@ -70,8 +70,8 @@ export function getAiSettings(): AiSettings {
     }
     const savedProvider = saved.provider === 'openai' ? 'openai' : 'openrouter';
     merged.provider = savedProvider;
-    if (savedProvider === 'openai' && saved.model === 'gpt-4o-mini') {
-      merged.model = 'gpt-4o-mini';
+    if (savedProvider === 'openai' && ['gpt-4o-mini', 'openai/gpt-4o-mini'].includes(String(saved.model))) {
+      merged.model = 'openai/gpt-4o-mini';
       merged.customModel = '';
       merged.useReranking = false;
     } else if (!merged.model.endsWith(':free') || merged.customModel.trim()) {
