@@ -9,7 +9,7 @@ const SEMANTIC_CSS = `
   --surface-page:10 15 26;--surface-sidebar:10 15 26;--surface-card:17 24 39;--surface-raised:24 34 52;--surface-input:15 23 42;--surface-hover:30 41 59;
   --text-primary:241 245 249;--text-secondary:203 213 225;--text-muted:148 163 184;
   --border-subtle:51 65 85;--border-strong:71 85 105;
-  --accent:34 211 238;--accent-hover:103 232 249;--accent-soft:8 47 73;--focus-ring:34 211 238;
+  --accent:34 211 238;--accent-hover:103 232 249;--accent-soft:8 47 73;--accent-contrast:8 47 73;--focus-ring:34 211 238;
   --success:74 222 128;--success-soft:20 50 32;--warning:251 191 36;--warning-soft:69 44 9;--danger:248 113 113;--danger-soft:69 10 10;--info:56 189 248;--info-soft:8 47 73;
   --shadow-card:0 10px 30px rgba(0,0,0,.22);--scroll-track:10 15 26;--scroll-thumb:71 85 105;--skeleton-a:255 255 255;--skeleton-b:255 255 255;
 }
@@ -17,12 +17,13 @@ const SEMANTIC_CSS = `
   --surface-page:248 250 252;--surface-sidebar:255 255 255;--surface-card:255 255 255;--surface-raised:241 245 249;--surface-input:255 255 255;--surface-hover:238 244 248;
   --text-primary:15 23 42;--text-secondary:51 65 85;--text-muted:71 85 105;
   --border-subtle:219 227 238;--border-strong:148 163 184;
-  --accent:15 118 110;--accent-hover:13 100 94;--accent-soft:204 251 241;--focus-ring:13 148 136;
+  --accent:15 118 110;--accent-hover:13 100 94;--accent-soft:204 251 241;--accent-contrast:255 255 255;--focus-ring:13 148 136;
   --success:21 128 61;--success-soft:220 252 231;--warning:161 98 7;--warning-soft:254 243 199;--danger:185 28 28;--danger-soft:254 226 226;--info:3 105 161;--info-soft:224 242 254;
   --shadow-card:0 10px 28px rgba(15,23,42,.07);--scroll-track:241 245 249;--scroll-thumb:148 163 184;--skeleton-a:226 232 240;--skeleton-b:241 245 249;
 }
 html,body,#root{min-height:100%;background:rgb(var(--surface-page));color:rgb(var(--text-primary))}
 body{transition:background-color .15s ease,color .15s ease}
+.text-on-accent{color:rgb(var(--accent-contrast))}.bg-accent.text-white{color:rgb(var(--accent-contrast))!important}
 :where(input,select,textarea){background:rgb(var(--surface-input));color:rgb(var(--text-primary));border-color:rgb(var(--border-subtle));accent-color:rgb(var(--accent))}
 :where(input,select,textarea):hover:not(:disabled){border-color:rgb(var(--border-strong))}
 :where(input,select,textarea):focus-visible,:where(button,a,[role="button"]):focus-visible{outline:2px solid rgb(var(--focus-ring));outline-offset:2px}
