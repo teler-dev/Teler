@@ -17,6 +17,7 @@ import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { FieldLabel, Select, Textarea, TextInput } from '../ui/FormControls';
 import { StatusBadge, StatusTone } from '../ui/StatusBadge';
+import { AiAnalysisQueue } from './AiAnalysisQueue';
 
 type ConnStatus = 'idle' | 'testing' | 'connected' | 'error';
 type Toast = { type: 'success' | 'error'; message: string };
@@ -257,6 +258,8 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
           </Select>
           <StatusBadge tone={sc.tone} dot>{sc.label}</StatusBadge>
         </div>
+
+        <AiAnalysisQueue />
 
         <details className="group rounded-xl border border-subtle bg-surface-raised">
           <summary className="list-none cursor-pointer px-4 py-3 flex items-center justify-between gap-3">

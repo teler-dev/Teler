@@ -2,8 +2,59 @@
 const { getPool } = require('../db');
 
 function canManage(user) { return ['owner', 'admin'].includes(String(user?.organization?.role || '').toLowerCase()); }
+function requireManager(req, res) {
+  if (canManage(req.authUser)) return true;
+  res.status(403).json({ error: 'Only workspace administrators can manage the AI analysis queue' });
+  return false;
+}
 function createAiReportsRouter(express) {
   const router = express.Router();
+  router.get('/queue', async (req, res) => {
+    if (!requireManager(req, res)) return;
+    const pool = getPool(); if (!pool) return res.status(503).json({ error: 'Database is not configured' });
+    try {
+      const result = await pool.query(`select s.id as session_id,s.employee_id,e.display_name as employee_name,s.started_at,
+          s.total_duration_seconds,count(sc.id)::int as screenshot_count,coalesce(r.status,'pending') as analysis_status,
+          r.error_message
+        from app.work_sessions s
+        join app.employees e on e.organization_id=s.organization_id and e.id=s.employee_id
+        join app.screenshots sc on sc.organization_id=s.organization_id and sc.session_id=s.id
+        left join app.session_ai_reports r on r.organization_id=s.organization_id and r.session_id=s.id
+        where s.organization_id=$1 and s.status='complete'
+          and coalesce(r.status,'pending') in ('pending','failed','insufficient_evidence')
+          and not exists (select 1 from app.background_jobs j where j.job_type='EvidenceAiAnalysis'
+            and j.status in ('pending','retrying','running') and j.payload->>'session_id'=s.id::text)
+        group by s.id,s.employee_id,e.display_name,s.started_at,s.total_duration_seconds,r.status,r.error_message
+        order by s.started_at desc limit 200`, [req.authUser.organization.id]);
+      return res.json({ data: result.rows });
+    } catch (error) { console.error('[ai-reports/queue]', error.message); return res.status(500).json({ error: 'Unable to load AI analysis queue' }); }
+  });
+  router.post('/queue', async (req, res) => {
+    if (!requireManager(req, res)) return;
+    const ids = [...new Set(Array.isArray(req.body?.session_ids) ? req.body.session_ids.map(String) : [])]
+      .filter(value => /^[a-f0-9-]{36}$/i.test(value)).slice(0, 25);
+    if (!ids.length) return res.status(400).json({ error: 'Select at least one valid session' });
+    const pool = getPool(); if (!pool) return res.status(503).json({ error: 'Database is not configured' });
+    try {
+      const sessions = await pool.query(`select s.id,s.organization_id,s.employee_id
+        from app.work_sessions s where s.organization_id=$1 and s.status='complete' and s.id=any($2::uuid[])
+          and exists (select 1 from app.screenshots sc where sc.organization_id=s.organization_id and sc.session_id=s.id)`,
+      [req.authUser.organization.id, ids]);
+      const queued = [];
+      for (const session of sessions.rows) {
+        const active = await pool.query(`select 1 from app.background_jobs where job_type='EvidenceAiAnalysis'
+          and status in ('pending','retrying','running') and payload->>'session_id'=$1 limit 1`, [session.id]);
+        if (active.rowCount) continue;
+        const job = await pool.query(`insert into app.background_jobs (job_type,priority,payload,dedupe_key)
+          values ('EvidenceAiAnalysis',2,$1,$2) returning id`, [
+          { organization_id: session.organization_id, employee_id: session.employee_id, session_id: session.id },
+          `manual-evidence-ai:${session.id}:${Date.now()}:${queued.length}`,
+        ]);
+        queued.push({ session_id: session.id, worker_job_id: job.rows[0].id });
+      }
+      return res.status(202).json({ data: { queued, skipped: ids.length - queued.length } });
+    } catch (error) { console.error('[ai-reports/queue/submit]', error.message); return res.status(500).json({ error: 'Unable to queue AI analysis' }); }
+  });
   router.get('/sessions/:id', async (req, res) => {
     const pool = getPool(); if (!pool) return res.status(503).json({ error: 'Database is not configured' });
     try {
