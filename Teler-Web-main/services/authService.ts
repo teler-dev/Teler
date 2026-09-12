@@ -2,6 +2,7 @@ export type AuthenticatedUser = {
   username: string;
   email?: string;
   jobRole?: string;
+  organizationRole?: string;
 };
 
 function isPublicAuthShell(): boolean {
@@ -30,7 +31,14 @@ function userFromBody(body: Record<string, unknown>): AuthenticatedUser | null {
     username: body.username,
     email: typeof body.email === 'string' ? body.email : undefined,
     jobRole: typeof account.jobRole === 'string' ? account.jobRole : undefined,
+    organizationRole: account.organization && typeof account.organization === 'object' && typeof (account.organization as Record<string, unknown>).role === 'string'
+      ? (account.organization as Record<string, unknown>).role as string
+      : undefined,
   };
+}
+
+export function canManageAiQueue(user: Pick<AuthenticatedUser, 'organizationRole'> | null | undefined): boolean {
+  return ['owner', 'admin'].includes(String(user?.organizationRole || '').toLowerCase());
 }
 
 export async function login(email: string, password: string): Promise<AuthenticatedUser> {
