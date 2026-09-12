@@ -39,6 +39,16 @@ async function refreshDaily(client, context, reportDate) {
   [context.organization_id, context.employee_id, reportDate, ready.length ? 'ready' : 'insufficient_evidence', summary, reports.rowCount, JSON.stringify(coverage)]);
 }
 
+async function markReportFailed(context, reportDate, error) {
+  await withTransaction(async client => {
+    await client.query(`update app.session_ai_reports set status='failed',error_message=$4,updated_at=now()
+      where organization_id=$1 and session_id=$2 and employee_id=$3`, [
+      context.organization_id, context.session_id, context.employee_id, String(error.message || error).slice(0, 2000),
+    ]);
+    await refreshDaily(client, context, reportDate);
+  });
+}
+
 async function processEvidenceAiAnalysis(payload) {
   const pool = getPool(); if (!pool) throw new Error('DATABASE_URL is not configured');
   const session = await pool.query(`select id,organization_id,employee_id,started_at,total_duration_seconds,total_paused_seconds
@@ -49,6 +59,7 @@ async function processEvidenceAiAnalysis(payload) {
   await pool.query(`insert into app.session_ai_reports (organization_id,employee_id,session_id,report_date,model,status)
     values ($1,$2,$3,$4,$5,'processing') on conflict (organization_id,session_id)
     do update set status='processing',model=excluded.model,error_message=null,updated_at=now()`, [context.organization_id, context.employee_id, context.session_id, reportDate, MODEL]);
+  try {
   const shots = await pool.query(`select id,storage_path,captured_at,active_app,active_window from app.screenshots
     where organization_id=$1 and session_id=$2 order by captured_at asc limit $3`, [context.organization_id, context.session_id, MAX_SHOTS]);
   const findings = [];
@@ -75,5 +86,9 @@ async function processEvidenceAiAnalysis(payload) {
     await refreshDaily(client, context, reportDate);
   });
   return { session_id: context.session_id, screenshots: coverage, status: report ? 'ready' : 'insufficient_evidence' };
+  } catch (error) {
+    await markReportFailed(context, reportDate, error).catch(() => {});
+    throw error;
+  }
 }
 module.exports = { processEvidenceAiAnalysis };
