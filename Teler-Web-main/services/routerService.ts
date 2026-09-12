@@ -13,6 +13,7 @@ export type AppRoute =
   | { kind: 'custom-dashboard'; path: '/dashboards/customize' }
   | { kind: 'saved-views'; path: '/saved-views' }
   | { kind: 'ai'; path: '/ai' }
+  | { kind: 'ai-queue'; path: '/ai/queue' }
   | { kind: 'ai-settings'; path: '/settings/ai' }
   | { kind: 'notifications'; path: '/settings/notifications' }
   | { kind: 'security-admin'; path: '/admin/security' }
@@ -47,6 +48,7 @@ export function parseRoute(pathname = window.location.pathname): AppRoute {
   if (path === '/dashboards/customize') return { kind: 'custom-dashboard', path: '/dashboards/customize' };
   if (path === '/saved-views') return { kind: 'saved-views', path: '/saved-views' };
   if (path === '/ai') return { kind: 'ai', path: '/ai' };
+  if (path === '/ai/queue') return { kind: 'ai-queue', path: '/ai/queue' };
   if (path === '/settings/ai') return { kind: 'ai-settings', path: '/settings/ai' };
   if (path === '/settings/notifications') return { kind: 'notifications', path: '/settings/notifications' };
   if (path === '/admin/security') return { kind: 'security-admin', path: '/admin/security' };
@@ -98,6 +100,7 @@ export function routeTitle(route: AppRoute): string {
     case 'custom-dashboard': return 'Customize Dashboard | TELER';
     case 'saved-views': return 'Saved Views | TELER';
     case 'ai': return 'TELER AI | TELER';
+    case 'ai-queue': return 'AI Analysis Queue | TELER';
     case 'ai-settings': return 'AI Settings | TELER';
     case 'notifications': return 'Notification Settings | TELER';
     case 'security-admin': return 'Security Administration | TELER';

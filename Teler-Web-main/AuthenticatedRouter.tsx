@@ -9,6 +9,7 @@ import { DashboardSidebar, NavSection } from './components/dashboard/DashboardSi
 import { AiChatPanel } from './components/dashboard/AiChatPanel';
 import { GlobalCommandBar } from './components/dashboard/GlobalCommandBar';
 import { AiSettingsPanel } from './components/settings/AiSettingsPanel';
+import { AiAnalysisQueue } from './components/settings/AiAnalysisQueue';
 import { RoutedWorkspacePage, WorkspaceRouteKind } from './components/dashboard/RoutedWorkspacePage';
 import { FullAlertPage } from './components/dashboard/FullAlertPage';
 import { FullAiPage } from './components/dashboard/FullAiPage';
@@ -31,6 +32,7 @@ const routeForSection: Record<NavSection, string> = {
   alerts: '/alerts',
   settings: '/settings/ai',
   'ai-settings': '/settings/ai',
+  'ai-queue': '/ai/queue',
   workspace: '/analytics',
 };
 
@@ -138,6 +140,7 @@ export const AuthenticatedRouter: React.FC = () => {
   else if (route.kind === 'alert') page = <FullAlertPage alertId={route.alertId} onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
   else if (['analytics', 'compare', 'reports', 'custom-dashboard', 'saved-views', 'notifications', 'security-admin'].includes(route.kind)) page = <RoutedWorkspacePage kind={route.kind as WorkspaceRouteKind} onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
   else if (route.kind === 'ai') page = <FullAiPage onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
+  else if (route.kind === 'ai-queue') page = <AiQueueRoute onLogout={doLogout} clientName={username} onNavigate={onSectionNavigate} />;
   else if (route.kind === 'ai-settings') page = <AiSettingsRoute onLogout={doLogout} clientName={username} onNavigate={onSectionNavigate} />;
   else navigate('/dashboard', { replace: true });
 
@@ -150,5 +153,23 @@ export const AuthenticatedRouter: React.FC = () => {
     <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />
     {!showAiChat && <QuickAiDock onOpen={() => setShowAiChat(true)} />}
     {showAiChat && <AiChatPanel sessions={globalSessions} onClose={() => setShowAiChat(false)} />}
+  </div>;
+};
+
+const AiQueueRoute: React.FC<{ onLogout: () => void; clientName: string; onNavigate: (section: NavSection) => void }> = ({ onLogout, clientName, onNavigate }) => {
+  const { sessions } = useSessions();
+  const alertCount = sessions.filter(session => (session.red_flags?.length ?? 0) > 0).length;
+  return <div className="min-h-screen bg-surface-page text-primary flex">
+    <DashboardSidebar activeSection="ai-queue" onNavigate={onNavigate} alertCount={alertCount} onLogout={onLogout} clientName={clientName} />
+    <div className="flex-1 ml-56 min-w-0 min-h-screen">
+      <PageHeader
+        eyebrow="AI Operations"
+        title="Analysis Queue"
+        meta="Choose completed evidence sessions to analyze when your AI provider is available"
+        leading={<IconButton label="Back to dashboard" onClick={() => navigate('/dashboard')}><ArrowLeft className="w-4 h-4" /></IconButton>}
+        compact
+      />
+      <main className="p-4 md:p-6 max-w-[960px] mx-auto w-full"><AiAnalysisQueue /></main>
+    </div>
   </div>;
 };

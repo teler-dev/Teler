@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Bell, BrainCircuit, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, Users, X } from 'lucide-react';
+import { BarChart3, Bell, BrainCircuit, ClipboardList, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, Users, X } from 'lucide-react';
 import { Logo } from '../Logo';
 import { applyTheme, getThemeMode, setThemeMode, subscribeTheme, ThemeMode } from '../../services/themeService';
 import { openCommandPalette } from '../../services/commandPaletteService';
 
-export type NavSection = 'dashboard' | 'employees' | 'sessions' | 'reports' | 'alerts' | 'settings' | 'ai-settings' | 'workspace';
+export type NavSection = 'dashboard' | 'employees' | 'sessions' | 'reports' | 'alerts' | 'settings' | 'ai-settings' | 'ai-queue' | 'workspace';
 
 const PRIMARY_NAV: Array<{ key: NavSection; label: string; href: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -118,6 +118,7 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
         <div className="mt-5 pt-4 border-t border-subtle space-y-1">
           <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">AI</p>
           <a href="/ai" onClick={openAiWorkspace} aria-current={window.location.pathname === '/ai' ? 'page' : undefined} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${window.location.pathname === '/ai' ? 'bg-accent-soft border-accent text-primary' : 'border-transparent text-secondary hover:text-primary hover:bg-surface-hover'}`}><BrainCircuit className="w-4 h-4 text-accent" /><span className="flex-1">AI Workspace</span></a>
+          <a href="/ai/queue" onClick={event => follow(event, 'ai-queue', '/ai/queue')} aria-current={activeSection === 'ai-queue' ? 'page' : undefined} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${activeSection === 'ai-queue' ? 'bg-accent-soft border-accent text-primary' : 'border-transparent text-secondary hover:text-primary hover:bg-surface-hover'}`}><ClipboardList className="w-4 h-4" /><span>AI Queue</span></a>
           <a href="/settings/ai" onClick={event => follow(event, 'ai-settings', '/settings/ai')} aria-current={activeSection === 'ai-settings' ? 'page' : undefined} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${activeSection === 'ai-settings' ? 'bg-accent-soft border-accent text-primary' : 'border-transparent text-secondary hover:text-primary hover:bg-surface-hover'}`}><BrainCircuit className="w-4 h-4" /><span>AI Settings</span></a>
         </div>
       </div>
