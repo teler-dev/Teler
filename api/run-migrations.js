@@ -9,6 +9,7 @@ const MIGRATIONS = [
   '005_backend_integrity.sql',
   '006_tracking_sessions.sql',
   '007_ai_analysis_persistence.sql',
+  '008_evidence_ai_reports.sql',
 ];
 
 async function main() {

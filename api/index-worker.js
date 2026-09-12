@@ -5,12 +5,14 @@ const { claimNextJob, completeJob, failOrRetry } = require('./workers/job-queue'
 const { processSessionNormalization } = require('./workers/session-normalizer');
 const { processReportGeneration } = require('./workers/report-generator');
 const { processRetentionCleanup } = require('./workers/retention-cleanup');
+const { processEvidenceAiAnalysis } = require('./workers/evidence-ai-analysis');
 
 const POLL_MS = Math.max(500, Number(process.env.WORKER_POLL_MS) || 1500);
 const handlers = {
   SessionNormalization: processSessionNormalization,
   ReportGeneration: processReportGeneration,
   DataRetentionCleanup: processRetentionCleanup,
+  EvidenceAiAnalysis: processEvidenceAiAnalysis,
 };
 let stopping = false;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

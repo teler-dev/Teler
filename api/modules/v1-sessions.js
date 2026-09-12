@@ -336,6 +336,12 @@ function createTrackingSessionsRouter(express) {
           [row.organization_id, row.id, nextStatus, lifecycle, endedAt,
            timing.total_duration_seconds, timing.total_paused_seconds]
         );
+        if (nextStatus === 'stopped') {
+          await client.query(`insert into app.background_jobs (job_type,priority,payload,dedupe_key,run_after)
+            values ('EvidenceAiAnalysis',2,$1,$2,now() + interval '25 seconds')
+            on conflict (dedupe_key) do nothing`,
+          [{ organization_id: row.organization_id, employee_id: row.employee_id, session_id: row.id }, `evidence-ai:${row.id}`]);
+        }
         return serializeTrackingSession(updated.rows[0], timing, events);
       });
       return res.json({ data, server_ts: new Date().toISOString() });

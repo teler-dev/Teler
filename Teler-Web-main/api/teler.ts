@@ -20,6 +20,8 @@ const ALLOWED_PATHS = [
   /^\/api\/v1\/sessions$/,
   /^\/api\/v1\/sessions\/[^/]+$/,
   /^\/api\/v1\/screenshots\/[^/]+\/content$/,
+  /^\/api\/v1\/ai-reports\/sessions\/[^/]+$/,
+  /^\/api\/v1\/ai-reports\/daily$/,
   /^\/api\/v1\/analytics\/company\/[^/]+\/daily$/,
   /^\/api\/v1\/analytics\/employee\/[^/]+\/trends$/,
   /^\/api\/v1\/alerts$/,
@@ -54,7 +56,7 @@ function allowedTarget(rawTarget: string): URL | null {
 }
 
 function isUserOwnedTarget(pathname: string): boolean {
-  return /^\/api\/v1\/(?:tracking-sessions|screenshots)(?:\/|$)/.test(pathname);
+  return /^\/api\/v1\/(?:tracking-sessions|screenshots|ai-reports)(?:\/|$)/.test(pathname);
 }
 
 function isRecord(value: unknown): value is JsonRecord {
