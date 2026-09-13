@@ -5,7 +5,9 @@ const path = require('path');
 const { getPool, withTransaction } = require('../db');
 
 const DATA_ROOT = path.resolve(process.env.DATA_ROOT || '/opt/teler/data');
-const MODEL = process.env.AI_EVIDENCE_MODEL || 'openai/gpt-4o-mini';
+// Gemini Flash-Lite accepts screenshots and is the low-cost default. The API key
+// remains at the Vercel relay, never on desktop clients or this Oracle worker.
+const MODEL = process.env.AI_EVIDENCE_MODEL || 'gemini-2.5-flash-lite';
 const RELAY_URL = process.env.AI_EVIDENCE_RELAY_URL || 'https://teler-pi.vercel.app/api/ai-evidence';
 const MAX_SHOTS = Math.min(5, Math.max(1, Number(process.env.AI_EVIDENCE_MAX_SCREENSHOTS) || 3));
 
