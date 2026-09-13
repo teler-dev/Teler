@@ -110,6 +110,9 @@ class SessionClient(QObject):
             "client_event_id": self._event_id(),
         })
 
+    def submit_telemetry(self, session_id, payload):
+        self._request("telemetry", "POST", f"/api/v1/tracking-sessions/{session_id}/telemetry", payload)
+
     @staticmethod
     def _metadata_header(value):
         return base64.urlsafe_b64encode(str(value or "").encode("utf-8")).rstrip(b"=")

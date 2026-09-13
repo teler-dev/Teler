@@ -110,6 +110,7 @@ class MainWindow(QMainWindow):
         self._server_sync_monotonic = time.monotonic()
         self._out_of_sync = False
         self._local_stop_notice = False
+        self._telemetry_session_id = None
         self._fade_animation = None
 
         self.setWindowTitle(f"TELER — {self._username}")
@@ -709,6 +710,7 @@ class MainWindow(QMainWindow):
             return
 
         if action == "stop":
+            self._telemetry_session_id = data.get("id") if data else None
             self._server_session = None
             self._server_sync_monotonic = time.monotonic()
             self._out_of_sync = False
@@ -761,6 +763,11 @@ class MainWindow(QMainWindow):
         if self._local_stop_notice:
             self._local_stop_notice = False
             self.action_error.hide()
+        if self._telemetry_session_id and self.session_client:
+            payload = self.tracker.build_telemetry_payload()
+            session_id, self._telemetry_session_id = self._telemetry_session_id, None
+            if payload.get("events"):
+                self.session_client.submit_telemetry(session_id, payload)
         action, self._after_stop = self._after_stop, None
         if action:
             action()

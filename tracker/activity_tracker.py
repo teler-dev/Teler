@@ -461,3 +461,13 @@ class ActivityTracker:
 
     def get_stats(self):
         return {"keys": self.key_count, "clicks": self.click_count, "idle_seconds": self.idle_seconds, "idle_threshold": self.idle_threshold, "active_window": self.active_window, "active_url": self.active_url, "screenshots": self.screenshots_taken, "screenshot_interval": self.screenshot_interval, "camera_enabled": self.camera_enabled, "camera_interval": self.camera_interval, "snapshots": self.snapshots_taken, "role": self.role, "task": self.task, "last_ocr_snippet": self.last_ocr_snippet[:100], "paused": self.paused}
+
+    def build_telemetry_payload(self):
+        """Return aggregate activity samples only; raw keystrokes never leave this device."""
+        with self.lock:
+            events = [{
+                "timestamp": row.get("timestamp"), "window_title": row.get("window_title", ""),
+                "active_url": row.get("active_url", ""), "keys": row.get("keys", 0),
+                "clicks": row.get("clicks", 0), "idle_seconds": row.get("idle_seconds", 0),
+            } for row in self.session_logs]
+            return {"events": events, "summary": {"key_count": self.key_count, "mouse_clicks": self.click_count}}

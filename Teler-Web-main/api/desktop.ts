@@ -12,7 +12,7 @@ const ALLOWED_PATHS = [
   /^\/api\/v1\/tracking-sessions$/,
   /^\/api\/v1\/tracking-sessions\/current$/,
   /^\/api\/v1\/tracking-sessions\/start$/,
-  /^\/api\/v1\/tracking-sessions\/[^/]+\/(?:pause|resume|stop|screenshots)$/,
+  /^\/api\/v1\/tracking-sessions\/[^/]+\/(?:pause|resume|stop|screenshots|telemetry)$/,
 ];
 
 function noStoreJson(body: unknown, status: number): Response {

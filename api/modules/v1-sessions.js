@@ -186,6 +186,48 @@ function createTrackingSessionsRouter(express) {
     }
   });
 
+  // The desktop collects aggregate input counts and active-window samples
+  // locally. It submits them after a session ends; the worker then derives
+  // metrics and alerts without receiving raw keystrokes.
+  router.post('/:id/telemetry', async (req, res) => {
+    const events = Array.isArray(req.body?.events) ? req.body.events.slice(0, 12_000) : [];
+    const summary = req.body?.summary && typeof req.body.summary === 'object' ? req.body.summary : {};
+    if (!events.length) return res.status(400).json({ error: 'At least one telemetry event is required' });
+    const safeEvents = events.map(event => ({
+      timestamp: String(event?.timestamp || '').slice(0, 64),
+      window_title: String(event?.window_title || event?.active_window || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, 500),
+      active_url: String(event?.active_url || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, 2000),
+      keys: Math.max(0, Math.min(10_000_000, Number(event?.keys) || 0)),
+      clicks: Math.max(0, Math.min(10_000_000, Number(event?.clicks) || 0)),
+      idle_seconds: Math.max(0, Math.min(86_400, Number(event?.idle_seconds) || 0)),
+    })).filter(event => !Number.isNaN(new Date(event.timestamp).getTime()));
+    if (!safeEvents.length) return res.status(400).json({ error: 'No valid telemetry timestamps were supplied' });
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database is not configured' });
+    try {
+      const session = await pool.query(`select id,organization_id,employee_id,tracking_status
+        from app.work_sessions where id=$1 and user_profile_id=$2 limit 1`, [req.params.id, req.authUser.id]);
+      if (!session.rowCount) return res.status(404).json({ error: 'Session not found' });
+      const row = session.rows[0];
+      if (row.tracking_status !== 'stopped') return res.status(409).json({ error: 'Stop tracking before submitting telemetry' });
+      const storagePath = path.posix.join('telemetry', row.organization_id, `${row.id}.json`);
+      const destination = path.resolve(DATA_ROOT, storagePath);
+      if (!destination.startsWith(`${DATA_ROOT}${path.sep}`)) return res.status(400).json({ error: 'Invalid telemetry destination' });
+      await fs.mkdir(path.dirname(destination), { recursive: true });
+      await fs.writeFile(destination, JSON.stringify({ events: safeEvents, summary: {
+        key_count: Math.max(0, Number(summary.key_count) || 0), mouse_clicks: Math.max(0, Number(summary.mouse_clicks) || 0),
+      } }), { mode: 0o600 });
+      await pool.query(`insert into app.background_jobs (job_type,priority,payload,dedupe_key,run_after)
+        values ('SessionNormalization',3,$1,$2,now())
+        on conflict (dedupe_key) do update set payload=excluded.payload,status='pending',run_after=now(),error_message=null,completed_at=null`,
+      [{ organization_id: row.organization_id, employee_id: row.employee_id, session_id: row.id, raw_path: destination }, `normalize:${row.id}`]);
+      return res.status(202).json({ data: { session_id: row.id, status: 'queued', telemetry_events: safeEvents.length } });
+    } catch (error) {
+      console.error('[tracking/telemetry]', error.message);
+      return res.status(500).json({ error: 'Unable to queue telemetry analysis' });
+    }
+  });
+
   router.get('/current', async (req, res) => {
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database is not configured' });

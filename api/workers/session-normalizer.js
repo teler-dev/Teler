@@ -83,6 +83,9 @@ async function persistAlerts(client, context, metrics) {
 }
 
 async function persistScreenshots(client, context, screenshots) {
+  // Desktop tracking uploads screenshots independently. Telemetry normalization
+  // must never erase that evidence when its payload only contains activity data.
+  if (!Array.isArray(screenshots)) return;
   await client.query('delete from app.screenshots where organization_id=$1 and session_id=$2', [context.organization_id, context.session_id]);
   for (const screenshot of Array.isArray(screenshots) ? screenshots : []) {
     if (!screenshot || !screenshot.storage_path) continue;
