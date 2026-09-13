@@ -1,5 +1,5 @@
 export interface AiSettings {
-  provider: 'openrouter' | 'openai' | 'local';
+  provider: 'openrouter' | 'openai' | 'gemini' | 'local';
   model: string;
   customModel: string;
   useReranking: boolean;
@@ -54,6 +54,10 @@ export const OPENAI_MODELS = [
   { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' },
 ];
 
+export const GEMINI_MODELS = [
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite — vision, low cost' },
+];
+
 
 export function getAiSettings(): AiSettings {
   try {
@@ -69,9 +73,13 @@ export function getAiSettings(): AiSettings {
     ) {
       merged.model = DEFAULT_OPENROUTER_MODEL;
     }
-    const savedProvider = saved.provider === 'openai' ? 'openai' : 'openrouter';
+    const savedProvider = saved.provider === 'openai' || saved.provider === 'gemini' ? saved.provider : 'openrouter';
     merged.provider = savedProvider;
-    if (savedProvider === 'openai' && ['gpt-4o-mini', 'openai/gpt-4o-mini'].includes(String(saved.model))) {
+    if (savedProvider === 'gemini') {
+      merged.model = 'gemini-2.5-flash-lite';
+      merged.customModel = '';
+      merged.useReranking = false;
+    } else if (savedProvider === 'openai' && ['gpt-4o-mini', 'openai/gpt-4o-mini'].includes(String(saved.model))) {
       merged.model = 'openai/gpt-4o-mini';
       merged.customModel = '';
       merged.useReranking = false;
@@ -106,13 +114,14 @@ export function getActiveRerankModel(settings: AiSettings): string {
 
 export function getActiveApiKey(settings: AiSettings): string {
   if (settings.provider === 'openai') return '';
+  if (settings.provider === 'gemini') return '';
   if (settings.provider === 'openrouter') return '';
   return settings.openRouterApiKey;
 }
 
 export function getModelLabel(settings: AiSettings): string {
   const model = getActiveModel(settings);
-  const list = settings.provider === 'openai' ? OPENAI_MODELS : OPENROUTER_MODELS;
+  const list = settings.provider === 'openai' ? OPENAI_MODELS : settings.provider === 'gemini' ? GEMINI_MODELS : OPENROUTER_MODELS;
   return list.find(m => m.value === model)?.label ?? model.split('/').pop() ?? model;
 }
 
@@ -131,7 +140,7 @@ export async function askAiAgent(
   const s = settings ?? getAiSettings();
   const apiKey = getActiveApiKey(s);
 
-  if (s.provider === 'openrouter' || s.provider === 'openai') {
+  if (s.provider === 'openrouter' || s.provider === 'openai' || s.provider === 'gemini') {
     const response = await fetch('/api/ai', {
       method: 'POST',
       credentials: 'same-origin',

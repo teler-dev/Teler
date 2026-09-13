@@ -3,6 +3,7 @@ import {
   AiSettings,
   DEFAULT_SETTINGS,
   OPENAI_MODELS,
+  GEMINI_MODELS,
   OPENROUTER_MODELS,
   OPENROUTER_RERANK_MODELS,
   getAiSettings,
@@ -155,7 +156,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
     }
   };
 
-  const modelOptions = settings.provider === 'openai' ? OPENAI_MODELS : OPENROUTER_MODELS;
+  const modelOptions = settings.provider === 'openai' ? OPENAI_MODELS : settings.provider === 'gemini' ? GEMINI_MODELS : OPENROUTER_MODELS;
   const selectedModel = settings.model;
   const selectedRerankModel = settings.rerankModel;
   const sc = STATUS_CFG[connStatus];
@@ -212,12 +213,14 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
         <div className="space-y-1.5">
           <FieldLabel className="uppercase tracking-widest">AI Provider</FieldLabel>
           <div className="flex gap-2">
-            {(['openrouter', 'openai'] as const).map(p => (
+            {(['openrouter', 'openai', 'gemini'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => setSettings(current => p === 'openai'
                   ? { ...current, provider: p, model: 'openai/gpt-4o-mini', customModel: '', useReranking: false }
-                  : { ...current, provider: p, model: DEFAULT_SETTINGS.model, customModel: '', useReranking: true }
+                  : p === 'gemini'
+                    ? { ...current, provider: p, model: 'gemini-2.5-flash-lite', customModel: '', useReranking: false }
+                    : { ...current, provider: p, model: DEFAULT_SETTINGS.model, customModel: '', useReranking: true }
                 )}
                 className={`flex-1 min-h-10 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
                   settings.provider === p
@@ -225,7 +228,7 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
                     : 'bg-surface-raised border-subtle text-secondary hover:border-accent hover:text-primary'
                 }`}
               >
-                {p === 'openai' ? 'OpenAI — GPT-4o Mini' : 'OpenRouter — free models'}
+                {p === 'openai' ? 'OpenAI — GPT-4o Mini' : p === 'gemini' ? 'Gemini — Flash-Lite vision' : 'OpenRouter — free models'}
               </button>
             ))}
           </div>
@@ -244,6 +247,12 @@ export const AiSettingsPanel: React.FC<Props> = ({ onClose, showHeader = true })
           <div className="rounded-xl border border-accent bg-accent-soft px-3.5 py-3">
             <p className="text-xs font-bold text-primary">Managed securely by TELER</p>
             <p className="text-[11px] text-secondary mt-1">GPT-4o Mini uses TELER’s server-side provider key. The key is never exposed to this browser; paid usage may apply.</p>
+          </div>
+        )}
+        {settings.provider === 'gemini' && (
+          <div className="rounded-xl border border-accent bg-accent-soft px-3.5 py-3">
+            <p className="text-xs font-bold text-primary">Gemini screenshot analysis</p>
+            <p className="text-[11px] text-secondary mt-1">Gemini 2.5 Flash-Lite reads queued session screenshots and powers TELER AI chat. Add <code>GEMINI_API_KEY</code> in Vercel; it stays server-side and is never exposed to this browser.</p>
           </div>
         )}
 

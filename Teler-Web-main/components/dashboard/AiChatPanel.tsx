@@ -34,7 +34,7 @@ export const AiChatPanel: React.FC<Props> = ({ sessions, onClose }) => {
   const settings = getAiSettings();
   const modelLabel = getModelLabel(settings);
   const apiKey = getActiveApiKey(settings);
-  const isConfigured = settings.provider === 'openrouter' || settings.provider === 'local' || !!apiKey.trim();
+  const isConfigured = settings.provider === 'openrouter' || settings.provider === 'openai' || settings.provider === 'gemini' || settings.provider === 'local' || !!apiKey.trim();
   const suggestedPrompts = useMemo(() => {
     const prompts: string[] = ['Summarize the current workforce activity.'];
     if (sessions.some(session => session.overall_productivity_score > 0)) prompts.push('Who has the highest average productivity score?');

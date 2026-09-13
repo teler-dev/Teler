@@ -2,10 +2,12 @@ import { backendJson, noStoreJson, readSession, unauthorized } from './_auth.js'
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 const OPENAI_BASE = 'https://api.openai.com/v1';
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const MAX_CONTEXT_BYTES = 750_000;
 const MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]{1,160}$/i;
 const FREE_OPENROUTER_MODEL_PATTERN = /:free$/i;
 const OPENAI_MODEL = 'openai/gpt-4o-mini';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 // Free-provider capacity changes frequently. Keep one current free model as a
 // server-side fallback so a temporarily saturated selected model does not make
 // the dashboard AI unavailable.
@@ -17,6 +19,10 @@ export function isFreeOpenRouterModel(model: string): boolean {
 
 export function isSupportedOpenAiModel(model: string): boolean {
   return model === OPENAI_MODEL;
+}
+
+export function isSupportedGeminiModel(model: string): boolean {
+  return model === GEMINI_MODEL;
 }
 
 type AiRequest = {
@@ -126,7 +132,11 @@ export default {
       }
 
       const question = typeof body.question === 'string' ? body.question.trim() : '';
-      const provider = body.settings?.provider === 'openai' ? 'openai' : 'openrouter';
+      const provider = body.settings?.provider === 'openai'
+        ? 'openai'
+        : body.settings?.provider === 'gemini'
+          ? 'gemini'
+          : 'openrouter';
       const model = typeof body.settings?.model === 'string' ? body.settings.model.trim() : '';
       const rerankModel = typeof body.settings?.rerankModel === 'string'
         ? body.settings.rerankModel.trim()
@@ -144,10 +154,11 @@ export default {
       // Otherwise it is routed through the already configured OpenRouter
       // account, which keeps the browser free of both provider credentials.
       const directOpenAiKey = process.env.OPENAI_API_KEY?.trim();
+      const geminiKey = process.env.GEMINI_API_KEY?.trim();
       const useDirectOpenAi = provider === 'openai' && Boolean(directOpenAiKey);
-      const apiKey = useDirectOpenAi ? directOpenAiKey : process.env.OPENROUTER_API_KEY?.trim();
+      const apiKey = provider === 'gemini' ? geminiKey : useDirectOpenAi ? directOpenAiKey : process.env.OPENROUTER_API_KEY?.trim();
       if (!apiKey) {
-        return noStoreJson({ error: 'OPENROUTER_API_KEY is not configured in Vercel' }, 503);
+        return noStoreJson({ error: provider === 'gemini' ? 'GEMINI_API_KEY is not configured in Vercel' : 'OPENROUTER_API_KEY is not configured in Vercel' }, 503);
       }
 
       if (!question || question.length > 8_000) return noStoreJson({ error: 'Question is required' }, 400);
@@ -156,6 +167,9 @@ export default {
       }
       if (provider === 'openai' && !isSupportedOpenAiModel(model)) {
         return noStoreJson({ error: 'Only GPT-4o Mini is enabled for OpenAI' }, 400);
+      }
+      if (provider === 'gemini' && !isSupportedGeminiModel(model)) {
+        return noStoreJson({ error: 'Only Gemini 2.5 Flash-Lite is enabled for Gemini' }, 400);
       }
       if (!systemPrompt || systemPrompt.length > 12_000) return noStoreJson({ error: 'Invalid system prompt' }, 400);
       if (provider === 'openrouter' && body.settings?.useReranking && !isFreeOpenRouterModel(rerankModel)) {
@@ -173,6 +187,35 @@ export default {
       const preparedContext = provider === 'openrouter' && body.settings?.useReranking
         ? await rerankContext(question, context, rerankModel, apiKey, appOrigin)
         : context;
+
+      if (provider === 'gemini') {
+        const response = await fetch(`${GEMINI_BASE}/models/${GEMINI_MODEL}:generateContent`, {
+          method: 'POST',
+          headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [
+              { text: systemPrompt },
+              { text: `Workforce telemetry context (JSON):\n${JSON.stringify(preparedContext, null, 2)}` },
+              { text: question },
+            ] }],
+            generationConfig: { temperature, maxOutputTokens: maxTokens },
+          }),
+          signal: AbortSignal.timeout(45_000),
+        });
+        const payload = await readProviderBody(response) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> } | null;
+        if (!response.ok) return noStoreJson({ error: providerError(payload, `Gemini returned HTTP ${response.status}`) }, response.status === 401 || response.status === 429 ? response.status : 502);
+        const content = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim();
+        if (!content) return noStoreJson({ error: 'Gemini returned an empty response' }, 502);
+        const sources = Array.isArray(body.sources) ? body.sources.slice(0, 8) : [];
+        const sessionId = typeof (sources[0] as { sessionId?: unknown } | undefined)?.sessionId === 'string'
+          ? (sources[0] as { sessionId: string }).sessionId
+          : '';
+        const saved = await backendJson('/api/v1/ai-analyses', {
+          method: 'POST', body: JSON.stringify({ question, answer: content, provider, model: GEMINI_MODEL, sources, session_id: sessionId }),
+        }, session.token);
+        if (!saved.response.ok) return noStoreJson({ error: typeof saved.body.error === 'string' ? saved.body.error : 'Unable to save AI analysis' }, 502);
+        return noStoreJson({ answer: content, analysis: saved.body.data });
+      }
 
       const upstreamProvider = useDirectOpenAi ? 'openai' : 'openrouter';
       const upstreamModel = useDirectOpenAi ? 'gpt-4o-mini' : model;

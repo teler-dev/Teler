@@ -12,19 +12,23 @@ afterEach(() => {
 });
 
 describe('normalized v1 session sync', () => {
-  it('offers free OpenRouter models and the managed GPT-4o Mini option', async () => {
+  it('offers free OpenRouter models and managed GPT-4o Mini and Gemini options', async () => {
     const { OPENROUTER_MODELS } = await import('./aiAgentService');
     expect(OPENROUTER_MODELS).not.toHaveLength(0);
     expect(OPENROUTER_MODELS.every(({ value }) => value.endsWith(':free'))).toBe(true);
 
     const { OPENAI_MODELS } = await import('./aiAgentService');
     expect(OPENAI_MODELS).toEqual([{ value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' }]);
+    const { GEMINI_MODELS } = await import('./aiAgentService');
+    expect(GEMINI_MODELS).toEqual([{ value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite — vision, low cost' }]);
 
-    const { FREE_OPENROUTER_FALLBACK_MODEL, isFreeOpenRouterModel, isSupportedOpenAiModel } = await import('../api/ai');
+    const { FREE_OPENROUTER_FALLBACK_MODEL, isFreeOpenRouterModel, isSupportedOpenAiModel, isSupportedGeminiModel } = await import('../api/ai');
     expect(isFreeOpenRouterModel('google/gemma-4-26b-a4b-it:free')).toBe(true);
     expect(isFreeOpenRouterModel(FREE_OPENROUTER_FALLBACK_MODEL)).toBe(true);
     expect(isSupportedOpenAiModel('openai/gpt-4o-mini')).toBe(true);
     expect(isSupportedOpenAiModel('gpt-4o')).toBe(false);
+    expect(isSupportedGeminiModel('gemini-2.5-flash-lite')).toBe(true);
+    expect(isSupportedGeminiModel('gemini-2.5-pro')).toBe(false);
   });
 
   it('uses the configured workspace and maps screenshot evidence into the website session', async () => {
