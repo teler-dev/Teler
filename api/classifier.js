@@ -167,6 +167,16 @@ const NAME_KEYWORDS = Object.entries(DOMAIN_CATEGORY)
   .filter(Boolean)
   .sort((a, b) => b.kw.length - a.kw.length);
 
+// Desktop applications often have no useful URL. Keep this short and
+// conservative: recognised development tools count as work; everything else
+// remains neutral until there is evidence to classify it.
+const PRODUCTIVE_APP_KEYWORDS = [
+  'visual studio code', 'vs code', 'vscode', 'pycharm', 'intellij',
+  'webstorm', 'android studio', 'xcode', 'sublime text', 'notepad++',
+  'windows terminal', 'powershell', 'command prompt', 'git bash', 'wsl',
+  'terminal', 'postman', 'figma', 'slack', 'microsoft teams', 'zoom',
+];
+
 // ── Domain extractor ──────────────────────────────────────────────────────────
 
 function extractDomain(url) {
@@ -223,7 +233,12 @@ function classifyWindow(windowTitle, url) {
     }
   }
 
-  // 3. Fallback
+  // 3. Native work applications (there is usually no browser URL to inspect).
+  if (PRODUCTIVE_APP_KEYWORDS.some(keyword => w.includes(keyword))) {
+    return { type: 'productive', classifiedBy: 'name' };
+  }
+
+  // 4. Fallback
   return { type: 'neutral', classifiedBy: 'fallback' };
 }
 

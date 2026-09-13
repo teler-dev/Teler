@@ -124,7 +124,7 @@ function buildBlocks(segments) {
   return blocks;
 }
 
-function summarize(events, segments, minutes, summary = {}) {
+function summarize(events, segments, minutes, blocks, summary = {}) {
   const keyCount = Number(summary.key_count) || (events[events.length - 1]?.keys || 0);
   const clickCount = Number(summary.mouse_clicks) || (events[events.length - 1]?.clicks || 0);
   const appSwitches = minutes.reduce((sum, row) => sum + row.app_switches, 0);
@@ -133,8 +133,18 @@ function summarize(events, segments, minutes, summary = {}) {
   const distractionSeconds = segments.filter(s => s.category === 'distraction').reduce((sum, s) => sum + s.duration_seconds, 0);
   const totalSeconds = segments.reduce((sum, s) => sum + s.duration_seconds, 0);
   const activeSeconds = Math.max(0, totalSeconds - idleSeconds);
-  const productivityScore = totalSeconds ? Math.round(clamp(((focusSeconds - distractionSeconds * 0.5) / totalSeconds) * 100, 0, 100)) : 0;
-  return { keyCount, clickCount, appSwitches, idleSeconds, focusSeconds, distractionSeconds, totalSeconds, activeSeconds, productivityScore };
+  const classifiedSeconds = focusSeconds + distractionSeconds;
+  const classificationCoverage = activeSeconds ? classifiedSeconds / activeSeconds : 0;
+  // A score is only meaningful when we can classify a material part of the
+  // active session. Neutral time (for example, an unrecognised browser tab)
+  // must never silently turn a person into a low performer.
+  const productivityScore = classificationCoverage >= 0.35
+    ? Math.round(clamp(((focusSeconds - distractionSeconds * 0.5) / classifiedSeconds) * 100, 0, 100))
+    : null;
+  const deepWorkSeconds = blocks
+    .filter(block => block.block_type === 'focus')
+    .reduce((sum, block) => sum + block.duration_seconds, 0);
+  return { keyCount, clickCount, appSwitches, idleSeconds, focusSeconds, distractionSeconds, totalSeconds, activeSeconds, classifiedSeconds, classificationCoverage, deepWorkSeconds, productivityScore };
 }
 
 function normalizeTelemetry(payload) {
@@ -142,7 +152,7 @@ function normalizeTelemetry(payload) {
   const segments = buildSegments(events);
   const minuteMetrics = buildMinuteMetrics(events, segments);
   const blocks = buildBlocks(segments);
-  const metrics = summarize(events, segments, minuteMetrics, payload.summary || {});
+  const metrics = summarize(events, segments, minuteMetrics, blocks, payload.summary || {});
   return { events, segments, minuteMetrics, blocks, metrics };
 }
 

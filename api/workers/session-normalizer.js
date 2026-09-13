@@ -53,7 +53,7 @@ async function persistAlerts(client, context, metrics) {
   if (metrics.totalSeconds >= 10 * 60 && metrics.idleSeconds / metrics.totalSeconds >= 0.35) {
     candidates.push({ type: 'high_idle', metric: 'idle_seconds', threshold: Math.round(metrics.totalSeconds * 0.35), actual: metrics.idleSeconds, severity: severityFor('idle_seconds', metrics.idleSeconds), description: 'Idle time exceeded 35% of the normalized session.' });
   }
-  if (metrics.totalSeconds >= 10 * 60 && metrics.productivityScore <= 50) {
+  if (metrics.totalSeconds >= 10 * 60 && typeof metrics.productivityScore === 'number' && metrics.productivityScore <= 50) {
     candidates.push({ type: 'low_productivity', metric: 'productivity_score', threshold: 50, actual: metrics.productivityScore, severity: severityFor('productivity_score', metrics.productivityScore), description: 'Normalized productivity score is at or below 50/100.' });
   }
   if (metrics.appSwitches >= 20) {
@@ -143,7 +143,7 @@ async function processSessionNormalization(payload) {
        app_switch_count=excluded.app_switch_count,idle_seconds=excluded.idle_seconds,focus_seconds=excluded.focus_seconds,
        distraction_seconds=excluded.distraction_seconds,calculated_version='v2',calculated_at=now()`,
       [context.organization_id, context.session_id, metrics.productivityScore, metrics.activeSeconds / 60, metrics.idleSeconds / 60,
-       metrics.focusSeconds / 60, metrics.keyCount, metrics.clickCount, metrics.appSwitches, metrics.idleSeconds, metrics.focusSeconds, metrics.distractionSeconds]);
+       metrics.deepWorkSeconds / 60, metrics.keyCount, metrics.clickCount, metrics.appSwitches, metrics.idleSeconds, metrics.focusSeconds, metrics.distractionSeconds]);
 
     const sessionRow = await client.query(`select started_at,ended_at from app.work_sessions where organization_id=$1 and id=$2`, [context.organization_id, context.session_id]);
     const started = sessionRow.rows[0]?.started_at || raw.started_at || new Date();

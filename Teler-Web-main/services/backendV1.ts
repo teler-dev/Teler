@@ -116,6 +116,16 @@ function minimalSession(row:V1SessionRow,employee?:V1Employee):SessionWithPersis
     app_switches:Array.from({length:switches},(_,index)=>({atMin:index,from:'',to:''})),
     claimed_task:'Tracked via TELER',
     evidence:{screenshot_count:screenshotUrls(row).length,screenshot_urls:screenshotUrls(row),ocr_sample:'',keystroke_per_minute:[],peak_wpm:0,top_apps_minutes:[]},
+    analytics:{
+      focus_score:productivity,
+      deep_work_blocks:0,
+      deep_work_minutes:numberOr(row.deep_work_minutes),
+      context_switch_rate:total>0?Math.round((switches/total)*60):0,
+      distraction_ratio:0,
+      activity_intensity:total>0?Math.round((active/total)*100):0,
+      volatility_index:0,
+      top_tools:[],
+    },
   };
 }
 

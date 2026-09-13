@@ -63,6 +63,8 @@ test('telemetry normalizer builds deterministic minute metrics and app switches'
   assert.equal(normalized.metrics.keyCount, 12);
   assert.equal(normalized.metrics.clickCount, 3);
   assert.equal(normalized.metrics.appSwitches, 1);
+  assert.equal(normalized.metrics.productivityScore, 100);
+  assert.ok(normalized.metrics.classificationCoverage >= 0.35);
   assert.equal(normalized.segments.length, 2);
   assert.ok(normalized.minuteMetrics.length >= 2);
 });
