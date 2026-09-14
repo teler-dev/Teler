@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Download, FileText, ShieldCheck, Bell, SlidersHorizontal, ArrowUpDown, Plus, Trash2, AlertTriangle, X } from 'lucide-react';
 import { Session } from '../../types';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { generateAlerts } from './alertUtils';
 import { useSessions } from './useSessions';
+import { fetchV1Employees } from '../../services/backendV1';
 import {
   DEFAULT_ENTERPRISE,
   EnterprisePreferences,
@@ -39,8 +40,15 @@ export const AdvancedWorkspacePage: React.FC<{ onClose: () => void }> = ({ onClo
   const [routes, setRoutes] = useState<NotificationRoute[]>(() => getNotificationRoutes());
   const [kpis, setKpis] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(KPI_KEY) ?? JSON.stringify(DEFAULT_KPIS)); } catch { return DEFAULT_KPIS; } });
   const [schedule, setSchedule] = useState(() => localStorage.getItem(REPORT_KEY) ?? 'weekly');
+  const [directory, setDirectory] = useState<string[]>([]);
 
-  const employees = useMemo(() => [...new Set(sessions.map(s => s.userName || s.role).filter(Boolean) as string[])].sort(), [sessions]);
+  useEffect(() => {
+    let active = true;
+    fetchV1Employees().then(list => { if (active) setDirectory(list.map(item => item.display_name).filter(Boolean)); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const employees = useMemo(() => [...new Set([...(sessions.map(s => s.userName || s.role).filter(Boolean) as string[]), ...directory])].sort(), [sessions, directory]);
   const alerts = useMemo(() => generateAlerts(sessions), [sessions]);
   const summary = useMemo(() => ({
     sessions: sessions.length,

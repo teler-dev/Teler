@@ -11,6 +11,7 @@ import { Employee, Session, classifyScore } from '../../types';
 import { DashboardSidebar, NavSection } from './DashboardSidebar';
 import { generateAlerts } from './alertUtils';
 import { useSessions } from './useSessions';
+import { fetchV1Employees } from '../../services/backendV1';
 import { PageHeader } from '../ui/PageHeader';
 import { IconButton } from '../ui/IconButton';
 import { InlineAlert } from '../ui/InlineAlert';
@@ -78,7 +79,7 @@ function getRisk(score: number, idlePct: number, alerts: number): RiskLevel {
   return 'low';
 }
 
-function buildEmployeeStats(sessions: Session[]): EmployeeStat[] {
+function buildEmployeeStats(sessions: Session[], directory: { display_name: string; job_role?: string }[] = []): EmployeeStat[] {
   const alerts = generateAlerts(sessions);
   const grouped = new Map<string, Session[]>();
   for (const session of sessions) {
@@ -86,7 +87,7 @@ function buildEmployeeStats(sessions: Session[]): EmployeeStat[] {
     grouped.set(name, [...(grouped.get(name) ?? []), session]);
   }
 
-  return [...grouped.entries()].map(([name, list]) => {
+  const stats = [...grouped.entries()].map(([name, list]) => {
     const sorted = [...list].sort((a, b) => new Date(b.session_end || b.created_at).getTime() - new Date(a.session_end || a.created_at).getTime());
     const latest = sorted[0];
     const scores = list.map(item => item.overall_productivity_score).filter(value => value > 0);
@@ -111,7 +112,23 @@ function buildEmployeeStats(sessions: Session[]): EmployeeStat[] {
       status: getStatus(lastSeen),
       risk: getRisk(score, idlePct, alertCount),
     };
-  }).sort((a, b) => b.alertCount - a.alertCount || b.score - a.score);
+  });
+
+  // Include every employee in the workspace directory, even those who have not
+  // tracked yet, so newly added or newly signed-up people appear on the dashboard.
+  const present = new Set(stats.map(item => item.employee.name.trim().toLowerCase()));
+  for (const entry of directory) {
+    const name = (entry.display_name || '').trim();
+    if (!name || present.has(name.toLowerCase())) continue;
+    present.add(name.toLowerCase());
+    stats.push({
+      employee: { name, role: entry.job_role ?? '', client: '' },
+      sessions: [], score: 0, focus: 0, activeMinutes: 0, idlePct: 0, switches: 0,
+      alertCount: 0, lastSeen: null, status: getStatus(null), risk: getRisk(0, 0, 0),
+    });
+  }
+
+  return stats.sort((a, b) => b.alertCount - a.alertCount || b.score - a.score);
 }
 
 function buildTrend(sessions: Session[]) {
@@ -161,9 +178,16 @@ const ThemedTooltip: React.FC<any> = ({ active, payload, label }) => {
 
 export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, onSectionNavigate, clientName = 'Your Company' }) => {
   const { sessions, loading, usingMock, error, refetch } = useSessions();
+  const [directory, setDirectory] = useState<{ display_name: string; job_role?: string }[]>([]);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'risk' | 'score' | 'name'>('risk');
   const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    let active = true;
+    fetchV1Employees().then(list => { if (active) setDirectory(list.map(item => ({ display_name: item.display_name, job_role: item.job_role }))); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const refresh = window.setInterval(() => refetch(false), 30_000);
@@ -172,7 +196,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
   }, [refetch]);
 
   const alerts = useMemo(() => generateAlerts(sessions), [sessions]);
-  const employees = useMemo(() => buildEmployeeStats(sessions), [sessions]);
+  const employees = useMemo(() => buildEmployeeStats(sessions, directory), [sessions, directory]);
   const filteredEmployees = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = q ? employees.filter(row => `${row.employee.name} ${row.employee.role} ${row.employee.client}`.toLowerCase().includes(q)) : [...employees];
