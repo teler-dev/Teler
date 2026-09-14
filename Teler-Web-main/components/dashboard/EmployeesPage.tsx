@@ -4,6 +4,7 @@ import { Employee, Session } from '../../types';
 import { DashboardSidebar, NavSection } from './DashboardSidebar';
 import { generateAlerts, alertsForEmployee } from './alertUtils';
 import { useSessions } from './useSessions';
+import { fetchV1Employees } from '../../services/backendV1';
 import { employeePath, navigate, updateQuery } from '../../services/routerService';
 import { PageHeader } from '../ui/PageHeader';
 import { IconButton } from '../ui/IconButton';
@@ -23,18 +24,31 @@ const STATUS_TONE:Record<EmployeeStatus,StatusTone>={working:'success',idle:'war
 
 function statusFor(value:string|null):EmployeeStatus{if(!value)return'offline';const age=Date.now()-new Date(value).getTime();return age<10*60_000?'working':age<30*60_000?'idle':'offline'}
 function timeAgo(value:string|null){if(!value)return'Never';const min=Math.max(0,Math.floor((Date.now()-new Date(value).getTime())/60_000));if(min<1)return'Just now';if(min<60)return`${min}m ago`;const hours=Math.floor(min/60);return hours<24?`${hours}h ago`:`${Math.floor(hours/24)}d ago`}
-function buildRows(sessions:Session[]):Row[]{
+type DirectoryEntry={display_name:string;job_role?:string};
+function buildRows(sessions:Session[],directory:DirectoryEntry[]=[]):Row[]{
   const alerts=generateAlerts(sessions), map=new Map<string,Session[]>();
   sessions.forEach(session=>{const name=session.userName||session.role||'Unknown';map.set(name,[...(map.get(name)||[]),session])});
-  return [...map.entries()].map(([name,list])=>{const latest=[...list].sort((a,b)=>new Date(b.session_end||b.created_at).getTime()-new Date(a.session_end||a.created_at).getTime())[0];const scores=list.map(s=>s.overall_productivity_score).filter(score=>score>0);const employee={name,role:latest?.role??'',client:latest?.client??''};return{employee,avgScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0,sessions:list.length,status:statusFor(latest?.session_end||latest?.created_at||null),lastSeen:latest?.session_end||latest?.created_at||null,alertCount:alertsForEmployee(alerts,name).length}}).sort((a,b)=>b.alertCount-a.alertCount||b.avgScore-a.avgScore);
+  const rows=[...map.entries()].map(([name,list])=>{const latest=[...list].sort((a,b)=>new Date(b.session_end||b.created_at).getTime()-new Date(a.session_end||a.created_at).getTime())[0];const scores=list.map(s=>s.overall_productivity_score).filter(score=>score>0);const employee={name,role:latest?.role??'',client:latest?.client??''};return{employee,avgScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0,sessions:list.length,status:statusFor(latest?.session_end||latest?.created_at||null),lastSeen:latest?.session_end||latest?.created_at||null,alertCount:alertsForEmployee(alerts,name).length}});
+  // Include every employee in the workspace directory, even those who have not
+  // tracked a session yet, so newly added people appear immediately.
+  const present=new Set(rows.map(row=>row.employee.name.trim().toLowerCase()));
+  for(const entry of directory){
+    const name=(entry.display_name||'').trim();
+    if(!name||present.has(name.toLowerCase()))continue;
+    present.add(name.toLowerCase());
+    rows.push({employee:{name,role:entry.job_role??'',client:''},avgScore:0,sessions:0,status:'offline',lastSeen:null,alertCount:0});
+  }
+  return rows.sort((a,b)=>b.alertCount-a.alertCount||b.avgScore-a.avgScore);
 }
 
 export const EmployeesPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionNavigate,clientName='Your Company'})=>{
   const {sessions,loading,error,refetch}=useSessions();
+  const [directory,setDirectory]=useState<DirectoryEntry[]>([]);
   const initialParams=useMemo(()=>new URLSearchParams(window.location.search),[]);
   const [search,setSearch]=useState(initialParams.get('q')||'');
   const [statusFilter,setStatusFilter]=useState<EmployeeStatus|'all'>(()=>{const value=initialParams.get('status');return value==='working'||value==='idle'||value==='offline'?value:'all'});
-  const rows=useMemo(()=>buildRows(sessions),[sessions]);
+  useEffect(()=>{let active=true;fetchV1Employees().then(list=>{if(active)setDirectory(list.map(item=>({display_name:item.display_name,job_role:item.job_role})))}).catch(()=>{});return()=>{active=false}},[]);
+  const rows=useMemo(()=>buildRows(sessions,directory),[sessions,directory]);
   const allAlerts=useMemo(()=>generateAlerts(sessions),[sessions]);
   const filtered=useMemo(()=>rows.filter(row=>{if(statusFilter!=='all'&&row.status!==statusFilter)return false;const q=search.trim().toLowerCase();return !q||`${row.employee.name} ${row.employee.role} ${row.employee.client}`.toLowerCase().includes(q)}),[rows,search,statusFilter]);
   const counts=useMemo(()=>({working:rows.filter(r=>r.status==='working').length,idle:rows.filter(r=>r.status==='idle').length,offline:rows.filter(r=>r.status==='offline').length}),[rows]);
