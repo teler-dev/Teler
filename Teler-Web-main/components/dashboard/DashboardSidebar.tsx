@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Bell, BrainCircuit, ClipboardList, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, Users, X } from 'lucide-react';
+import { BarChart3, Bell, BrainCircuit, ClipboardList, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, UserCog, Users, X } from 'lucide-react';
 import { Logo } from '../Logo';
 import { applyTheme, getThemeMode, setThemeMode, subscribeTheme, ThemeMode } from '../../services/themeService';
 import { openCommandPalette } from '../../services/commandPaletteService';
-import { canManageAiQueue, getCurrentUser } from '../../services/authService';
+import { canManageAiQueue, canManageTeam, getCurrentUser } from '../../services/authService';
 
-export type NavSection = 'dashboard' | 'employees' | 'sessions' | 'reports' | 'alerts' | 'settings' | 'ai-settings' | 'ai-queue' | 'workspace';
+export type NavSection = 'dashboard' | 'employees' | 'sessions' | 'reports' | 'alerts' | 'settings' | 'ai-settings' | 'team-settings' | 'ai-queue' | 'workspace';
 
 const PRIMARY_NAV: Array<{ key: NavSection; label: string; href: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -31,9 +31,10 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>(() => getThemeMode());
   const [canManageQueue, setCanManageQueue] = useState(false);
+  const [canAdminTeam, setCanAdminTeam] = useState(false);
 
   useEffect(() => { applyTheme(theme); return subscribeTheme(setTheme); }, []);
-  useEffect(() => { let active = true; getCurrentUser().then(user => { if (active) setCanManageQueue(canManageAiQueue(user)); }).catch(() => { if (active) setCanManageQueue(false); }); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; getCurrentUser().then(user => { if (active) { setCanManageQueue(canManageAiQueue(user)); setCanAdminTeam(canManageTeam(user)); } }).catch(() => { if (active) { setCanManageQueue(false); setCanAdminTeam(false); } }); return () => { active = false; }; }, []);
 
   const follow = (event: React.MouseEvent<HTMLAnchorElement>, section: NavSection, href: string) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -124,6 +125,11 @@ export const DashboardSidebar: React.FC<Props> = ({ activeSection, onNavigate, a
           {canManageQueue && <a href="/ai/queue" onClick={event => follow(event, 'ai-queue', '/ai/queue')} aria-current={activeSection === 'ai-queue' ? 'page' : undefined} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${activeSection === 'ai-queue' ? 'bg-accent-soft border-accent text-primary' : 'border-transparent text-secondary hover:text-primary hover:bg-surface-hover'}`}><ClipboardList className="w-4 h-4" /><span>AI Queue</span></a>}
           <a href="/settings/ai" onClick={event => follow(event, 'ai-settings', '/settings/ai')} aria-current={activeSection === 'ai-settings' ? 'page' : undefined} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${activeSection === 'ai-settings' ? 'bg-accent-soft border-accent text-primary' : 'border-transparent text-secondary hover:text-primary hover:bg-surface-hover'}`}><BrainCircuit className="w-4 h-4" /><span>AI Settings</span></a>
         </div>
+
+        {canAdminTeam && <div className="mt-5 pt-4 border-t border-subtle space-y-1">
+          <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Admin</p>
+          <a href="/settings/team" onClick={event => follow(event, 'team-settings', '/settings/team')} aria-current={activeSection === 'team-settings' ? 'page' : undefined} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${activeSection === 'team-settings' ? 'bg-accent-soft border-accent text-primary' : 'border-transparent text-secondary hover:text-primary hover:bg-surface-hover'}`}><UserCog className="w-4 h-4" /><span>Team</span></a>
+        </div>}
       </div>
 
       <div className="teler-sidebar-actions p-3 border-t border-subtle shrink-0 bg-surface-card">

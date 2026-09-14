@@ -41,6 +41,10 @@ export function canManageAiQueue(user: Pick<AuthenticatedUser, 'organizationRole
   return ['owner', 'admin'].includes(String(user?.organizationRole || '').toLowerCase());
 }
 
+export function canManageTeam(user: Pick<AuthenticatedUser, 'organizationRole'> | null | undefined): boolean {
+  return ['owner', 'admin'].includes(String(user?.organizationRole || '').toLowerCase());
+}
+
 export async function login(email: string, password: string): Promise<AuthenticatedUser> {
   const response = await fetch('/api/auth-login', {
     method: 'POST',

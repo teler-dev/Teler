@@ -10,11 +10,12 @@ import { AiChatPanel } from './components/dashboard/AiChatPanel';
 import { GlobalCommandBar } from './components/dashboard/GlobalCommandBar';
 import { AiSettingsPanel } from './components/settings/AiSettingsPanel';
 import { AiAnalysisQueue } from './components/settings/AiAnalysisQueue';
+import { TeamSettingsPanel } from './components/settings/TeamSettingsPanel';
 import { RoutedWorkspacePage, WorkspaceRouteKind } from './components/dashboard/RoutedWorkspacePage';
 import { FullAlertPage } from './components/dashboard/FullAlertPage';
 import { FullAiPage } from './components/dashboard/FullAiPage';
 import { useSessions } from './components/dashboard/useSessions';
-import { getCurrentUser, logout } from './services/authService';
+import { canManageTeam, getCurrentUser, logout } from './services/authService';
 import { applyTheme } from './services/themeService';
 import { AppRoute, employeePath, employeeSlug, navigate, parseRoute, routeTitle } from './services/routerService';
 import { PageHeader } from './components/ui/PageHeader';
@@ -32,6 +33,7 @@ const routeForSection: Record<NavSection, string> = {
   alerts: '/alerts',
   settings: '/settings/ai',
   'ai-settings': '/settings/ai',
+  'team-settings': '/settings/team',
   'ai-queue': '/ai/queue',
   workspace: '/analytics',
 };
@@ -142,6 +144,7 @@ export const AuthenticatedRouter: React.FC = () => {
   else if (route.kind === 'ai') page = <FullAiPage onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
   else if (route.kind === 'ai-queue') page = <AiQueueRoute onLogout={doLogout} clientName={username} onNavigate={onSectionNavigate} />;
   else if (route.kind === 'ai-settings') page = <AiSettingsRoute onLogout={doLogout} clientName={username} onNavigate={onSectionNavigate} />;
+  else if (route.kind === 'team-settings') page = <TeamSettingsRoute onLogout={doLogout} clientName={username} onNavigate={onSectionNavigate} />;
   else navigate('/dashboard', { replace: true });
 
   return <div className="teler-auth-surface contents">
@@ -153,6 +156,34 @@ export const AuthenticatedRouter: React.FC = () => {
     <GlobalCommandBar sessions={globalSessions} onNavigate={onSectionNavigate} onEmployee={onEmployeeClick} onOpenAi={() => setShowAiChat(true)} />
     {!showAiChat && <QuickAiDock onOpen={() => setShowAiChat(true)} />}
     {showAiChat && <AiChatPanel sessions={globalSessions} onClose={() => setShowAiChat(false)} />}
+  </div>;
+};
+
+const TeamSettingsRoute: React.FC<{ onLogout: () => void; clientName: string; onNavigate: (section: NavSection) => void }> = ({ onLogout, clientName, onNavigate }) => {
+  const { sessions } = useSessions();
+  const alertCount = sessions.filter(session => (session.red_flags?.length ?? 0) > 0).length;
+  const [access, setAccess] = useState<'checking' | 'granted' | 'denied'>('checking');
+  useEffect(() => {
+    let active = true;
+    getCurrentUser().then(user => { if (active) setAccess(canManageTeam(user) ? 'granted' : 'denied'); }).catch(() => { if (active) setAccess('denied'); });
+    return () => { active = false; };
+  }, []);
+  return <div className="min-h-screen bg-surface-page text-primary flex">
+    <DashboardSidebar activeSection="team-settings" onNavigate={onNavigate} alertCount={alertCount} onLogout={onLogout} clientName={clientName} />
+    <div className="flex-1 ml-56 min-w-0 min-h-screen">
+      <PageHeader
+        eyebrow="Workspace"
+        title="Team"
+        meta="Add employees and manage who appears in this workspace"
+        leading={<IconButton label="Back to dashboard" onClick={() => navigate('/dashboard')}><ArrowLeft className="w-4 h-4" /></IconButton>}
+        compact
+      />
+      <main className="p-4 md:p-6 max-w-[800px] mx-auto w-full">
+        {access === 'checking' ? <p className="text-sm text-secondary">Checking access…</p>
+          : access === 'denied' ? <p className="text-sm text-secondary rounded-xl border border-subtle bg-surface-card p-6">Only workspace owners or admins can manage employees.</p>
+          : <TeamSettingsPanel />}
+      </main>
+    </div>
   </div>;
 };
 

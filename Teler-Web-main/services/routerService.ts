@@ -15,6 +15,7 @@ export type AppRoute =
   | { kind: 'ai'; path: '/ai' }
   | { kind: 'ai-queue'; path: '/ai/queue' }
   | { kind: 'ai-settings'; path: '/settings/ai' }
+  | { kind: 'team-settings'; path: '/settings/team' }
   | { kind: 'notifications'; path: '/settings/notifications' }
   | { kind: 'security-admin'; path: '/admin/security' }
   | { kind: 'marketing'; path: string; view: string };
@@ -50,6 +51,7 @@ export function parseRoute(pathname = window.location.pathname): AppRoute {
   if (path === '/ai') return { kind: 'ai', path: '/ai' };
   if (path === '/ai/queue') return { kind: 'ai-queue', path: '/ai/queue' };
   if (path === '/settings/ai') return { kind: 'ai-settings', path: '/settings/ai' };
+  if (path === '/settings/team') return { kind: 'team-settings', path: '/settings/team' };
   if (path === '/settings/notifications') return { kind: 'notifications', path: '/settings/notifications' };
   if (path === '/admin/security') return { kind: 'security-admin', path: '/admin/security' };
 
@@ -102,6 +104,7 @@ export function routeTitle(route: AppRoute): string {
     case 'ai': return 'TELER AI | TELER';
     case 'ai-queue': return 'AI Analysis Queue | TELER';
     case 'ai-settings': return 'AI Settings | TELER';
+    case 'team-settings': return 'Team | TELER';
     case 'notifications': return 'Notification Settings | TELER';
     case 'security-admin': return 'Security Administration | TELER';
     case 'login': return 'Sign In | TELER';

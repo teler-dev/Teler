@@ -5,6 +5,10 @@ const { promisify } = require('util');
 const scrypt = promisify(crypto.scrypt);
 const SESSION_DAYS = Math.max(1, Number(process.env.AUTH_SESSION_DAYS) || 30);
 const JOB_ROLES = new Set(['general', 'developer', 'designer', 'manager', 'accountant', 'qa']);
+// Single-tenant mode: when this org slug exists, every new signup joins it as a
+// viewer instead of spinning up its own isolated workspace. Set it empty to
+// restore the original "each signup owns a new organization" behavior.
+const DEFAULT_ORG_SLUG = (process.env.TELER_DEFAULT_ORG_SLUG ?? 'teler').trim().toLowerCase();
 const attempts = new Map();
 
 function authRateLimit(req, res, next) {
@@ -77,6 +81,34 @@ function publicAccount(row) {
       role: row.member_role,
     },
   };
+}
+
+// Create a full account (profile + credentials + membership + employee) inside an
+// existing organization and return the new identifiers. The employee row's
+// external_key is the profile id, which ACCOUNT_QUERY relies on to join them.
+async function provisionMember(client, { displayName, email, passwordHash, jobRole, organizationId, role }) {
+  const authUserId = `teler:${crypto.randomUUID()}`;
+  const profileResult = await client.query(
+    `insert into app.user_profiles (auth_user_id, display_name) values ($1, $2) returning id`,
+    [authUserId, displayName]
+  );
+  const profileId = profileResult.rows[0].id;
+  await client.query(
+    `insert into app.user_credentials (user_profile_id, email_normalized, password_hash)
+     values ($1, $2, $3)`,
+    [profileId, email, passwordHash]
+  );
+  await client.query(
+    `insert into app.organization_memberships (organization_id, user_profile_id, role, status)
+     values ($1, $2, $3, 'active')`,
+    [organizationId, profileId, role]
+  );
+  const employeeResult = await client.query(
+    `insert into app.employees (organization_id, external_key, display_name, email_normalized, job_role)
+     values ($1, $2, $3, $4, $5) returning id`,
+    [organizationId, profileId, displayName, email, jobRole]
+  );
+  return { authUserId, profileId, employeeId: employeeResult.rows[0].id };
 }
 
 async function issueSession(client, userProfileId, req) {
@@ -173,49 +205,46 @@ function createAuthRouter(pool) {
       client = await pool.connect();
       await client.query('begin');
       const passwordHash = await hashPassword(password);
-      const authUserId = `teler:${crypto.randomUUID()}`;
-      const profileResult = await client.query(
-        `insert into app.user_profiles (auth_user_id, display_name)
-         values ($1, $2) returning id`,
-        [authUserId, displayName]
-      );
-      const profileId = profileResult.rows[0].id;
-      await client.query(
-        `insert into app.user_credentials (user_profile_id, email_normalized, password_hash)
-         values ($1, $2, $3)`,
-        [profileId, email, passwordHash]
-      );
 
-      const orgResult = await client.query(
-        `insert into app.organizations (slug, name)
-         values ($1, $2) returning id, slug, name`,
-        [`${slugify(organizationName)}-${crypto.randomBytes(3).toString('hex')}`, organizationName]
-      );
-      const organization = orgResult.rows[0];
-      await client.query(
-        `insert into app.organization_memberships (organization_id, user_profile_id, role)
-         values ($1, $2, 'owner')`,
-        [organization.id, profileId]
-      );
-      const employeeResult = await client.query(
-         `insert into app.employees
-           (organization_id, external_key, display_name, email_normalized, job_role)
-         values ($1, $2, $3, $4, $5) returning id`,
-        [organization.id, profileId, displayName, email, jobRole]
-      );
+      // Prefer joining the shared workspace so every signup lands in one portal
+      // the owner/admin can see. Fall back to creating an owned workspace when no
+      // shared org is configured yet (first-run bootstrap).
+      let organization = null;
+      let role = 'viewer';
+      if (DEFAULT_ORG_SLUG) {
+        const existing = await client.query(
+          `select id, slug, name from app.organizations
+            where slug = $1 and status = 'active' limit 1`,
+          [DEFAULT_ORG_SLUG]
+        );
+        if (existing.rows[0]) organization = existing.rows[0];
+      }
+      if (!organization) {
+        const orgResult = await client.query(
+          `insert into app.organizations (slug, name)
+           values ($1, $2) returning id, slug, name`,
+          [`${slugify(organizationName)}-${crypto.randomBytes(3).toString('hex')}`, organizationName]
+        );
+        organization = orgResult.rows[0];
+        role = 'owner';
+      }
 
-      const session = await issueSession(client, profileId, req);
+      const member = await provisionMember(client, {
+        displayName, email, passwordHash, jobRole, organizationId: organization.id, role,
+      });
+
+      const session = await issueSession(client, member.profileId, req);
       await client.query('commit');
       return res.status(201).json({
         ...session,
         user: {
-          id: profileId,
-          employeeId: employeeResult.rows[0].id,
-          authUserId,
+          id: member.profileId,
+          employeeId: member.employeeId,
+          authUserId: member.authUserId,
           email,
           displayName,
           jobRole,
-          organization: { id: organization.id, name: organization.name, slug: organization.slug, role: 'owner' },
+          organization: { id: organization.id, name: organization.name, slug: organization.slug, role },
         },
       });
     } catch (error) {
@@ -291,6 +320,79 @@ function createAuthRouter(pool) {
     } catch (error) {
       console.error('[auth/logout]', error);
       return res.status(500).json({ error: 'Could not sign out' });
+    }
+  });
+
+  // Only workspace owners/admins may view or manage the employee roster.
+  function requireManager(req, res, next) {
+    const role = String(req.authUser?.organization?.role || '').toLowerCase();
+    if (role === 'owner' || role === 'admin') return next();
+    return res.status(403).json({ error: 'Only workspace owners or admins can manage employees' });
+  }
+
+  router.get('/employees', requireUser, requireManager, async (req, res) => {
+    try {
+      const result = await pool.query(
+        `select e.id as employee_id, e.display_name, e.email_normalized as email,
+                e.job_role, e.status, e.created_at, m.role as member_role
+           from app.employees e
+           join app.organization_memberships m
+             on m.organization_id = e.organization_id
+            and m.user_profile_id::text = e.external_key
+          where e.organization_id = $1 and m.status = 'active'
+          order by e.created_at asc`,
+        [req.authUser.organization.id]
+      );
+      return res.json({ employees: result.rows });
+    } catch (error) {
+      console.error('[auth/employees:list]', error);
+      return res.status(500).json({ error: 'Could not load employees' });
+    }
+  });
+
+  router.post('/employees', authRateLimit, requireUser, requireManager, async (req, res) => {
+    const displayName = String(req.body?.displayName || '').trim();
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || '');
+    const jobRole = String(req.body?.jobRole || 'general').trim().toLowerCase();
+
+    if (displayName.length < 2 || displayName.length > 100) {
+      return res.status(400).json({ error: 'Name must be between 2 and 100 characters' });
+    }
+    if (!validEmail(email)) return res.status(400).json({ error: 'Enter a valid email address' });
+    if (password.length < 8 || password.length > 200) {
+      return res.status(400).json({ error: 'Password must contain at least 8 characters' });
+    }
+    if (!JOB_ROLES.has(jobRole)) return res.status(400).json({ error: 'Select a valid job role' });
+
+    let client;
+    try {
+      client = await pool.connect();
+      await client.query('begin');
+      const passwordHash = await hashPassword(password);
+      const member = await provisionMember(client, {
+        displayName, email, passwordHash, jobRole,
+        organizationId: req.authUser.organization.id, role: 'viewer',
+      });
+      await client.query('commit');
+      return res.status(201).json({
+        employee: {
+          employee_id: member.employeeId,
+          display_name: displayName,
+          email,
+          job_role: jobRole,
+          member_role: 'viewer',
+          status: 'active',
+          created_at: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      if (client) await client.query('rollback');
+      if (error.code === '23505') return res.status(409).json({ error: 'An account with this email already exists' });
+      console.error('[auth/employees:create]', error);
+      return res.status(500).json({ error: 'Could not add employee' });
+    } finally {
+      if (client) client.release();
     }
   });
 
