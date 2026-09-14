@@ -2,7 +2,7 @@ import type { Plugin } from 'vite';
 
 /** Run the same Fetch handlers as Vercel during local development. */
 export function localApi(buildId: string): Plugin {
-  const routes = new Set(['auth-login', 'auth-me', 'auth-logout', 'teler', 'ai']);
+  const routes = new Set(['auth-login', 'auth-me', 'auth-logout', 'teler', 'ai', 'team']);
   return {
     name: 'teler-local-api',
     apply: 'serve',
