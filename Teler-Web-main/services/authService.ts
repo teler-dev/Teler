@@ -3,6 +3,9 @@ export type AuthenticatedUser = {
   email?: string;
   jobRole?: string;
   organizationRole?: string;
+  organizationId?: string;
+  organizationSlug?: string;
+  organizationName?: string;
 };
 
 function isPublicAuthShell(): boolean {
@@ -27,13 +30,19 @@ function userFromBody(body: Record<string, unknown>): AuthenticatedUser | null {
   const account = body.user && typeof body.user === 'object'
     ? body.user as Record<string, unknown>
     : {};
+  const organization = account.organization && typeof account.organization === 'object'
+    ? account.organization as Record<string, unknown>
+    : {};
+  const orgString = (key: string): string | undefined =>
+    typeof organization[key] === 'string' ? organization[key] as string : undefined;
   return {
     username: body.username,
     email: typeof body.email === 'string' ? body.email : undefined,
     jobRole: typeof account.jobRole === 'string' ? account.jobRole : undefined,
-    organizationRole: account.organization && typeof account.organization === 'object' && typeof (account.organization as Record<string, unknown>).role === 'string'
-      ? (account.organization as Record<string, unknown>).role as string
-      : undefined,
+    organizationRole: orgString('role'),
+    organizationId: orgString('id'),
+    organizationSlug: orgString('slug'),
+    organizationName: orgString('name'),
   };
 }
 

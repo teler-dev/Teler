@@ -1,5 +1,6 @@
 import { Session } from '../types';
 import { apiFetch } from './apiConfig';
+import { getCurrentUser } from './authService';
 
 const DEFAULT_ORGANIZATION_KEY = (import.meta.env.VITE_ORGANIZATION_KEY || 'COMP_DEV_001').trim();
 
@@ -72,6 +73,16 @@ export async function resolveOrganization(force=false):Promise<V1Company|null>{
   if(force)organizationPromise=null;
   if(!organizationPromise){
     organizationPromise=(async()=>{
+      // Primary: scope the dashboard to the signed-in user's own workspace so an
+      // owner/admin sees every employee in their organization, regardless of the
+      // legacy fixed organization key.
+      try{
+        const user=await getCurrentUser();
+        if(user?.organizationId){
+          return {id:user.organizationId,slug:user.organizationSlug??'',name:user.organizationName??'',status:'active'};
+        }
+      }catch{/* fall back to the legacy key lookup below */}
+      // Fallback (legacy/dev): resolve by the fixed organization key.
       const response=await apiFetch(`/api/v1/companies?key=${encodeURIComponent(DEFAULT_ORGANIZATION_KEY)}`);
       if(response.status===503)return null;
       const payload=await jsonOrThrow<ApiEnvelope<V1Company[]>>(response);
