@@ -71,7 +71,7 @@ export const AuthenticatedRouter: React.FC = () => {
   const [username, setUsername] = useState('');
   const [showAiChat, setShowAiChat] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const { sessions: globalSessions } = useSessions(undefined, authStatus === 'authenticated');
+  const { sessions: globalSessions, loading: globalSessionsLoading } = useSessions(undefined, authStatus === 'authenticated');
 
   const checkBuildVersion = useCallback(async () => {
     try {
@@ -137,7 +137,9 @@ export const AuthenticatedRouter: React.FC = () => {
   let page: React.ReactNode = null;
   if (route.kind === 'dashboard') page = <EmployerOverview onLogout={doLogout} onEmployeeClick={onEmployeeClick} onSectionNavigate={onSectionNavigate} clientName={username} />;
   else if (route.kind === 'employees') page = <EmployeesPage onLogout={doLogout} onEmployeeClick={onEmployeeClick} onSectionNavigate={onSectionNavigate} clientName={username} />;
-  else if (route.kind === 'employee' || route.kind === 'session') page = employee ? <Dashboard onLogout={doLogout} userName={username} initialEmployee={employee} onBack={() => navigate('/employees')} /> : <div className="min-h-screen bg-surface-page text-primary flex items-center justify-center"><p className="text-sm text-secondary">Resolving employee telemetry…</p></div>;
+  else if (route.kind === 'employee' || route.kind === 'session') page = employee
+    ? <Dashboard onLogout={doLogout} userName={username} initialEmployee={employee} onBack={() => navigate('/employees')} />
+    : <div className="min-h-screen bg-surface-page text-primary flex items-center justify-center p-6"><div className="max-w-md w-full rounded-2xl border border-subtle bg-surface-card shadow-card p-6 text-center"><h1 className="text-lg font-semibold">{globalSessionsLoading ? 'Resolving employee telemetry…' : 'No active session found'}</h1><p className="text-sm text-secondary mt-2">{globalSessionsLoading ? 'Loading available sessions.' : 'This employee has not recorded a TELER session yet. Their dashboard will appear after they start and save a tracking session.'}</p>{!globalSessionsLoading && <Button className="mt-5" onClick={() => navigate('/employees')}>Back to employees</Button>}</div></div>;
   else if (route.kind === 'alerts') page = <AlertsPage onLogout={doLogout} onEmployeeClick={onEmployeeClick} onSectionNavigate={onSectionNavigate} clientName={username} />;
   else if (route.kind === 'alert') page = <FullAlertPage alertId={route.alertId} onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
   else if (['analytics', 'compare', 'reports', 'custom-dashboard', 'saved-views', 'notifications', 'security-admin'].includes(route.kind)) page = <RoutedWorkspacePage kind={route.kind as WorkspaceRouteKind} onLogout={doLogout} clientName={username} onSectionNavigate={onSectionNavigate} />;
