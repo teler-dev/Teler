@@ -1,7 +1,7 @@
 {
-  "version": "2026.9.21",
-  "download_url": "https://204-216-105-57.sslip.io/releases/TELER-2026.9.21.exe",
-  "sha256": "00fc3450522b0815ad6d34436bbda4689a2fcc240bd26e157c2233245d749e7d",
-  "notes": "Verified automatic updates and a Windows Qt runtime compatibility fix.",
+  "version": "2026.9.22",
+  "download_url": "https://204-216-105-57.sslip.io/releases/TELER-2026.9.22.exe",
+  "sha256": "209d8c6d01d282e8c7345b8007dab7b3d54a1c95615d16d1639b8e3f9c7f3773",
+  "notes": "Automatic update checks now run when TELER opens, before sign-in.",
   "mandatory": false
 }

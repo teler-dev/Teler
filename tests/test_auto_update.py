@@ -10,12 +10,12 @@ class AutoUpdateTests(unittest.TestCase):
 
     def test_rejects_untrusted_or_unchecked_updates(self):
         with self.assertRaises(ValueError):
-            _validated_update({"version": "2026.9.22", "download_url": "https://example.com/TELER.exe", "sha256": "a" * 64})
+            _validated_update({"version": "2026.9.22", "download_url": "https://example.com/TELER.exe", "sha256": "a" * 64}, current="2026.0.0")
         with self.assertRaises(ValueError):
-            _validated_update({"version": "2026.9.22", "download_url": "https://teler-pi.vercel.app/TELER.exe", "sha256": "not-a-checksum"})
+            _validated_update({"version": "2026.9.22", "download_url": "https://teler-pi.vercel.app/TELER.exe", "sha256": "not-a-checksum"}, current="2026.0.0")
 
     def test_accepts_new_trusted_release(self):
-        update = _validated_update({"version": "2026.9.22", "download_url": "https://204-216-105-57.sslip.io/releases/TELER.exe", "sha256": "a" * 64, "notes": "Bug fixes"})
+        update = _validated_update({"version": "2026.9.22", "download_url": "https://204-216-105-57.sslip.io/releases/TELER.exe", "sha256": "a" * 64, "notes": "Bug fixes"}, current="2026.0.0")
         self.assertEqual(update, UpdateInfo("2026.9.22", "https://204-216-105-57.sslip.io/releases/TELER.exe", "a" * 64, "Bug fixes", False))
 
 

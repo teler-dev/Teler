@@ -21,7 +21,7 @@ from pathlib import Path
 from PyQt6.QtCore import QThread, pyqtSignal
 
 
-DESKTOP_VERSION = "2026.9.21"
+DESKTOP_VERSION = "2026.9.22"
 MANIFEST_URL = os.environ.get(
     "TELER_UPDATE_MANIFEST_URL", "https://teler-pi.vercel.app/desktop/latest.json"
 ).strip()
