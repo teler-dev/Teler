@@ -76,26 +76,24 @@ function factualHighlights(facts) {
   ];
 }
 
-function factualVisualText(value) {
-  return String(value || '')
-    .replace(/\buser\s+(?:worked|focused|fixed|adjusted|viewed|accessed)\b/gi, 'screenshots contain')
-    .replace(/\bthey\s+(?:worked|focused|fixed|adjusted|viewed|accessed)\b/gi, 'screenshots contain')
-    .replace(/\s+/g, ' ')
-    .trim();
+function isInferredUserAction(value) {
+  return /\b(user|they)\b[^.]{0,180}\b(worked|focused|fixed|adjusted|viewed|accessed|completed)\b/i.test(String(value || ''));
 }
 
 function buildHonestReport(aiReport, facts, analysedCount) {
   const contradictsTelemetry = text => facts.idle_percent >= 10 && /(no idle|without idle|continuous activity|continuously active|high activity)/i.test(text);
-  const visualSummary = factualVisualText(String(aiReport?.summary || '')
+  const visualSummary = String(aiReport?.summary || '')
     .split(/(?<=[.!?])\s+/)
-    .filter(sentence => sentence && !contradictsTelemetry(sentence))
+    .filter(sentence => sentence && !contradictsTelemetry(sentence) && !isInferredUserAction(sentence))
     .join(' ')
-    .slice(0, 360));
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 360);
   const telemetrySummary = `Telemetry recorded ${compactMinutes(facts.duration_minutes)} total: ${compactMinutes(facts.active_minutes)} active and ${compactMinutes(facts.idle_minutes)} idle (${facts.idle_percent}% idle). Deep work was ${compactMinutes(facts.deep_work_minutes)} with ${facts.context_switches} context switches${facts.productivity_score === null ? '' : `; normalized score ${facts.productivity_score}/100`}.`;
   const summary = `${telemetrySummary}${visualSummary ? ` Screenshots show: ${visualSummary}` : ''}`.slice(0, 700);
   const visualHighlights = safeList(aiReport?.highlights, 2)
-    .filter(item => !contradictsTelemetry(item))
-    .map(item => `Screenshots: ${factualVisualText(item)}`);
+    .filter(item => !contradictsTelemetry(item) && !isInferredUserAction(item))
+    .map(item => `Screenshots: ${item}`);
   const highlights = [...factualHighlights(facts), ...visualHighlights].slice(0, 5);
   const modelConfidence = Number(aiReport?.confidence);
   const cap = analysedCount >= 4 ? 0.9 : analysedCount >= 2 ? 0.75 : 0.6;
@@ -170,4 +168,4 @@ async function processEvidenceAiAnalysis(payload) {
   }
 }
 
-module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport, factualVisualText };
+module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport, isInferredUserAction };
