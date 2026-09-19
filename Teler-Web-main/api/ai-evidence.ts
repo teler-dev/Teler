@@ -25,7 +25,7 @@ function requestedModel(body: Record<string, unknown>): string {
 function promptFor(mode: 'screenshot' | 'session'): string {
   return mode === 'screenshot'
     ? 'Analyse one work screenshot. Return ONLY compact JSON: {"summary":"<=240 characters, observed facts only","confidence":0 to 1,"observed_signals":["up to 3 short factual signals"]}. Respect the supplied evidence time range. Never infer misconduct or productivity from one image. If unreadable or insufficient, say so with low confidence.'
-    : 'Create an honest, compact session report from telemetry and screenshot findings. Return ONLY JSON: {"summary":"<=400 characters, evidence-backed only","highlights":["3 to 5 short critical factual points"],"confidence":0 to 1}. Distinguish observed facts from inference. Never claim productivity or misconduct where evidence is insufficient.';
+    : 'Create an honest, compact session report from telemetry and screenshot findings. Return ONLY JSON: {"summary":"<=400 characters, evidence-backed only","highlights":["3 to 5 short critical factual points"],"confidence":0 to 1}. Telemetry numeric values are authoritative: repeat them exactly and never contradict them. Do not call a user continuously active, highly active, or productive when telemetry reports meaningful idle time. Describe visual facts as "Screenshots show..." rather than inferring intent or misconduct.';
 }
 
 export default {

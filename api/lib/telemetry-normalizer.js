@@ -135,16 +135,20 @@ function summarize(events, segments, minutes, blocks, summary = {}) {
   const activeSeconds = Math.max(0, totalSeconds - idleSeconds);
   const classifiedSeconds = focusSeconds + distractionSeconds;
   const classificationCoverage = activeSeconds ? classifiedSeconds / activeSeconds : 0;
+  const activeRatio = totalSeconds ? activeSeconds / totalSeconds : 0;
   // A score is only meaningful when we can classify a material part of the
   // active session. Neutral time (for example, an unrecognised browser tab)
   // must never silently turn a person into a low performer.
+  // Productivity represents the whole tracked session, not only the small
+  // portion in which the person was active.  A fully productive six-minute
+  // active period inside a thirty-minute idle session must not read as 100/100.
   const productivityScore = classificationCoverage >= 0.35
-    ? Math.round(clamp(((focusSeconds - distractionSeconds * 0.5) / classifiedSeconds) * 100, 0, 100))
+    ? Math.round(clamp((((focusSeconds - distractionSeconds * 0.5) / classifiedSeconds) * 100) * activeRatio, 0, 100))
     : null;
   const deepWorkSeconds = blocks
     .filter(block => block.block_type === 'focus')
     .reduce((sum, block) => sum + block.duration_seconds, 0);
-  return { keyCount, clickCount, appSwitches, idleSeconds, focusSeconds, distractionSeconds, totalSeconds, activeSeconds, classifiedSeconds, classificationCoverage, deepWorkSeconds, productivityScore };
+  return { keyCount, clickCount, appSwitches, idleSeconds, focusSeconds, distractionSeconds, totalSeconds, activeSeconds, activeRatio, classifiedSeconds, classificationCoverage, deepWorkSeconds, productivityScore };
 }
 
 function normalizeTelemetry(payload) {

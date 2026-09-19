@@ -11,7 +11,7 @@ const { normalizeTelemetry } = require('../lib/telemetry-normalizer');
 const { conditionMatches } = require('../workers/session-normalizer');
 const { processReportGeneration } = require('../workers/report-generator');
 const { processRetentionCleanup, safeDelete } = require('../workers/retention-cleanup');
-const { hammingDistance, groupVisualEvidence } = require('../workers/evidence-ai-analysis');
+const { hammingDistance, groupVisualEvidence, telemetryFacts, buildHonestReport } = require('../workers/evidence-ai-analysis');
 const { deriveTiming, safeUploadId, decodeMetadataHeader, decodeVisualHashHeader, sanitizeBrowserTabs, canonicalCaptureTime, screenshotReadQuery, canManageOrganizationEvidence } = require('../modules/v1-sessions');
 const { canReadOrganizationAnalyses } = require('../modules/v1-ai-analyses');
 
@@ -149,6 +149,19 @@ test('visual evidence batching groups near-duplicate screenshots and retains the
   assert.equal(grouped[0].repeat_count, 2);
   assert.equal(grouped[0].first_captured_at, '2026-09-14T10:00:00Z');
   assert.equal(grouped[0].last_captured_at, '2026-09-14T10:04:00Z');
+});
+
+test('AI session reports keep deterministic telemetry ahead of model narrative', () => {
+  const facts = telemetryFacts({ total_duration_seconds: 1963 }, { productivity_score: 19, active_minutes: 6.35, idle_minutes: 26.33, deep_work_minutes: 0, app_switch_count: 11 });
+  const report = buildHonestReport({
+    summary: 'Telemetry shows high activity with no idle time over 1963 seconds.',
+    highlights: ['No idle time was recorded.', 'Screenshots show a code editor.'],
+    confidence: 1,
+  }, facts, 2);
+  assert.match(report.summary, /26m idle \(80% idle\)/);
+  assert.doesNotMatch(report.summary, /no idle|high activity/i);
+  assert.ok(report.highlights.some(item => /26m idle/i.test(item)));
+  assert.equal(report.confidence, 0.75);
 });
 
 test('screenshot upload metadata accepts only safe client event IDs and strips control characters', () => {

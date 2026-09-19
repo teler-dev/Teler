@@ -43,6 +43,53 @@ function groupVisualEvidence(shots) {
 
 const evidenceMimeType = storagePath => /\.jpe?g$/i.test(storagePath) ? 'image/jpeg' : 'image/png';
 const safeList = (value, max = 5) => Array.isArray(value) ? value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean).slice(0, max) : [];
+const asNumber = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+const compactMinutes = value => `${Math.max(0, Math.round(asNumber(value)))}m`;
+
+function telemetryFacts(session, metrics = {}) {
+  const durationSeconds = Math.max(0, Math.round(asNumber(session.total_duration_seconds)));
+  const idleMinutes = Math.max(0, asNumber(metrics.idle_minutes));
+  const activeMinutes = Math.max(0, asNumber(metrics.active_minutes));
+  const idlePercent = durationSeconds ? Math.round(Math.min(100, (idleMinutes * 60 / durationSeconds) * 100)) : 0;
+  return {
+    duration_seconds: durationSeconds,
+    duration_minutes: Math.round(durationSeconds / 60),
+    active_minutes: activeMinutes,
+    idle_minutes: idleMinutes,
+    idle_percent: idlePercent,
+    deep_work_minutes: Math.max(0, asNumber(metrics.deep_work_minutes)),
+    context_switches: Math.max(0, Math.round(asNumber(metrics.app_switch_count))),
+    productivity_score: Number.isFinite(Number(metrics.productivity_score)) ? Math.round(Number(metrics.productivity_score)) : null,
+  };
+}
+
+function factualHighlights(facts) {
+  const score = facts.productivity_score === null ? 'not scored' : `${facts.productivity_score}/100`;
+  return [
+    `Tracked ${compactMinutes(facts.duration_minutes)}: ${compactMinutes(facts.active_minutes)} active and ${compactMinutes(facts.idle_minutes)} idle (${facts.idle_percent}%).`,
+    `Deep work: ${compactMinutes(facts.deep_work_minutes)}; context switches: ${facts.context_switches}.`,
+    `Normalized productivity score: ${score}.`,
+  ];
+}
+
+function buildHonestReport(aiReport, facts, analysedCount) {
+  const contradictsTelemetry = text => facts.idle_percent >= 10 && /(no idle|without idle|continuous activity|continuously active|high activity)/i.test(text);
+  const visualSummary = String(aiReport?.summary || '')
+    .split(/(?<=[.!?])\s+/)
+    .filter(sentence => sentence && !contradictsTelemetry(sentence))
+    .join(' ')
+    .slice(0, 360);
+  const telemetrySummary = `Telemetry recorded ${compactMinutes(facts.duration_minutes)} total: ${compactMinutes(facts.active_minutes)} active and ${compactMinutes(facts.idle_minutes)} idle (${facts.idle_percent}% idle). Deep work was ${compactMinutes(facts.deep_work_minutes)} with ${facts.context_switches} context switches${facts.productivity_score === null ? '' : `; normalized score ${facts.productivity_score}/100`}.`;
+  const summary = `${telemetrySummary}${visualSummary ? ` Screenshots show: ${visualSummary}` : ''}`.slice(0, 700);
+  const visualHighlights = safeList(aiReport?.highlights, 2)
+    .filter(item => !contradictsTelemetry(item))
+    .map(item => `Screenshots: ${item}`);
+  const highlights = [...factualHighlights(facts), ...visualHighlights].slice(0, 5);
+  const modelConfidence = Number(aiReport?.confidence);
+  const cap = analysedCount >= 4 ? 0.9 : analysedCount >= 2 ? 0.75 : 0.6;
+  const confidence = Number.isFinite(modelConfidence) ? Math.max(0.1, Math.min(cap, modelConfidence)) : Math.min(cap, 0.5);
+  return { summary, highlights, confidence };
+}
 
 async function refreshDaily(client, context, reportDate) {
   const reports = await client.query(`select status,summary,evidence_coverage from app.session_ai_reports where organization_id=$1 and employee_id=$2 and report_date=$3 order by created_at`, [context.organization_id, context.employee_id, reportDate]);
@@ -87,12 +134,18 @@ async function processEvidenceAiAnalysis(payload) {
       await pool.query(`insert into app.screenshot_ai_findings (organization_id,session_id,screenshot_id,model,status,summary,confidence,observed_signals) values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb) on conflict (organization_id,screenshot_id) do update set model=excluded.model,status=excluded.status,summary=excluded.summary,confidence=excluded.confidence,observed_signals=excluded.observed_signals,created_at=now()`, [context.organization_id, context.session_id, shot.id, MODEL, finding.confidence ? 'ready' : 'insufficient_evidence', finding.summary, finding.confidence, JSON.stringify([...finding.observed_signals, `Evidence range: ${new Date(timeRange.from).toISOString()} – ${new Date(timeRange.to).toISOString()}`])]);
     }
     const metrics = await pool.query(`select productivity_score,active_minutes,idle_minutes,deep_work_minutes,app_switch_count from app.session_metrics where organization_id=$1 and session_id=$2`, [context.organization_id, context.session_id]);
+    const facts = telemetryFacts(row, metrics.rows[0] || {});
     const allFindings = await pool.query(`select summary,confidence,observed_signals from app.screenshot_ai_findings where organization_id=$1 and session_id=$2 and status='ready' order by created_at asc limit 20`, [context.organization_id, context.session_id]);
-    const report = allFindings.rowCount ? await relay({ mode: 'session', telemetry: { duration_seconds: row.total_duration_seconds, paused_seconds: row.total_paused_seconds, metrics: metrics.rows[0] || {} }, findings: allFindings.rows }) : null;
-    const highlights = safeList(report?.highlights, 5);
-    const coverage = { captured: candidates.rowCount, unique: uniqueShots.length, duplicates_skipped: Math.max(0, candidates.rowCount - uniqueShots.length), analysed: findings.length, window_end: windowEnd.toISOString() };
+    const allEvidence = await pool.query(`select id,captured_at,visual_hash from app.screenshots where organization_id=$1 and session_id=$2 order by captured_at asc`, [context.organization_id, context.session_id]);
+    const cumulativeUnique = groupVisualEvidence(allEvidence.rows).length;
+    const relayReport = allFindings.rowCount ? await relay({ mode: 'session', telemetry: facts, findings: allFindings.rows }) : null;
+    const report = relayReport ? buildHonestReport(relayReport, facts, allFindings.rowCount) : null;
+    const highlights = report?.highlights || [];
+    // Coverage is cumulative across the session. A later empty 15-minute batch
+    // must never replace an earlier successful analysis with zero evidence.
+    const coverage = { captured: allEvidence.rowCount, unique: cumulativeUnique, duplicates_skipped: Math.max(0, allEvidence.rowCount - cumulativeUnique), analysed: allFindings.rowCount, latest_batch: { captured: candidates.rowCount, unique: uniqueShots.length, analysed: findings.length }, window_end: windowEnd.toISOString() };
     await withTransaction(async client => {
-      await client.query(`update app.session_ai_reports set status=$4,summary=$5,highlights=$6::jsonb,confidence=$7,evidence_coverage=$8::jsonb,error_message=null,updated_at=now() where organization_id=$1 and session_id=$2 and employee_id=$3`, [context.organization_id, context.session_id, context.employee_id, report ? 'ready' : 'insufficient_evidence', report ? String(report.summary || '').slice(0, 700) : 'No unique, analysable screenshots were available for this batch.', JSON.stringify(highlights), report ? Number(report.confidence) || null : null, JSON.stringify(coverage)]);
+      await client.query(`update app.session_ai_reports set status=$4,summary=$5,highlights=$6::jsonb,confidence=$7,evidence_coverage=$8::jsonb,error_message=null,updated_at=now() where organization_id=$1 and session_id=$2 and employee_id=$3`, [context.organization_id, context.session_id, context.employee_id, report ? 'ready' : 'insufficient_evidence', report ? report.summary : 'No unique, analysable screenshots were available for this session.', JSON.stringify(highlights), report ? report.confidence : null, JSON.stringify(coverage)]);
       await refreshDaily(client, context, reportDate);
     });
     if (!payload.final && ['running', 'paused'].includes(row.tracking_status)) await queueNextBatch(pool, context, windowEnd);
@@ -102,4 +155,4 @@ async function processEvidenceAiAnalysis(payload) {
   }
 }
 
-module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence };
+module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence, telemetryFacts, buildHonestReport };
