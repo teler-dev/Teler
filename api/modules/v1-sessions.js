@@ -25,6 +25,13 @@ function decodeMetadataHeader(value, maxLength = 500) {
   }
 }
 
+function decodeVisualHashHeader(value) {
+  const raw = String(value || '').trim();
+  if (/^[a-f0-9]{16,64}$/i.test(raw)) return raw.toLowerCase();
+  const decoded = decodeMetadataHeader(raw, 64);
+  return /^[a-f0-9]{16,64}$/i.test(decoded) ? decoded.toLowerCase() : '';
+}
+
 const AI_BATCH_MINUTES = 15;
 
 async function queueEvidenceBatch(client, context, windowEnd, final = false) {
@@ -160,7 +167,7 @@ function createTrackingSessionsRouter(express) {
 
       const eventId = safeUploadId(req.headers['x-client-event-id']);
       const extension = contentType === 'image/jpeg' ? 'jpg' : 'png';
-      const visualHash = decodeMetadataHeader(req.headers['x-visual-hash'], 64);
+      const visualHash = decodeVisualHashHeader(req.headers['x-visual-hash']);
     try {
       const session = await pool.query(
         `select id,organization_id from app.work_sessions where id=$1 and user_profile_id=$2 limit 1`,
@@ -192,7 +199,7 @@ function createTrackingSessionsRouter(express) {
          [row.organization_id, row.id, storagePath,
          decodeMetadataHeader(req.headers['x-active-window']),
          decodeMetadataHeader(req.headers['x-active-app']),
-         /^[a-f0-9]{16,64}$/i.test(visualHash) ? visualHash.toLowerCase() : null,
+         visualHash || null,
          Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt]
       );
       return res.status(201).json({ data: metadata.rows[0] });
@@ -521,6 +528,7 @@ module.exports = {
   deriveTiming,
   safeUploadId,
   decodeMetadataHeader,
+  decodeVisualHashHeader,
   canManageOrganizationEvidence,
   screenshotReadQuery,
 };

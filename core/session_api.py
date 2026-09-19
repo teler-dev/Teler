@@ -1,6 +1,7 @@
 import json
 import uuid
 import base64
+import re
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtSignal
@@ -141,7 +142,11 @@ class SessionClient(QObject):
         request.setRawHeader(b"X-Captured-At", str(screenshot.get("timestamp") or "").encode("utf-8"))
         request.setRawHeader(b"X-Active-Window", self._metadata_header(screenshot.get("active_window")))
         request.setRawHeader(b"X-Active-App", self._metadata_header(screenshot.get("process_name")))
-        request.setRawHeader(b"X-Visual-Hash", self._metadata_header(screenshot.get("visual_hash")))
+        # This is a non-sensitive, fixed-format perceptual hash. Keep it as
+        # ASCII so proxy/header handling cannot alter it before validation.
+        visual_hash = str(screenshot.get("visual_hash") or "").strip().lower()
+        if re.fullmatch(r"[a-f0-9]{16,64}", visual_hash):
+            request.setRawHeader(b"X-Visual-Hash", visual_hash.encode("ascii"))
         if self.auth_client.token:
             request.setRawHeader(b"Authorization", f"Bearer {self.auth_client.token}".encode("utf-8"))
         reply = self._network.post(request, image)
