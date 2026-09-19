@@ -19,8 +19,10 @@ function createDirectoryRouter(express) {
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database is not configured' });
     try {
-      const result = await pool.query(`select id,external_key,display_name,email_normalized,job_role,department,status,created_at,updated_at
-        from app.employees where organization_id=$1 and ($2::text is null or status::text=$2)
+      const result = await pool.query(`select e.id,e.external_key,e.display_name,e.email_normalized,e.job_role,e.department,e.status,e.created_at,e.updated_at,
+          exists(select 1 from app.user_auth_sessions uas
+            where uas.user_profile_id::text=e.external_key and uas.revoked_at is null and uas.expires_at > now()) as login_session_active
+        from app.employees e where e.organization_id=$1 and ($2::text is null or e.status::text=$2)
         order by display_name`, [req.params.organizationId, req.query.status || null]);
       res.json({ data: result.rows });
     } catch (error) { console.error('[v1/employees]', error.message); res.status(500).json({ error: 'Unable to load employees' }); }

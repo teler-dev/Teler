@@ -54,6 +54,10 @@ export interface Session {
   client?: string;
   task?: string;
   description?: string;
+  // Server-confirmed TELER timer state. This—not login or input volume—drives
+  // the live workforce presence status shown to managers.
+  tracking_status?: 'running' | 'paused' | 'stopped' | string | null;
+  login_session_active?: boolean;
   // ── Raw telemetry ─────────────────────────────────────────────────────
   key_count?: number;
   mouse_clicks?: number;

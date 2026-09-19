@@ -6,7 +6,7 @@ const DEFAULT_ORGANIZATION_KEY = (import.meta.env.VITE_ORGANIZATION_KEY || 'COMP
 
 interface ApiEnvelope<T> { data: T; pagination?: { limit:number; offset:number; total:number } }
 interface V1Company { id:string; external_key?:string|null; slug:string; name:string; status:string }
-interface V1Employee { id:string; external_key:string; display_name:string; job_role:string; status:string }
+interface V1Employee { id:string; external_key:string; display_name:string; job_role:string; status:string; login_session_active?:boolean }
 interface V1BrowserTab { title?:string; url?:string }
 interface V1Screenshot { id:string; session_id:string; captured_at?:string|null; browser_tabs?:V1BrowserTab[] }
 interface V1SessionRow {
@@ -18,6 +18,7 @@ interface V1SessionRow {
   ended_at?:string|null;
   total_minutes?:number|string|null;
   status:string;
+  tracking_status?:string|null;
   productivity_score?:number|string|null;
   active_minutes?:number|string|null;
   idle_minutes?:number|string|null;
@@ -134,6 +135,8 @@ function minimalSession(row:V1SessionRow,employee?:V1Employee):SessionWithPersis
     report_type:'OCR',model_used:'normalized-v1',created_at:row.ended_at||row.started_at,
     userName:row.employee_name||employee?.display_name,
     role,
+    tracking_status:row.tracking_status,
+    login_session_active:Boolean(employee?.login_session_active),
     key_count:numberOr(row.key_count),mouse_clicks:numberOr(row.mouse_clicks),
     app_switches:Array.from({length:switches},(_,index)=>({atMin:index,from:'',to:''})),
     claimed_task:'Tracked via TELER',
@@ -178,6 +181,8 @@ function mergeAuthoritative(legacy:Session,row:V1SessionRow,employee?:V1Employee
     app_switches:switches,
     userName:row.employee_name||legacy.userName||employee?.display_name,
     role:legacy.role||employee?.job_role,
+    tracking_status:row.tracking_status,
+    login_session_active:Boolean(employee?.login_session_active),
     evidence:{
       ...legacy.evidence,
       screenshot_count:screenshotUrls(row).length,

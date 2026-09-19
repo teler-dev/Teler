@@ -51,7 +51,7 @@ describe('normalized v1 session sync', () => {
         return Response.json({ data: [{ id: workspaceId, slug: workspaceSlug, name: "Abdul Quddus's workspace", status: 'active' }] });
       }
       if (target.includes(`/companies/${workspaceId}/employees`)) {
-        return Response.json({ data: [{ id: employeeId, external_key: 'abdul-quddus', display_name: 'Abdul Quddus', job_role: 'general', status: 'active' }] });
+        return Response.json({ data: [{ id: employeeId, external_key: 'abdul-quddus', display_name: 'Abdul Quddus', job_role: 'general', status: 'active', login_session_active: true }] });
       }
       if (target.startsWith('/api/v1/sessions?')) {
         return Response.json({ data: [{
@@ -61,7 +61,7 @@ describe('normalized v1 session sync', () => {
           employee_name: 'Abdul Quddus',
           started_at: '2026-09-11T03:14:58.449Z',
           ended_at: '2026-09-11T03:16:43.526Z',
-          total_minutes: '1.75', status: 'complete', screenshots: [{ id: 'shot-1', session_id: sessionId }],
+          total_minutes: '1.75', status: 'open', tracking_status: 'running', screenshots: [{ id: 'shot-1', session_id: sessionId }],
         }] });
       }
       if (target.startsWith('/api/v1/alerts?')) return Response.json({ data: [] });
@@ -76,6 +76,8 @@ describe('normalized v1 session sync', () => {
     expect(requests.some(request => request.includes(`key=${workspaceSlug}`))).toBe(true);
     expect(sessions).toHaveLength(1);
     expect(sessions[0]).toMatchObject({ id: `control:${sessionId}`, userName: 'Abdul Quddus', role: 'general' });
+    expect(sessions[0].tracking_status).toBe('running');
+    expect(sessions[0].login_session_active).toBe(true);
     expect(sessions[0].evidence?.screenshot_count).toBe(1);
     expect(sessions[0].evidence?.screenshot_urls).toEqual(['/api/v1/screenshots/shot-1/content']);
   });

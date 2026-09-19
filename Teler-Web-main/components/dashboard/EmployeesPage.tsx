@@ -17,18 +17,18 @@ import { LoadingState } from '../ui/LoadingState';
 import { DataList, DataListHeader, DataListLink } from '../ui/DataList';
 
 interface Props { onLogout:()=>void; onEmployeeClick:(emp:Employee)=>void; onSectionNavigate:(section:NavSection)=>void; clientName?:string; }
-type EmployeeStatus='working'|'idle'|'offline';
+type EmployeeStatus='working'|'paused'|'online'|'offline';
 interface Row { employee:Employee; avgScore:number; sessions:number; status:EmployeeStatus; lastSeen:string|null; alertCount:number; }
-const STATUS_LABEL:Record<EmployeeStatus,string>={working:'Working',idle:'Idle',offline:'Offline'};
-const STATUS_TONE:Record<EmployeeStatus,StatusTone>={working:'success',idle:'warning',offline:'neutral'};
+const STATUS_LABEL:Record<EmployeeStatus,string>={working:'Working',paused:'Paused',online:'Online',offline:'Offline'};
+const STATUS_TONE:Record<EmployeeStatus,StatusTone>={working:'success',paused:'warning',online:'accent',offline:'neutral'};
 
-function statusFor(value:string|null):EmployeeStatus{if(!value)return'offline';const age=Date.now()-new Date(value).getTime();return age<10*60_000?'working':age<30*60_000?'idle':'offline'}
+function statusFor(session?:Session):EmployeeStatus{return session?.tracking_status==='running'?'working':session?.tracking_status==='paused'?'paused':session?.login_session_active?'online':'offline'}
 function timeAgo(value:string|null){if(!value)return'Never';const min=Math.max(0,Math.floor((Date.now()-new Date(value).getTime())/60_000));if(min<1)return'Just now';if(min<60)return`${min}m ago`;const hours=Math.floor(min/60);return hours<24?`${hours}h ago`:`${Math.floor(hours/24)}d ago`}
-type DirectoryEntry={display_name:string;job_role?:string};
+type DirectoryEntry={display_name:string;job_role?:string;login_session_active?:boolean};
 function buildRows(sessions:Session[],directory:DirectoryEntry[]=[]):Row[]{
   const alerts=generateAlerts(sessions), map=new Map<string,Session[]>();
   sessions.forEach(session=>{const name=session.userName||session.role||'Unknown';map.set(name,[...(map.get(name)||[]),session])});
-  const rows=[...map.entries()].map(([name,list])=>{const latest=[...list].sort((a,b)=>new Date(b.session_end||b.created_at).getTime()-new Date(a.session_end||a.created_at).getTime())[0];const scores=list.map(s=>s.overall_productivity_score).filter(score=>score>0);const employee={name,role:latest?.role??'',client:latest?.client??''};return{employee,avgScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0,sessions:list.length,status:statusFor(latest?.session_end||latest?.created_at||null),lastSeen:latest?.session_end||latest?.created_at||null,alertCount:alertsForEmployee(alerts,name).length}});
+  const rows=[...map.entries()].map(([name,list])=>{const latest=[...list].sort((a,b)=>new Date(b.session_end||b.created_at).getTime()-new Date(a.session_end||a.created_at).getTime())[0];const scores=list.map(s=>s.overall_productivity_score).filter(score=>score>0);const employee={name,role:latest?.role??'',client:latest?.client??''};return{employee,avgScore:scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0,sessions:list.length,status:statusFor(latest),lastSeen:latest?.session_end||latest?.created_at||null,alertCount:alertsForEmployee(alerts,name).length}});
   // Include every employee in the workspace directory, even those who have not
   // tracked a session yet, so newly added people appear immediately.
   const present=new Set(rows.map(row=>row.employee.name.trim().toLowerCase()));
@@ -36,7 +36,7 @@ function buildRows(sessions:Session[],directory:DirectoryEntry[]=[]):Row[]{
     const name=(entry.display_name||'').trim();
     if(!name||present.has(name.toLowerCase()))continue;
     present.add(name.toLowerCase());
-    rows.push({employee:{name,role:entry.job_role??'',client:''},avgScore:0,sessions:0,status:'offline',lastSeen:null,alertCount:0});
+    rows.push({employee:{name,role:entry.job_role??'',client:''},avgScore:0,sessions:0,status:entry.login_session_active?'online':'offline',lastSeen:null,alertCount:0});
   }
   return rows.sort((a,b)=>b.alertCount-a.alertCount||b.avgScore-a.avgScore);
 }
@@ -46,15 +46,15 @@ export const EmployeesPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionN
   const [directory,setDirectory]=useState<DirectoryEntry[]>([]);
   const initialParams=useMemo(()=>new URLSearchParams(window.location.search),[]);
   const [search,setSearch]=useState(initialParams.get('q')||'');
-  const [statusFilter,setStatusFilter]=useState<EmployeeStatus|'all'>(()=>{const value=initialParams.get('status');return value==='working'||value==='idle'||value==='offline'?value:'all'});
-  useEffect(()=>{let active=true;fetchV1Employees().then(list=>{if(active)setDirectory(list.map(item=>({display_name:item.display_name,job_role:item.job_role})))}).catch(()=>{});return()=>{active=false}},[]);
+  const [statusFilter,setStatusFilter]=useState<EmployeeStatus|'all'>(()=>{const value=initialParams.get('status');return value==='working'||value==='paused'||value==='online'||value==='offline'?value:'all'});
+  useEffect(()=>{let active=true;fetchV1Employees().then(list=>{if(active)setDirectory(list.map(item=>({display_name:item.display_name,job_role:item.job_role,login_session_active:item.login_session_active})))}).catch(()=>{});return()=>{active=false}},[]);
   const rows=useMemo(()=>buildRows(sessions,directory),[sessions,directory]);
   const allAlerts=useMemo(()=>generateAlerts(sessions),[sessions]);
   const filtered=useMemo(()=>rows.filter(row=>{if(statusFilter!=='all'&&row.status!==statusFilter)return false;const q=search.trim().toLowerCase();return !q||`${row.employee.name} ${row.employee.role} ${row.employee.client}`.toLowerCase().includes(q)}),[rows,search,statusFilter]);
-  const counts=useMemo(()=>({working:rows.filter(r=>r.status==='working').length,idle:rows.filter(r=>r.status==='idle').length,offline:rows.filter(r=>r.status==='offline').length}),[rows]);
+  const counts=useMemo(()=>({working:rows.filter(r=>r.status==='working').length,paused:rows.filter(r=>r.status==='paused').length,online:rows.filter(r=>r.status==='online').length,offline:rows.filter(r=>r.status==='offline').length}),[rows]);
 
   useEffect(()=>{updateQuery({q:search||null,status:statusFilter==='all'?null:statusFilter});},[search,statusFilter]);
-  useEffect(()=>{const onPop=()=>{const p=new URLSearchParams(window.location.search);setSearch(p.get('q')||'');const value=p.get('status');setStatusFilter(value==='working'||value==='idle'||value==='offline'?value:'all')};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
+  useEffect(()=>{const onPop=()=>{const p=new URLSearchParams(window.location.search);setSearch(p.get('q')||'');const value=p.get('status');setStatusFilter(value==='working'||value==='paused'||value==='online'||value==='offline'?value:'all')};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
 
   const open=(event:React.MouseEvent<HTMLAnchorElement>,employee:Employee)=>{if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;event.preventDefault();onEmployeeClick(employee)};
 
@@ -64,13 +64,13 @@ export const EmployeesPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionN
       <PageHeader
         eyebrow="Workforce Intelligence"
         title="Employees"
-        meta={loading && !rows.length ? 'Loading workforce…' : `${rows.length} team member${rows.length===1?'':'s'} · ${counts.working} working · ${counts.idle} idle · ${counts.offline} offline`}
+        meta={loading && !rows.length ? 'Loading workforce…' : `${rows.length} team member${rows.length===1?'':'s'} · ${counts.working} running · ${counts.paused} paused · ${counts.online} online · ${counts.offline} offline`}
         actions={<IconButton label="Refresh employees" onClick={()=>refetch(true)}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton>}
       />
       <PageContainer>
         {error&&<InlineAlert tone="danger" title="Employee data unavailable">{error}</InlineAlert>}
-        <div className="bg-surface-card border border-subtle rounded-2xl p-4 md:p-5 flex flex-col lg:flex-row gap-3 lg:items-center"><div className="w-full lg:flex-1 lg:min-w-[260px]"><SearchInput aria-label="Search employees" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search employees, roles or teams…"/></div><div className="flex flex-wrap gap-2 w-full lg:w-auto">{(['all','working','idle','offline'] as const).map(status=><button key={status} type="button" onClick={()=>setStatusFilter(status)} className={`px-3 py-2.5 rounded-xl border text-xs font-semibold ${statusFilter===status?'border-accent bg-accent/10 text-accent':'border-subtle bg-surface-raised text-secondary'}`}>{status==='all'?`All (${rows.length})`:`${STATUS_LABEL[status]} (${counts[status]})`}</button>)}</div></div>
-        {loading&&!rows.length?<LoadingState rows={4} label="Loading employees" />:<DataList><DataListHeader className="hidden md:grid grid-cols-[1.4fr_120px_90px_110px_80px] gap-4"><span>Employee</span><span>Score</span><span>Sessions</span><span>Last seen</span><span>Alerts</span></DataListHeader>{filtered.map(row=>{const href=employeePath(row.employee.name);return <DataListLink key={row.employee.name} href={href} onClick={event=>open(event,row.employee)} className="grid md:grid-cols-[1.4fr_120px_90px_110px_80px] gap-3 md:gap-4 items-center group"><div className="flex items-center gap-3 min-w-0"><StatusDot tone={STATUS_TONE[row.status]} className="shrink-0"/><div className="min-w-0"><p className="font-semibold truncate group-hover:text-accent">{row.employee.name}</p><p className="text-xs text-secondary truncate mt-0.5">{row.employee.role}{row.employee.client?` · ${row.employee.client}`:''} · <span className={row.status==='working'?'text-success':row.status==='idle'?'text-warning':'text-secondary'}>{STATUS_LABEL[row.status]}</span></p></div></div><MetricValue value={row.avgScore} state={row.avgScore>0?'value':'unscored'} compact /><span className="text-sm text-secondary">{row.sessions}</span><span className="text-sm text-secondary">{timeAgo(row.lastSeen)}</span><span>{row.alertCount>0?<span className="inline-flex items-center gap-1 text-xs text-danger"><AlertTriangle className="w-3.5 h-3.5"/>{row.alertCount}</span>:<span className="text-secondary">—</span>}</span></DataListLink>})}{!filtered.length&&<div className="p-10 text-center"><div className="w-12 h-12 rounded-2xl border border-subtle bg-surface-raised mx-auto flex items-center justify-center"><Search className="w-5 h-5 text-muted"/></div><h2 className="font-semibold mt-4">No employees in this view</h2><p className="text-sm text-secondary mt-2">No employees match the current URL filters.</p></div>}</DataList>}
+        <div className="bg-surface-card border border-subtle rounded-2xl p-4 md:p-5 flex flex-col lg:flex-row gap-3 lg:items-center"><div className="w-full lg:flex-1 lg:min-w-[260px]"><SearchInput aria-label="Search employees" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search employees, roles or teams…"/></div><div className="flex flex-wrap gap-2 w-full lg:w-auto">{(['all','working','paused','online','offline'] as const).map(status=><button key={status} type="button" onClick={()=>setStatusFilter(status)} className={`px-3 py-2.5 rounded-xl border text-xs font-semibold ${statusFilter===status?'border-accent bg-accent/10 text-accent':'border-subtle bg-surface-raised text-secondary'}`}>{status==='all'?`All (${rows.length})`:`${STATUS_LABEL[status]} (${counts[status]})`}</button>)}</div></div>
+        {loading&&!rows.length?<LoadingState rows={4} label="Loading employees" />:<DataList><DataListHeader className="hidden md:grid grid-cols-[1.4fr_120px_90px_110px_80px] gap-4"><span>Employee</span><span>Score</span><span>Sessions</span><span>Last seen</span><span>Alerts</span></DataListHeader>{filtered.map(row=>{const href=employeePath(row.employee.name);return <DataListLink key={row.employee.name} href={href} onClick={event=>open(event,row.employee)} className="grid md:grid-cols-[1.4fr_120px_90px_110px_80px] gap-3 md:gap-4 items-center group"><div className="flex items-center gap-3 min-w-0"><StatusDot tone={STATUS_TONE[row.status]} className="shrink-0"/><div className="min-w-0"><p className="font-semibold truncate group-hover:text-accent">{row.employee.name}</p><p className="text-xs text-secondary truncate mt-0.5">{row.employee.role}{row.employee.client?` · ${row.employee.client}`:''} · <span className={row.status==='working'?'text-success':row.status==='paused'?'text-warning':row.status==='online'?'text-accent':'text-secondary'}>{STATUS_LABEL[row.status]}</span></p></div></div><MetricValue value={row.avgScore} state={row.avgScore>0?'value':'unscored'} compact /><span className="text-sm text-secondary">{row.sessions}</span><span className="text-sm text-secondary">{timeAgo(row.lastSeen)}</span><span>{row.alertCount>0?<span className="inline-flex items-center gap-1 text-xs text-danger"><AlertTriangle className="w-3.5 h-3.5"/>{row.alertCount}</span>:<span className="text-secondary">—</span>}</span></DataListLink>})}{!filtered.length&&<div className="p-10 text-center"><div className="w-12 h-12 rounded-2xl border border-dashed border-subtle bg-surface-raised mx-auto flex items-center justify-center"><Search className="w-5 h-5 text-muted"/></div><h2 className="font-semibold mt-4">No employees in this view</h2><p className="text-sm text-secondary mt-2">No employees match the current URL filters.</p></div>}</DataList>}
         {allAlerts.length>0&&<a href="/alerts" onClick={event=>{if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();navigate('/alerts')}}} className="inline-flex items-center gap-2 text-sm text-danger hover:underline"><AlertTriangle className="w-4 h-4"/>{allAlerts.length} active alerts</a>}
       </PageContainer>
     </div>

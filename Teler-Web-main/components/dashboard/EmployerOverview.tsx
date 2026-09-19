@@ -37,7 +37,7 @@ interface Props {
   clientName?: string;
 }
 
-type EmployeeStatus = 'working' | 'idle' | 'offline';
+type EmployeeStatus = 'working' | 'paused' | 'online' | 'offline';
 type RiskLevel = 'low' | 'medium' | 'high';
 
 interface EmployeeStat {
@@ -65,11 +65,10 @@ function fmtMinutes(minutes: number): string {
   return hours ? `${hours}h ${rest}m` : `${rest}m`;
 }
 
-function getStatus(value: string | null): EmployeeStatus {
-  if (!value) return 'offline';
-  const age = Date.now() - new Date(value).getTime();
-  if (age < 10 * 60_000) return 'working';
-  if (age < 30 * 60_000) return 'idle';
+function getStatus(session?: Session): EmployeeStatus {
+  if (session?.tracking_status === 'running') return 'working';
+  if (session?.tracking_status === 'paused') return 'paused';
+  if (session?.login_session_active) return 'online';
   return 'offline';
 }
 
@@ -79,7 +78,7 @@ function getRisk(score: number, idlePct: number, alerts: number): RiskLevel {
   return 'low';
 }
 
-function buildEmployeeStats(sessions: Session[], directory: { display_name: string; job_role?: string }[] = []): EmployeeStat[] {
+function buildEmployeeStats(sessions: Session[], directory: { display_name: string; job_role?: string; login_session_active?: boolean }[] = []): EmployeeStat[] {
   const alerts = generateAlerts(sessions);
   const grouped = new Map<string, Session[]>();
   for (const session of sessions) {
@@ -109,7 +108,7 @@ function buildEmployeeStats(sessions: Session[], directory: { display_name: stri
       switches: list.reduce((sum, item) => sum + (item.app_switches?.length ?? 0), 0),
       alertCount,
       lastSeen,
-      status: getStatus(lastSeen),
+      status: getStatus(latest),
       risk: getRisk(score, idlePct, alertCount),
     };
   });
@@ -124,7 +123,7 @@ function buildEmployeeStats(sessions: Session[], directory: { display_name: stri
     stats.push({
       employee: { name, role: entry.job_role ?? '', client: '' },
       sessions: [], score: 0, focus: 0, activeMinutes: 0, idlePct: 0, switches: 0,
-      alertCount: 0, lastSeen: null, status: getStatus(null), risk: getRisk(0, 0, 0),
+      alertCount: 0, lastSeen: null, status: entry.login_session_active ? 'online' : 'offline', risk: getRisk(0, 0, 0),
     });
   }
 
@@ -178,14 +177,14 @@ const ThemedTooltip: React.FC<any> = ({ active, payload, label }) => {
 
 export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, onSectionNavigate, clientName = 'Your Company' }) => {
   const { sessions, loading, usingMock, error, refetch } = useSessions();
-  const [directory, setDirectory] = useState<{ display_name: string; job_role?: string }[]>([]);
+  const [directory, setDirectory] = useState<{ display_name: string; job_role?: string; login_session_active?: boolean }[]>([]);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'risk' | 'score' | 'name'>('risk');
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     let active = true;
-    fetchV1Employees().then(list => { if (active) setDirectory(list.map(item => ({ display_name: item.display_name, job_role: item.job_role }))); }).catch(() => {});
+    fetchV1Employees().then(list => { if (active) setDirectory(list.map(item => ({ display_name: item.display_name, job_role: item.job_role, login_session_active: item.login_session_active }))); }).catch(() => {});
     return () => { active = false; };
   }, []);
 
@@ -248,7 +247,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
 
         <KpiGrid>
           <MetricCard label="Workforce Health" value={<MetricValue value={health} state={health>0?'value':'unscored'} suffix="/100" />} helper="Composite of productivity, focus, participation and active risk." icon={<Activity className="w-5 h-5"/>} tone={health>0?(health >= 70 ? 'accent' : health >= 50 ? 'warning' : 'danger'):'neutral'} onClick={() => onSectionNavigate('workspace')}/>
-          <MetricCard label="Active Workforce" value={<span className="text-2xl md:text-3xl font-bold">{activeToday} / {employees.length}</span>} helper="Employees with activity recorded in the active window." icon={<Users className="w-5 h-5"/>} tone="success" onClick={() => onSectionNavigate('employees')}/>
+          <MetricCard label="Active Workforce" value={<span className="text-2xl md:text-3xl font-bold">{activeToday} / {employees.length}</span>} helper="Employees whose TELER timer is currently running." icon={<Users className="w-5 h-5"/>} tone="success" onClick={() => onSectionNavigate('employees')}/>
           <MetricCard label="Deep Work Hours" value={<span className="text-2xl md:text-3xl font-bold">{deepWorkMinutes ? `${(deepWorkMinutes / 60).toFixed(1)}h` : '—'}</span>} helper="Evidence-backed deep work recorded across supporting sessions." icon={<BrainCircuit className="w-5 h-5"/>} tone={deepWorkMinutes?'accent':'neutral'}/>
           <MetricCard label="Alerts / Risks" value={<span className="text-2xl md:text-3xl font-bold">{alerts.length}</span>} helper="Rule-generated signals requiring manager review and supporting evidence." icon={<AlertTriangle className="w-5 h-5"/>} tone={alerts.length ? 'danger' : 'success'} onClick={() => onSectionNavigate('alerts')}/>
         </KpiGrid>
@@ -260,9 +259,9 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
           </article>
 
           <article className="bg-surface-card border border-subtle rounded-2xl p-5 shadow-card">
-            <div className="flex items-center justify-between"><div><h3 className="font-semibold text-primary">Team Status</h3><p className="text-xs text-muted mt-1">Recent activity state</p></div><button type="button" onClick={() => onSectionNavigate('employees')} className="text-sm text-accent inline-flex items-center gap-1">View all <ArrowRight className="w-3.5 h-3.5"/></button></div>
-            <div className="grid grid-cols-3 gap-2 mt-4">{(['working','idle','offline'] as EmployeeStatus[]).map(status => {const count=employees.filter(item => item.status === status).length;const tone=status==='working'?'text-success':status==='idle'?'text-warning':'text-muted';return <div key={status} className="bg-surface-raised border border-subtle rounded-xl p-3 text-center"><p className={`text-xs font-semibold capitalize ${tone}`}>{status}</p><p className="text-xl font-bold text-primary mt-1">{count}</p></div>})}</div>
-            <div className="mt-4 space-y-1">{employees.filter(item => item.status !== 'offline').slice(0,4).map(item => <button key={item.employee.name} type="button" onClick={() => onEmployeeClick(item.employee)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover text-left"><StatusDot tone={item.status==='working'?'success':'warning'} /><span className="min-w-0"><span className="block text-sm font-medium text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate">{item.employee.role || 'Role not provided'}</span></span></button>)}</div>
+            <div className="flex items-center justify-between"><div><h3 className="font-semibold text-primary">Team Status</h3><p className="text-xs text-muted mt-1">Running comes from timer state; Online comes from a valid login session.</p></div><button type="button" onClick={() => onSectionNavigate('employees')} className="text-sm text-accent inline-flex items-center gap-1">View all <ArrowRight className="w-3.5 h-3.5"/></button></div>
+            <div className="grid grid-cols-2 gap-2 mt-4">{(['working','paused','online','offline'] as EmployeeStatus[]).map(status => {const count=employees.filter(item => item.status === status).length;const tone=status==='working'?'text-success':status==='paused'?'text-warning':status==='online'?'text-accent':'text-muted';return <div key={status} className="bg-surface-raised border border-subtle rounded-xl p-3 text-center"><p className={`text-xs font-semibold capitalize ${tone}`}>{status}</p><p className="text-xl font-bold text-primary mt-1">{count}</p></div>})}</div>
+            <div className="mt-4 space-y-1">{employees.filter(item => item.status !== 'offline').slice(0,4).map(item => <button key={item.employee.name} type="button" onClick={() => onEmployeeClick(item.employee)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover text-left"><StatusDot tone={item.status==='working'?'success':item.status==='paused'?'warning':'accent'} /><span className="min-w-0"><span className="block text-sm font-medium text-primary truncate">{item.employee.name}</span><span className="block text-xs text-muted truncate">{item.employee.role || 'Role not provided'}</span></span></button>)}</div>
           </article>
         </section>
 
