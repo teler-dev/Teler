@@ -11,6 +11,7 @@ const MIGRATIONS = [
   '007_ai_analysis_persistence.sql',
   '008_evidence_ai_reports.sql',
   '010_evidence_batching.sql',
+  '011_browser_tab_evidence.sql',
 ];
 
 async function main() {
