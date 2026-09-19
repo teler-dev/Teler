@@ -49,6 +49,17 @@ function sanitizeBrowserTabs(value) {
   } catch { return []; }
 }
 
+function canonicalCaptureTime(value, receivedAt = new Date()) {
+  const clientTime = new Date(String(value || ''));
+  // Desktop versions before timezone-aware timestamps send local wall-clock
+  // text. Treat a clock that differs materially from server receipt as unsafe
+  // so a UTC offset cannot push evidence into a later AI window.
+  if (Number.isNaN(clientTime.getTime()) || Math.abs(clientTime.getTime() - receivedAt.getTime()) > 10 * 60_000) {
+    return receivedAt;
+  }
+  return clientTime;
+}
+
 const AI_BATCH_MINUTES = 15;
 
 async function queueEvidenceBatch(client, context, windowEnd, final = false) {
@@ -207,7 +218,7 @@ function createTrackingSessionsRouter(express) {
         await fs.rename(temporary, destination);
       }
 
-      const capturedAt = new Date(String(req.headers['x-captured-at'] || Date.now()));
+      const capturedAt = canonicalCaptureTime(req.headers['x-captured-at']);
       const metadata = await pool.query(
         `insert into app.screenshots
           (organization_id,session_id,storage_path,active_window,active_app,visual_hash,browser_tabs,captured_at)
@@ -548,6 +559,7 @@ module.exports = {
   decodeMetadataHeader,
   decodeVisualHashHeader,
   sanitizeBrowserTabs,
+  canonicalCaptureTime,
   canManageOrganizationEvidence,
   screenshotReadQuery,
 };

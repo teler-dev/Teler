@@ -12,7 +12,7 @@ const { conditionMatches } = require('../workers/session-normalizer');
 const { processReportGeneration } = require('../workers/report-generator');
 const { processRetentionCleanup, safeDelete } = require('../workers/retention-cleanup');
 const { hammingDistance, groupVisualEvidence } = require('../workers/evidence-ai-analysis');
-const { deriveTiming, safeUploadId, decodeMetadataHeader, decodeVisualHashHeader, sanitizeBrowserTabs, screenshotReadQuery, canManageOrganizationEvidence } = require('../modules/v1-sessions');
+const { deriveTiming, safeUploadId, decodeMetadataHeader, decodeVisualHashHeader, sanitizeBrowserTabs, canonicalCaptureTime, screenshotReadQuery, canManageOrganizationEvidence } = require('../modules/v1-sessions');
 const { canReadOrganizationAnalyses } = require('../modules/v1-ai-analyses');
 
 test('tracking session timing freezes active duration while paused', () => {
@@ -160,6 +160,8 @@ test('screenshot upload metadata accepts only safe client event IDs and strips c
   assert.equal(decodeVisualHashHeader(Buffer.from('ffffffffffffffff').toString('base64url')), 'ffffffffffffffff');
   const tabs = sanitizeBrowserTabs(Buffer.from(JSON.stringify([{ title: 'Docs', url: 'https://example.com/spec?q=secret#section' }, { title: 'Internal', url: 'chrome://settings' }])).toString('base64url'));
   assert.deepEqual(tabs, [{ title: 'Docs', url: 'https://example.com/spec' }]);
+  assert.equal(canonicalCaptureTime('2026-09-19 16:00:00', new Date('2026-09-19T11:00:00Z')).toISOString(), '2026-09-19T11:00:00.000Z');
+  assert.equal(canonicalCaptureTime('2026-09-19T11:04:00Z', new Date('2026-09-19T11:00:00Z')).toISOString(), '2026-09-19T11:04:00.000Z');
 });
 
 test('multi-user evidence and AI history respect employee and organization roles', () => {
