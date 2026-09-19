@@ -194,6 +194,7 @@ export interface SessionEvidence {
   ocr_sample: string;
   keystroke_per_minute: KeystrokeMinute[];
   peak_wpm: number;
+  browser_tabs?: { title: string; url: string; captured_at?: string | null }[];
   total_keystrokes?: number;
   top_apps_minutes: {
     app: string;

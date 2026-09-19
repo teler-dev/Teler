@@ -17,6 +17,7 @@ pytesseract.pytesseract.tesseract_cmd = os.environ.get("TELER_TESSERACT_CMD") or
 from pynput import keyboard, mouse
 import pyautogui
 import cv2
+from tracker.browser_tabs import list_browser_tabs
 
 pyautogui.PAUSE = 0
 
@@ -440,7 +441,7 @@ class ActivityTracker:
             try:
                 ts = datetime.now().strftime("%H-%M-%S"); filename = f"{self.today}_{ts}.jpg"; filepath = os.path.join(self._screenshot_dir, filename)
                 img = pyautogui.screenshot(); visual_hash = self._visual_hash(img); self._compress_screenshot(img, filepath); self.screenshots_taken += 1
-                snapshot_entry = {"screenshot_path": filepath, "screenshot_type": "image", "active_window": self.active_window, "active_url": self.active_url, "idle_seconds_this_period": self.idle_seconds, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "process_name": "", "visual_hash": visual_hash}
+                snapshot_entry = {"screenshot_path": filepath, "screenshot_type": "image", "active_window": self.active_window, "active_url": self.active_url, "idle_seconds_this_period": self.idle_seconds, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "process_name": "", "visual_hash": visual_hash, "browser_tabs": list_browser_tabs()}
                 # Upload eligibility must not depend on optional OCR succeeding.
                 # Some machines can capture a PNG while Tesseract times out or is absent.
                 with self.lock:

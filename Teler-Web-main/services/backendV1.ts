@@ -7,7 +7,8 @@ const DEFAULT_ORGANIZATION_KEY = (import.meta.env.VITE_ORGANIZATION_KEY || 'COMP
 interface ApiEnvelope<T> { data: T; pagination?: { limit:number; offset:number; total:number } }
 interface V1Company { id:string; external_key?:string|null; slug:string; name:string; status:string }
 interface V1Employee { id:string; external_key:string; display_name:string; job_role:string; status:string }
-interface V1Screenshot { id:string; session_id:string; captured_at?:string|null }
+interface V1BrowserTab { title?:string; url?:string }
+interface V1Screenshot { id:string; session_id:string; captured_at?:string|null; browser_tabs?:V1BrowserTab[] }
 interface V1SessionRow {
   id:string;
   external_session_id:string;
@@ -60,6 +61,16 @@ const numberOr=(value:unknown,fallback=0):number=>{
 const screenshotUrls=(row:V1SessionRow):string[]=>(row.screenshots??[])
   .map(screenshot=>screenshot.id?`/api/v1/screenshots/${encodeURIComponent(screenshot.id)}/content`:null)
   .filter((url):url is string=>Boolean(url));
+
+const browserTabEvidence=(row:V1SessionRow)=>{
+  const seen=new Set<string>();
+  return (row.screenshots??[]).flatMap(shot=>(shot.browser_tabs??[]).flatMap(tab=>{
+    const url=typeof tab.url==='string'?tab.url:'';
+    if(!/^https?:\/\//i.test(url)||seen.has(url))return [];
+    seen.add(url);
+    return [{title:typeof tab.title==='string'?tab.title:url,url,captured_at:shot.captured_at}];
+  })).slice(0,12);
+};
 
 const employeeKey=(value:string)=>value.trim().toLowerCase().replace(/[-_]+/g,' ').replace(/\s+/g,' ');
 const employeeMatches=(employee:V1Employee,requested:string)=>{
@@ -126,7 +137,7 @@ function minimalSession(row:V1SessionRow,employee?:V1Employee):SessionWithPersis
     key_count:numberOr(row.key_count),mouse_clicks:numberOr(row.mouse_clicks),
     app_switches:Array.from({length:switches},(_,index)=>({atMin:index,from:'',to:''})),
     claimed_task:'Tracked via TELER',
-    evidence:{screenshot_count:screenshotUrls(row).length,screenshot_urls:screenshotUrls(row),ocr_sample:'',keystroke_per_minute:[],peak_wpm:0,top_apps_minutes:[]},
+    evidence:{screenshot_count:screenshotUrls(row).length,screenshot_urls:screenshotUrls(row),browser_tabs:browserTabEvidence(row),ocr_sample:'',keystroke_per_minute:[],peak_wpm:0,top_apps_minutes:[]},
     analytics:{
       focus_score:productivity,
       deep_work_blocks:0,
@@ -171,6 +182,7 @@ function mergeAuthoritative(legacy:Session,row:V1SessionRow,employee?:V1Employee
       ...legacy.evidence,
       screenshot_count:screenshotUrls(row).length,
       screenshot_urls:screenshotUrls(row),
+      browser_tabs:browserTabEvidence(row),
     },
     analytics:legacy.analytics?{...legacy.analytics,deep_work_minutes:numberOr(row.deep_work_minutes,legacy.analytics.deep_work_minutes)}:legacy.analytics,
   };

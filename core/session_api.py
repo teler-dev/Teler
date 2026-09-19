@@ -134,11 +134,19 @@ class SessionClient(QObject):
             return
 
         visual_hash = str(screenshot.get("visual_hash") or "").strip().lower()
-        # Put the fixed-format, non-sensitive hash in both the request URL and
-        # header. Some Windows proxy stacks strip non-standard headers; the URL
-        # fallback preserves duplicate detection without exposing screen data.
-        hash_query = f"?visual_hash={visual_hash}" if re.fullmatch(r"[a-f0-9]{16,64}", visual_hash) else ""
-        upload_path = f"/api/v1/tracking-sessions/{session_id}/screenshots{hash_query}"
+        # URL fallback covers Windows proxy stacks that strip custom headers.
+        # Browser tabs were already sanitized locally: no query/fragment/content.
+        query = []
+        if re.fullmatch(r"[a-f0-9]{16,64}", visual_hash):
+            query.append(f"visual_hash={visual_hash}")
+        browser_tabs = screenshot.get("browser_tabs") or []
+        try:
+            encoded_tabs = base64.urlsafe_b64encode(json.dumps(browser_tabs, separators=(",", ":")).encode("utf-8")).rstrip(b"=").decode("ascii")
+            if encoded_tabs and len(encoded_tabs) <= 6000:
+                query.append(f"browser_tabs={encoded_tabs}")
+        except (TypeError, ValueError):
+            browser_tabs = []
+        upload_path = f"/api/v1/tracking-sessions/{session_id}/screenshots" + (f"?{'&'.join(query)}" if query else "")
         request = QNetworkRequest(QUrl(self.auth_client.request_url(upload_path)))
         request.setTransferTimeout(30_000)
         content_type = "image/jpeg" if Path(local_path).suffix.lower() in {".jpg", ".jpeg"} else "image/png"
@@ -151,6 +159,8 @@ class SessionClient(QObject):
         # ASCII so proxy/header handling cannot alter it before validation.
         if re.fullmatch(r"[a-f0-9]{16,64}", visual_hash):
             request.setRawHeader(b"X-Visual-Hash", visual_hash.encode("ascii"))
+        if browser_tabs:
+            request.setRawHeader(b"X-Browser-Tabs", self._metadata_header(json.dumps(browser_tabs, separators=(",", ":"))))
         if self.auth_client.token:
             request.setRawHeader(b"Authorization", f"Bearer {self.auth_client.token}".encode("utf-8"))
         reply = self._network.post(request, image)

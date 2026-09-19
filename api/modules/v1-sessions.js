@@ -32,6 +32,23 @@ function decodeVisualHashHeader(value) {
   return /^[a-f0-9]{16,64}$/i.test(decoded) ? decoded.toLowerCase() : '';
 }
 
+function sanitizeBrowserTabs(value) {
+  const decoded = decodeMetadataHeader(value, 6000);
+  try {
+    const tabs = JSON.parse(decoded);
+    if (!Array.isArray(tabs)) return [];
+    return tabs.slice(0, 12).flatMap(tab => {
+      if (!tab || typeof tab !== 'object') return [];
+      try {
+        const url = new URL(String(tab.url || ''));
+        if (!['http:', 'https:'].includes(url.protocol)) return [];
+        url.search = ''; url.hash = ''; url.username = ''; url.password = '';
+        return [{ title: String(tab.title || url.hostname).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 120), url: url.toString().slice(0, 260) }];
+      } catch { return []; }
+    });
+  } catch { return []; }
+}
+
 const AI_BATCH_MINUTES = 15;
 
 async function queueEvidenceBatch(client, context, windowEnd, final = false) {
@@ -168,6 +185,7 @@ function createTrackingSessionsRouter(express) {
       const eventId = safeUploadId(req.headers['x-client-event-id']);
       const extension = contentType === 'image/jpeg' ? 'jpg' : 'png';
       const visualHash = decodeVisualHashHeader(req.headers['x-visual-hash'] || req.query.visual_hash);
+      const browserTabs = sanitizeBrowserTabs(req.headers['x-browser-tabs'] || req.query.browser_tabs);
     try {
       const session = await pool.query(
         `select id,organization_id from app.work_sessions where id=$1 and user_profile_id=$2 limit 1`,
@@ -192,14 +210,14 @@ function createTrackingSessionsRouter(express) {
       const capturedAt = new Date(String(req.headers['x-captured-at'] || Date.now()));
       const metadata = await pool.query(
         `insert into app.screenshots
-          (organization_id,session_id,storage_path,active_window,active_app,visual_hash,captured_at)
-         values ($1,$2,$3,$4,$5,$6,$7)
+          (organization_id,session_id,storage_path,active_window,active_app,visual_hash,browser_tabs,captured_at)
+         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8)
          on conflict (organization_id,storage_path) do update set storage_path=excluded.storage_path
          returning id,storage_path,captured_at`,
          [row.organization_id, row.id, storagePath,
          decodeMetadataHeader(req.headers['x-active-window']),
          decodeMetadataHeader(req.headers['x-active-app']),
-         visualHash || null,
+         visualHash || null, JSON.stringify(browserTabs),
          Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt]
       );
       return res.status(201).json({ data: metadata.rows[0] });
@@ -461,7 +479,7 @@ function createSessionsRouter(express) {
         where ${filters.join(' and ')} order by ws.started_at desc limit $${values.length-1} offset $${values.length}`, values);
       const sessionIds = rows.rows.map(row => row.id);
       const screenshots = sessionIds.length ? await pool.query(
-        `select id,session_id,captured_at from app.screenshots
+        `select id,session_id,captured_at,browser_tabs from app.screenshots
           where organization_id=$1 and session_id = any($2::uuid[])
           order by captured_at asc`,
         [organizationId, sessionIds]
@@ -529,6 +547,7 @@ module.exports = {
   safeUploadId,
   decodeMetadataHeader,
   decodeVisualHashHeader,
+  sanitizeBrowserTabs,
   canManageOrganizationEvidence,
   screenshotReadQuery,
 };
