@@ -135,11 +135,13 @@ class SessionClient(QObject):
         upload_path = f"/api/v1/tracking-sessions/{session_id}/screenshots"
         request = QNetworkRequest(QUrl(self.auth_client.request_url(upload_path)))
         request.setTransferTimeout(30_000)
-        request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "image/png")
+        content_type = "image/jpeg" if Path(local_path).suffix.lower() in {".jpg", ".jpeg"} else "image/png"
+        request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, content_type)
         request.setRawHeader(b"X-Client-Event-Id", str(screenshot["_upload_event_id"]).encode("ascii"))
         request.setRawHeader(b"X-Captured-At", str(screenshot.get("timestamp") or "").encode("utf-8"))
         request.setRawHeader(b"X-Active-Window", self._metadata_header(screenshot.get("active_window")))
         request.setRawHeader(b"X-Active-App", self._metadata_header(screenshot.get("process_name")))
+        request.setRawHeader(b"X-Visual-Hash", self._metadata_header(screenshot.get("visual_hash")))
         if self.auth_client.token:
             request.setRawHeader(b"Authorization", f"Bearer {self.auth_client.token}".encode("utf-8"))
         reply = self._network.post(request, image)

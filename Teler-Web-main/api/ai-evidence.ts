@@ -24,8 +24,8 @@ function requestedModel(body: Record<string, unknown>): string {
 
 function promptFor(mode: 'screenshot' | 'session'): string {
   return mode === 'screenshot'
-    ? 'You analyse one work screenshot. Return ONLY JSON: {"summary":"observed facts only","confidence":0 to 1,"observed_signals":["short factual signals"]}. Never infer misconduct or productivity from one image. If unreadable or insufficient, say so with low confidence.'
-    : 'You create an honest session report from telemetry and screenshot findings. Return ONLY JSON: {"summary":"concise evidence-backed report","confidence":0 to 1}. Distinguish observed facts from inference. Never claim productivity or misconduct where evidence is insufficient.';
+    ? 'Analyse one work screenshot. Return ONLY compact JSON: {"summary":"<=240 characters, observed facts only","confidence":0 to 1,"observed_signals":["up to 3 short factual signals"]}. Respect the supplied evidence time range. Never infer misconduct or productivity from one image. If unreadable or insufficient, say so with low confidence.'
+    : 'Create an honest, compact session report from telemetry and screenshot findings. Return ONLY JSON: {"summary":"<=400 characters, evidence-backed only","highlights":["3 to 5 short critical factual points"],"confidence":0 to 1}. Distinguish observed facts from inference. Never claim productivity or misconduct where evidence is insufficient.';
 }
 
 export default {
@@ -41,19 +41,20 @@ export default {
       let image = '';
       if (mode === 'screenshot') {
         image = typeof body.image_base64 === 'string' ? body.image_base64 : '';
+        const imageMimeType = body.image_mime_type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
         if (!image || Buffer.byteLength(image, 'base64') > MAX_IMAGE_BYTES) return noStoreJson({ error: 'Invalid screenshot payload' }, 400);
-        content.push({ type: 'image_url', image_url: { url: `data:image/png;base64,${image}` } });
+        content.push({ type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${image}` } });
       }
 
       if (model === GEMINI_EVIDENCE_MODEL) {
         const key = process.env.GEMINI_API_KEY?.trim();
         if (!key) return noStoreJson({ error: 'Gemini evidence analysis is not configured. Add GEMINI_API_KEY in Vercel.' }, 503);
         const parts: Array<Record<string, unknown>> = [{ text: system }, { text: mode === 'screenshot' ? `Metadata: ${JSON.stringify(body.metadata || {})}` : JSON.stringify({ telemetry: body.telemetry || {}, findings: body.findings || [] }) }];
-        if (image) parts.push({ inlineData: { mimeType: 'image/png', data: image } });
+        if (image) parts.push({ inlineData: { mimeType: body.image_mime_type === 'image/jpeg' ? 'image/jpeg' : 'image/png', data: image } });
         const upstream = await fetch(`${GEMINI_BASE}/models/${GEMINI_EVIDENCE_MODEL}:generateContent`, {
           method: 'POST',
           headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: mode === 'screenshot' ? 350 : 500 } }),
+          body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: mode === 'screenshot' ? 160 : 220 } }),
           signal: AbortSignal.timeout(40_000),
         });
         const payload = await upstream.json().catch(() => ({})) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; error?: { message?: string } };
@@ -67,7 +68,7 @@ export default {
       if (!key) return noStoreJson({ error: 'OpenRouter is not configured' }, 503);
       const upstream = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
         method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': new URL(request.url).origin, 'X-Title': 'TELER Evidence AI' },
-        body: JSON.stringify({ model, temperature: 0, max_tokens: mode === 'screenshot' ? 350 : 500, messages: [{ role: 'system', content: system }, { role: 'user', content }] }), signal: AbortSignal.timeout(40_000),
+        body: JSON.stringify({ model, temperature: 0, max_tokens: mode === 'screenshot' ? 160 : 220, messages: [{ role: 'system', content: system }, { role: 'user', content }] }), signal: AbortSignal.timeout(40_000),
       });
       const payload = await upstream.json().catch(() => ({})) as { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
       if (!upstream.ok) return noStoreJson({ error: payload.error?.message || `AI provider returned HTTP ${upstream.status}` }, upstream.status);

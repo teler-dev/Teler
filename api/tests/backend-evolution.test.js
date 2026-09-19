@@ -11,6 +11,7 @@ const { normalizeTelemetry } = require('../lib/telemetry-normalizer');
 const { conditionMatches } = require('../workers/session-normalizer');
 const { processReportGeneration } = require('../workers/report-generator');
 const { processRetentionCleanup, safeDelete } = require('../workers/retention-cleanup');
+const { hammingDistance, groupVisualEvidence } = require('../workers/evidence-ai-analysis');
 const { deriveTiming, safeUploadId, decodeMetadataHeader, screenshotReadQuery, canManageOrganizationEvidence } = require('../modules/v1-sessions');
 const { canReadOrganizationAnalyses } = require('../modules/v1-ai-analyses');
 
@@ -135,6 +136,19 @@ test('server entry preserves legacy health and isolates v1 sync/read tokens', { 
     body: JSON.stringify({ organization_external_key: 'COMP_DEV_001', employee_external_key: 'EMP_DEV', external_session_id: 'smoke', started_at: '2026-09-04T10:00:00Z', events: [] }),
   });
   assert.equal(syncTokenAccepted.status, 500, stderr);
+});
+
+test('visual evidence batching groups near-duplicate screenshots and retains their full time range', () => {
+  const grouped = groupVisualEvidence([
+    { id: 'a', visual_hash: 'ffffffffffffffff', captured_at: '2026-09-14T10:00:00Z' },
+    { id: 'b', visual_hash: 'fffffffffffffffe', captured_at: '2026-09-14T10:04:00Z' },
+    { id: 'c', visual_hash: '0000000000000000', captured_at: '2026-09-14T10:08:00Z' },
+  ]);
+  assert.equal(hammingDistance('ffffffffffffffff', 'fffffffffffffffe'), 1);
+  assert.equal(grouped.length, 2);
+  assert.equal(grouped[0].repeat_count, 2);
+  assert.equal(grouped[0].first_captured_at, '2026-09-14T10:00:00Z');
+  assert.equal(grouped[0].last_captured_at, '2026-09-14T10:04:00Z');
 });
 
 test('screenshot upload metadata accepts only safe client event IDs and strips control characters', () => {

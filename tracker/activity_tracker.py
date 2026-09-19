@@ -9,6 +9,7 @@ from collections import Counter
 import platform
 import shutil
 import pytesseract
+from PIL import Image
 pytesseract.pytesseract.tesseract_cmd = os.environ.get("TELER_TESSERACT_CMD") or shutil.which("tesseract") or (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe" if platform.system() == "Windows" else "tesseract"
 )
@@ -121,7 +122,7 @@ class ActivityTracker:
         keyboard.Key.left: "[LEFT]", keyboard.Key.right: "[RIGHT]",
     }
 
-    def __init__(self, idle_threshold=30, screenshot_interval=60, camera_interval=120,
+    def __init__(self, idle_threshold=30, screenshot_interval=180, camera_interval=120,
                  camera_enabled=False, ocr_enabled=True, username="", organization_id="", employee_id=""):
         self.idle_threshold = idle_threshold
         self.screenshot_interval = screenshot_interval
@@ -168,6 +169,7 @@ class ActivityTracker:
         self.server_session_id = ""
         self._ks_timestamps = []
         self._last_ocr_hash = None
+        self._capture_rng = __import__("random").SystemRandom()
         self._modifiers_down = set()
         self._minute_anchor = None
         self._minute_buffer = []
@@ -220,7 +222,7 @@ class ActivityTracker:
             self._uploading_screenshot_paths.discard(local_path)
 
     def set_idle_threshold(self, seconds): self.idle_threshold = int(seconds)
-    def set_screenshot_interval(self, seconds): self.screenshot_interval = max(10, int(seconds))
+    def set_screenshot_interval(self, seconds): self.screenshot_interval = max(120, int(seconds))
     def set_camera_enabled(self, enabled: bool): self.camera_enabled = bool(enabled)
     def set_camera_interval(self, seconds): self.camera_interval = max(10, int(seconds))
 
@@ -240,6 +242,31 @@ class ActivityTracker:
     def _extract_url_from_ocr(self, text: str):
         match = re.search(r"(https?://[^\s]+)", text)
         return match.group(1) if match else ""
+
+    @staticmethod
+    def _visual_hash(image):
+        """Compact perceptual hash; near-identical screens get matching bits."""
+        thumbnail = image.convert("L").resize((8, 8))
+        pixels = list(thumbnail.getdata())
+        average = sum(pixels) / max(1, len(pixels))
+        bits = "".join("1" if pixel >= average else "0" for pixel in pixels)
+        return f"{int(bits, 2):016x}"
+
+    @staticmethod
+    def _compress_screenshot(image, destination):
+        """Keep text readable while making evidence inexpensive to transfer and analyse."""
+        working = image.convert("RGB")
+        if working.width > 1440:
+            height = round(working.height * (1440 / working.width))
+            working = working.resize((1440, height), resample=Image.Resampling.LANCZOS)
+        quality = 76
+        working.save(destination, format="JPEG", quality=quality, optimize=True, progressive=True)
+        # High-detail displays can still be heavy. Use a conservative fallback;
+        # never go below the quality where code and UI labels become unreliable.
+        if os.path.getsize(destination) > 900 * 1024 and working.width > 1280:
+            height = round(working.height * (1280 / working.width))
+            working = working.resize((1280, height), resample=Image.Resampling.LANCZOS)
+            working.save(destination, format="JPEG", quality=70, optimize=True, progressive=True)
 
     def _atomic_write_json(self, filepath: str, data: object) -> None:
         _atomic_write_json(filepath, data)
@@ -411,9 +438,9 @@ class ActivityTracker:
             if self.paused:
                 time.sleep(1); continue
             try:
-                ts = datetime.now().strftime("%H-%M-%S"); filename = f"{self.today}_{ts}.png"; filepath = os.path.join(self._screenshot_dir, filename)
-                img = pyautogui.screenshot(); img.save(filepath); self.screenshots_taken += 1
-                snapshot_entry = {"screenshot_path": filepath, "screenshot_type": "image", "active_window": self.active_window, "active_url": self.active_url, "idle_seconds_this_period": self.idle_seconds, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "process_name": ""}
+                ts = datetime.now().strftime("%H-%M-%S"); filename = f"{self.today}_{ts}.jpg"; filepath = os.path.join(self._screenshot_dir, filename)
+                img = pyautogui.screenshot(); visual_hash = self._visual_hash(img); self._compress_screenshot(img, filepath); self.screenshots_taken += 1
+                snapshot_entry = {"screenshot_path": filepath, "screenshot_type": "image", "active_window": self.active_window, "active_url": self.active_url, "idle_seconds_this_period": self.idle_seconds, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "process_name": "", "visual_hash": visual_hash}
                 # Upload eligibility must not depend on optional OCR succeeding.
                 # Some machines can capture a PNG while Tesseract times out or is absent.
                 with self.lock:
@@ -439,7 +466,10 @@ class ActivityTracker:
                         snapshot_entry["ocr_error"] = str(ocr_error)[:160]
                         print(f"[Tracker] OCR error (screenshot will still upload): {ocr_error}")
             except Exception as e: print(f"[Tracker] Screenshot error: {e}")
-            for _ in range(self.screenshot_interval):
+            # Vary timing inside the configured 2-5 minute guard rails so
+            # capture cannot be predicted while evidence volume stays bounded.
+            delay = self._capture_rng.randint(120, 300)
+            for _ in range(delay):
                 if self._stop_event.is_set() or self.paused: break
                 time.sleep(1)
 

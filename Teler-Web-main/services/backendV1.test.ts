@@ -62,7 +62,9 @@ describe('normalized v1 session sync', () => {
     const { fetchAndMergeV1Sessions } = await import('./backendV1');
     const sessions = await fetchAndMergeV1Sessions([]);
 
-    expect(requests[0]).toContain(`key=${workspaceSlug}`);
+    // The signed-in workspace lookup runs before the legacy key fallback.
+    // In this unauthenticated fixture it falls back to the configured key.
+    expect(requests.some(request => request.includes(`key=${workspaceSlug}`))).toBe(true);
     expect(sessions).toHaveLength(1);
     expect(sessions[0]).toMatchObject({ id: `control:${sessionId}`, userName: 'Abdul Quddus', role: 'general' });
     expect(sessions[0].evidence?.screenshot_count).toBe(1);

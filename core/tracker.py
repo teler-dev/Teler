@@ -318,6 +318,10 @@ class MainWindow(QMainWindow):
         controls_center_row.addWidget(controls_module)
         controls_center_row.addStretch()
         control_layout.addLayout(controls_center_row)
+        privacy_notice = QLabel("Your evidence is compressed on this device and shared only with authorized members of your workspace.", objectName="muted")
+        privacy_notice.setWordWrap(True)
+        privacy_notice.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        control_layout.addWidget(privacy_notice)
         control_layout.addWidget(self.action_error)
         master_layout.addWidget(control_section)
 

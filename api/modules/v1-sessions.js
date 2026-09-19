@@ -25,6 +25,20 @@ function decodeMetadataHeader(value, maxLength = 500) {
   }
 }
 
+const AI_BATCH_MINUTES = 15;
+
+async function queueEvidenceBatch(client, context, windowEnd, final = false) {
+  const runAfter = new Date(windowEnd);
+  const suffix = final ? 'final' : runAfter.toISOString();
+  await client.query(`insert into app.background_jobs (job_type,priority,payload,dedupe_key,run_after)
+    values ('EvidenceAiAnalysis',2,$1,$2,$3)
+    on conflict (dedupe_key) do nothing`, [
+    { ...context, window_end: runAfter.toISOString(), final },
+    `evidence-ai:${context.session_id}:${suffix}`,
+    runAfter,
+  ]);
+}
+
 function canManageOrganizationEvidence(authUser) {
   return ['owner', 'admin'].includes(String(authUser?.organization?.role || '').toLowerCase());
 }
@@ -144,8 +158,9 @@ function createTrackingSessionsRouter(express) {
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database is not configured' });
 
-    const eventId = safeUploadId(req.headers['x-client-event-id']);
-    const extension = contentType === 'image/jpeg' ? 'jpg' : 'png';
+      const eventId = safeUploadId(req.headers['x-client-event-id']);
+      const extension = contentType === 'image/jpeg' ? 'jpg' : 'png';
+      const visualHash = decodeMetadataHeader(req.headers['x-visual-hash'], 64);
     try {
       const session = await pool.query(
         `select id,organization_id from app.work_sessions where id=$1 and user_profile_id=$2 limit 1`,
@@ -170,13 +185,14 @@ function createTrackingSessionsRouter(express) {
       const capturedAt = new Date(String(req.headers['x-captured-at'] || Date.now()));
       const metadata = await pool.query(
         `insert into app.screenshots
-          (organization_id,session_id,storage_path,active_window,active_app,captured_at)
-         values ($1,$2,$3,$4,$5,$6)
+          (organization_id,session_id,storage_path,active_window,active_app,visual_hash,captured_at)
+         values ($1,$2,$3,$4,$5,$6,$7)
          on conflict (organization_id,storage_path) do update set storage_path=excluded.storage_path
          returning id,storage_path,captured_at`,
-        [row.organization_id, row.id, storagePath,
+         [row.organization_id, row.id, storagePath,
          decodeMetadataHeader(req.headers['x-active-window']),
          decodeMetadataHeader(req.headers['x-active-app']),
+         /^[a-f0-9]{16,64}$/i.test(visualHash) ? visualHash.toLowerCase() : null,
          Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt]
       );
       return res.status(201).json({ data: metadata.rows[0] });
@@ -315,6 +331,13 @@ function createTrackingSessionsRouter(express) {
            values ($1,$2,$3,'start',$4,$5,$6)`,
           [req.authUser.organization.id, sessionId, req.authUser.id, eventTs, clientEventId, source]
         );
+        // Evidence is analysed in bounded 15-minute windows, never on every
+        // upload. This keeps AI cost predictable and gives managers timely data.
+        await queueEvidenceBatch(client, {
+          organization_id: req.authUser.organization.id,
+          employee_id: req.authUser.employeeId,
+          session_id: sessionId,
+        }, new Date(eventTs.getTime() + AI_BATCH_MINUTES * 60_000));
         const events = await sessionEvents(client, req.authUser.organization.id, sessionId);
         return serializeTrackingSession(inserted.rows[0], deriveTiming(events, eventTs), events);
       });
@@ -379,10 +402,16 @@ function createTrackingSessionsRouter(express) {
            timing.total_duration_seconds, timing.total_paused_seconds]
         );
         if (nextStatus === 'stopped') {
-          await client.query(`insert into app.background_jobs (job_type,priority,payload,dedupe_key,run_after)
-            values ('EvidenceAiAnalysis',2,$1,$2,now() + interval '25 seconds')
-            on conflict (dedupe_key) do nothing`,
-          [{ organization_id: row.organization_id, employee_id: row.employee_id, session_id: row.id }, `evidence-ai:${row.id}`]);
+          // A short session still waits for its first 15-minute batch. Longer
+          // sessions immediately flush only evidence not handled by earlier jobs.
+          const firstBatch = new Date(new Date(row.started_at).getTime() + AI_BATCH_MINUTES * 60_000);
+          if (eventTs >= firstBatch) {
+            await queueEvidenceBatch(client, {
+              organization_id: row.organization_id,
+              employee_id: row.employee_id,
+              session_id: row.id,
+            }, eventTs, true);
+          }
         }
         return serializeTrackingSession(updated.rows[0], timing, events);
       });
