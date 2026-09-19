@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity, AlertTriangle, ArrowRight, BrainCircuit, CheckCircle, Clock,
   Info, RefreshCw, Search, TrendingUp, Users, Wifi, WifiOff, Zap,
@@ -182,17 +182,24 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
   const [sort, setSort] = useState<'risk' | 'score' | 'name'>('risk');
   const [now, setNow] = useState(new Date());
 
-  useEffect(() => {
-    let active = true;
-    fetchV1Employees().then(list => { if (active) setDirectory(list.map(item => ({ display_name: item.display_name, job_role: item.job_role, login_session_active: item.login_session_active }))); }).catch(() => {});
-    return () => { active = false; };
+  const refreshDirectory = useCallback(async () => {
+    try {
+      const list = await fetchV1Employees();
+      setDirectory(list.map(item => ({ display_name: item.display_name, job_role: item.job_role, login_session_active: item.login_session_active })));
+    } catch {
+      // Session telemetry can still render if the directory request is briefly unavailable.
+    }
   }, []);
 
   useEffect(() => {
-    const refresh = window.setInterval(() => refetch(false), 30_000);
+    void refreshDirectory();
+    const refresh = window.setInterval(() => {
+      void refetch(false);
+      void refreshDirectory();
+    }, 30_000);
     const clock = window.setInterval(() => setNow(new Date()), 1000);
     return () => { window.clearInterval(refresh); window.clearInterval(clock); };
-  }, [refetch]);
+  }, [refetch, refreshDirectory]);
 
   const alerts = useMemo(() => generateAlerts(sessions), [sessions]);
   const employees = useMemo(() => buildEmployeeStats(sessions, directory), [sessions, directory]);
@@ -204,7 +211,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
 
   const totalTracked = sessions.reduce((sum, item) => sum + (item.total_minutes || 0), 0);
   const totalIdle = sessions.reduce((sum, item) => sum + (item.idle_minutes_estimate || 0), 0);
-  const activeToday = employees.filter(item => item.status !== 'offline').length;
+  const activeToday = employees.filter(item => item.status === 'working').length;
   const avgScore = Math.round(avg(employees.map(item => item.score).filter(Boolean)));
   const avgFocus = Math.round(avg(employees.map(item => item.focus).filter(Boolean)));
   const idlePct = totalTracked ? Math.round((totalIdle / totalTracked) * 100) : 0;
@@ -238,7 +245,7 @@ export const EmployerOverview: React.FC<Props> = ({ onLogout, onEmployeeClick, o
         actions={<>
           <span className={`hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-subtle bg-surface-raised ${error ? 'text-danger' : usingMock ? 'text-warning' : 'text-success'}`}>{statusIcon}{statusText}</span>
           <span className="hidden md:block text-xs text-muted font-mono">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          <IconButton label="Refresh dashboard" onClick={() => refetch(true)}><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/></IconButton>
+          <IconButton label="Refresh dashboard" onClick={() => { void refetch(true); void refreshDirectory(); }}><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/></IconButton>
         </>}
       />
 

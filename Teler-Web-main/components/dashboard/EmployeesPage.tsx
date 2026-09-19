@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCw, Search } from 'lucide-react';
 import { Employee, Session } from '../../types';
 import { DashboardSidebar, NavSection } from './DashboardSidebar';
@@ -47,7 +47,8 @@ export const EmployeesPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionN
   const initialParams=useMemo(()=>new URLSearchParams(window.location.search),[]);
   const [search,setSearch]=useState(initialParams.get('q')||'');
   const [statusFilter,setStatusFilter]=useState<EmployeeStatus|'all'>(()=>{const value=initialParams.get('status');return value==='working'||value==='paused'||value==='online'||value==='offline'?value:'all'});
-  useEffect(()=>{let active=true;fetchV1Employees().then(list=>{if(active)setDirectory(list.map(item=>({display_name:item.display_name,job_role:item.job_role,login_session_active:item.login_session_active})))}).catch(()=>{});return()=>{active=false}},[]);
+  const refreshDirectory=useCallback(async()=>{try{const list=await fetchV1Employees();setDirectory(list.map(item=>({display_name:item.display_name,job_role:item.job_role,login_session_active:item.login_session_active})))}catch{/* Telemetry remains visible while the directory retries. */}},[]);
+  useEffect(()=>{void refreshDirectory();const refresh=window.setInterval(()=>{void refetch(false);void refreshDirectory()},30_000);return()=>window.clearInterval(refresh)},[refetch,refreshDirectory]);
   const rows=useMemo(()=>buildRows(sessions,directory),[sessions,directory]);
   const allAlerts=useMemo(()=>generateAlerts(sessions),[sessions]);
   const filtered=useMemo(()=>rows.filter(row=>{if(statusFilter!=='all'&&row.status!==statusFilter)return false;const q=search.trim().toLowerCase();return !q||`${row.employee.name} ${row.employee.role} ${row.employee.client}`.toLowerCase().includes(q)}),[rows,search,statusFilter]);
@@ -65,7 +66,7 @@ export const EmployeesPage:React.FC<Props>=({onLogout,onEmployeeClick,onSectionN
         eyebrow="Workforce Intelligence"
         title="Employees"
         meta={loading && !rows.length ? 'Loading workforce…' : `${rows.length} team member${rows.length===1?'':'s'} · ${counts.working} running · ${counts.paused} paused · ${counts.online} online · ${counts.offline} offline`}
-        actions={<IconButton label="Refresh employees" onClick={()=>refetch(true)}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton>}
+        actions={<IconButton label="Refresh employees" onClick={()=>{void refetch(true);void refreshDirectory()}}><RefreshCw className={`w-4 h-4 ${loading?'animate-spin':''}`}/></IconButton>}
       />
       <PageContainer>
         {error&&<InlineAlert tone="danger" title="Employee data unavailable">{error}</InlineAlert>}
