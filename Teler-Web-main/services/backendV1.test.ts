@@ -12,6 +12,15 @@ afterEach(() => {
 });
 
 describe('normalized v1 session sync', () => {
+  it('keeps provider responses usable when compact JSON is wrapped or unavailable', async () => {
+    const { normalizeAiReport } = await import('../api/ai-evidence');
+    expect(normalizeAiReport('```json\n{"summary":"Observed editor","confidence":0.8}\n```', 'screenshot'))
+      .toMatchObject({ summary: 'Observed editor', confidence: 0.8 });
+    expect(normalizeAiReport('Observed a code editor and deployment page.', 'session'))
+      .toMatchObject({ summary: 'Observed a code editor and deployment page.', confidence: 0.25, highlights: [] });
+    expect(normalizeAiReport('', 'session')).toBeNull();
+  });
+
   it('offers free OpenRouter models and managed GPT-4o Mini and Gemini options', async () => {
     const { OPENROUTER_MODELS } = await import('./aiAgentService');
     expect(OPENROUTER_MODELS).not.toHaveLength(0);

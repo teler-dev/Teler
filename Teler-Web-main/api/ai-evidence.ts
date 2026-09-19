@@ -14,8 +14,29 @@ function authorized(request: Request): boolean {
 }
 
 function parseJson(text: string): Record<string, unknown> {
-  try { return JSON.parse(text.replace(/^```json\s*|\s*```$/g, '')) as Record<string, unknown>; }
-  catch { return {}; }
+  const clean = text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '');
+  try { return JSON.parse(clean) as Record<string, unknown>; }
+  catch {
+    const first = clean.indexOf('{'); const last = clean.lastIndexOf('}');
+    if (first >= 0 && last > first) {
+      try { return JSON.parse(clean.slice(first, last + 1)) as Record<string, unknown>; }
+      catch { return {}; }
+    }
+    return {};
+  }
+}
+
+export function normalizeAiReport(text: string, mode: 'screenshot' | 'session'): Record<string, unknown> | null {
+  const parsed = parseJson(text);
+  if (typeof parsed.summary === 'string' && parsed.summary.trim()) return parsed;
+  // Providers occasionally return a concise plain-text answer despite the JSON
+  // response mode. Preserve that useful answer with deliberately low confidence
+  // rather than failing the entire safe, retryable batch.
+  const fallback = text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '').replace(/\s+/g, ' ');
+  if (!fallback || fallback.length < 8) return null;
+  return mode === 'screenshot'
+    ? { summary: fallback.slice(0, 240), confidence: 0.25, observed_signals: [] }
+    : { summary: fallback.slice(0, 400), confidence: 0.25, highlights: [] };
 }
 
 function requestedModel(body: Record<string, unknown>): string {
@@ -59,8 +80,8 @@ export default {
         });
         const payload = await upstream.json().catch(() => ({})) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; error?: { message?: string } };
         if (!upstream.ok) return noStoreJson({ error: payload.error?.message || `Gemini returned HTTP ${upstream.status}` }, upstream.status);
-        const parsed = parseJson(payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || '');
-        if (typeof parsed.summary !== 'string') return noStoreJson({ error: 'Gemini returned an invalid structured report' }, 502);
+        const parsed = normalizeAiReport(payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || '', mode);
+        if (!parsed) return noStoreJson({ error: 'Gemini returned an empty report' }, 502);
         return noStoreJson({ ...parsed, model });
       }
 
@@ -72,8 +93,8 @@ export default {
       });
       const payload = await upstream.json().catch(() => ({})) as { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
       if (!upstream.ok) return noStoreJson({ error: payload.error?.message || `AI provider returned HTTP ${upstream.status}` }, upstream.status);
-      const parsed = parseJson(payload.choices?.[0]?.message?.content || '');
-      if (typeof parsed.summary !== 'string') return noStoreJson({ error: 'AI returned an invalid structured report' }, 502);
+      const parsed = normalizeAiReport(payload.choices?.[0]?.message?.content || '', mode);
+      if (!parsed) return noStoreJson({ error: 'AI returned an empty report' }, 502);
       return noStoreJson({ ...parsed, model });
     } catch (error) {
       return noStoreJson({ error: error instanceof Error && error.name === 'TimeoutError' ? 'AI provider timed out' : 'Evidence analysis is unavailable' }, 502);
