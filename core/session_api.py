@@ -133,7 +133,12 @@ class SessionClient(QObject):
             self.screenshot_failed.emit(screenshot, f"Could not read screenshot: {error}")
             return
 
-        upload_path = f"/api/v1/tracking-sessions/{session_id}/screenshots"
+        visual_hash = str(screenshot.get("visual_hash") or "").strip().lower()
+        # Put the fixed-format, non-sensitive hash in both the request URL and
+        # header. Some Windows proxy stacks strip non-standard headers; the URL
+        # fallback preserves duplicate detection without exposing screen data.
+        hash_query = f"?visual_hash={visual_hash}" if re.fullmatch(r"[a-f0-9]{16,64}", visual_hash) else ""
+        upload_path = f"/api/v1/tracking-sessions/{session_id}/screenshots{hash_query}"
         request = QNetworkRequest(QUrl(self.auth_client.request_url(upload_path)))
         request.setTransferTimeout(30_000)
         content_type = "image/jpeg" if Path(local_path).suffix.lower() in {".jpg", ".jpeg"} else "image/png"
@@ -144,7 +149,6 @@ class SessionClient(QObject):
         request.setRawHeader(b"X-Active-App", self._metadata_header(screenshot.get("process_name")))
         # This is a non-sensitive, fixed-format perceptual hash. Keep it as
         # ASCII so proxy/header handling cannot alter it before validation.
-        visual_hash = str(screenshot.get("visual_hash") or "").strip().lower()
         if re.fullmatch(r"[a-f0-9]{16,64}", visual_hash):
             request.setRawHeader(b"X-Visual-Hash", visual_hash.encode("ascii"))
         if self.auth_client.token:

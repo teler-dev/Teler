@@ -167,7 +167,7 @@ function createTrackingSessionsRouter(express) {
 
       const eventId = safeUploadId(req.headers['x-client-event-id']);
       const extension = contentType === 'image/jpeg' ? 'jpg' : 'png';
-      const visualHash = decodeVisualHashHeader(req.headers['x-visual-hash']);
+      const visualHash = decodeVisualHashHeader(req.headers['x-visual-hash'] || req.query.visual_hash);
     try {
       const session = await pool.query(
         `select id,organization_id from app.work_sessions where id=$1 and user_profile_id=$2 limit 1`,
