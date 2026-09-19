@@ -10,6 +10,13 @@
 {$TELER_DOMAIN} {
 	encode gzip
 
+	# Public, hash-verified desktop release artifacts. The desktop updater only
+	# accepts a SHA-256 listed in the HTTPS manifest before it will restart.
+	handle_path /releases/* {
+		root * /opt/teler/releases
+		file_server
+	}
+
 	# Screenshot uploads from high-DPI displays run large; match the 100 MB
 	# cap the Express route already enforces.
 	request_body {

@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.auth import AuthClient
+from core.auto_update import UpdateCheckThread, UpdateDownloadThread, apply_update_and_restart
 from core.tracker import MainWindow
 from tracker.activity_tracker import recover_incomplete_sessions
 
@@ -532,6 +533,9 @@ class ApplicationController(QObject):
         self.app = app
         self.client = AuthClient(self)
         self.window = None
+        self._update_checked = False
+        self._update_check_thread = None
+        self._update_download_thread = None
 
     def start(self):
         recover_incomplete_sessions()
@@ -555,6 +559,55 @@ class ApplicationController(QObject):
         )
         self.window.logout_requested.connect(self.logout)
         self.window.show()
+        if not self._update_checked:
+            self._update_checked = True
+            QTimer.singleShot(1_500, self._check_for_update)
+
+    def _check_for_update(self):
+        if self._update_check_thread and self._update_check_thread.isRunning():
+            return
+        self._update_check_thread = UpdateCheckThread(self)
+        self._update_check_thread.update_ready.connect(self._offer_update)
+        self._update_check_thread.start()
+
+    def _offer_update(self, update):
+        if not self.window:
+            return
+        notes = f"\n\n{update.notes}" if update.notes else ""
+        answer = QMessageBox.question(
+            self.window,
+            "TELER update ready",
+            f"TELER {update.version} is available.{notes}\n\nDownload and restart to update now?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes if update.mandatory else QMessageBox.StandardButton.No,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self._download_update(update)
+
+    def _download_update(self, update):
+        if not self.window:
+            return
+        self._update_download_thread = UpdateDownloadThread(update, self)
+        self._update_download_thread.download_ready.connect(self._restart_with_update)
+        self._update_download_thread.download_failed.connect(self._update_download_failed)
+        self._update_download_thread.start()
+
+    def _restart_with_update(self, downloaded_file):
+        if not self.window:
+            return
+        if apply_update_and_restart(downloaded_file):
+            QMessageBox.information(self.window, "TELER update", "The update is verified and ready. TELER will now restart.")
+            self.app.quit()
+            return
+        QMessageBox.warning(
+            self.window,
+            "TELER update ready",
+            "The update was verified, but TELER cannot replace this copy because its folder is not writable. Move TELER to a folder you own, then restart it.",
+        )
+
+    def _update_download_failed(self, message):
+        if self.window:
+            QMessageBox.warning(self.window, "TELER update", f"The update was not installed. Your current TELER version is still safe.\n\n{message}")
 
     def logout(self):
         self.client.logout()
