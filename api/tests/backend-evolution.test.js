@@ -11,7 +11,7 @@ const { normalizeTelemetry } = require('../lib/telemetry-normalizer');
 const { conditionMatches } = require('../workers/session-normalizer');
 const { processReportGeneration } = require('../workers/report-generator');
 const { processRetentionCleanup, safeDelete } = require('../workers/retention-cleanup');
-const { hammingDistance, groupVisualEvidence, telemetryFacts, buildHonestReport } = require('../workers/evidence-ai-analysis');
+const { hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport } = require('../workers/evidence-ai-analysis');
 const { deriveTiming, safeUploadId, decodeMetadataHeader, decodeVisualHashHeader, sanitizeBrowserTabs, canonicalCaptureTime, screenshotReadQuery, canManageOrganizationEvidence } = require('../modules/v1-sessions');
 const { canReadOrganizationAnalyses } = require('../modules/v1-ai-analyses');
 
@@ -149,6 +149,7 @@ test('visual evidence batching groups near-duplicate screenshots and retains the
   assert.equal(grouped[0].repeat_count, 2);
   assert.equal(grouped[0].first_captured_at, '2026-09-14T10:00:00Z');
   assert.equal(grouped[0].last_captured_at, '2026-09-14T10:04:00Z');
+  assert.deepEqual(excludePreviouslyAnalysed(grouped, [{ visual_hash: 'fffffffffffffffe' }]).map(shot => shot.id), ['c']);
 });
 
 test('AI session reports keep deterministic telemetry ahead of model narrative', () => {

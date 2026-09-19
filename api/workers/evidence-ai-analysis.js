@@ -41,6 +41,10 @@ function groupVisualEvidence(shots) {
   return groups;
 }
 
+function excludePreviouslyAnalysed(shots, analysedShots) {
+  return shots.filter(shot => !analysedShots.some(existing => shot.visual_hash && existing.visual_hash && hammingDistance(shot.visual_hash, existing.visual_hash) <= 4));
+}
+
 const evidenceMimeType = storagePath => /\.jpe?g$/i.test(storagePath) ? 'image/jpeg' : 'image/png';
 const safeList = (value, max = 5) => Array.isArray(value) ? value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean).slice(0, max) : [];
 const asNumber = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -122,7 +126,9 @@ async function processEvidenceAiAnalysis(payload) {
   await pool.query(`insert into app.session_ai_reports (organization_id,employee_id,session_id,report_date,model,status) values ($1,$2,$3,$4,$5,'processing') on conflict (organization_id,session_id) do update set status='processing',model=excluded.model,error_message=null,updated_at=now()`, [context.organization_id, context.employee_id, context.session_id, reportDate, MODEL]);
   try {
     const candidates = await pool.query(`select s.id,s.storage_path,s.captured_at,s.active_app,s.active_window,s.visual_hash,s.browser_tabs from app.screenshots s left join app.screenshot_ai_findings f on f.organization_id=s.organization_id and f.screenshot_id=s.id where s.organization_id=$1 and s.session_id=$2 and f.id is null ${payload.final ? '' : 'and s.captured_at < $3'} order by s.captured_at asc`, payload.final ? [context.organization_id, context.session_id] : [context.organization_id, context.session_id, windowEnd]);
-    const uniqueShots = groupVisualEvidence(candidates.rows).slice(0, MAX_UNIQUE_SHOTS); const findings = [];
+    const analysedEvidence = await pool.query(`select s.visual_hash from app.screenshot_ai_findings f join app.screenshots s on s.organization_id=f.organization_id and s.id=f.screenshot_id where f.organization_id=$1 and f.session_id=$2 and f.status='ready'`, [context.organization_id, context.session_id]);
+    const freshCandidates = excludePreviouslyAnalysed(candidates.rows, analysedEvidence.rows);
+    const uniqueShots = groupVisualEvidence(freshCandidates).slice(0, MAX_UNIQUE_SHOTS); const findings = [];
     for (const shot of uniqueShots) {
       const filePath = path.resolve(DATA_ROOT, shot.storage_path);
       if (!filePath.startsWith(`${DATA_ROOT}${path.sep}`)) continue;
@@ -155,4 +161,4 @@ async function processEvidenceAiAnalysis(payload) {
   }
 }
 
-module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence, telemetryFacts, buildHonestReport };
+module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport };
