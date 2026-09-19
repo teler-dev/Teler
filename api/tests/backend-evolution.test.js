@@ -11,7 +11,7 @@ const { normalizeTelemetry } = require('../lib/telemetry-normalizer');
 const { conditionMatches } = require('../workers/session-normalizer');
 const { processReportGeneration } = require('../workers/report-generator');
 const { processRetentionCleanup, safeDelete } = require('../workers/retention-cleanup');
-const { hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport } = require('../workers/evidence-ai-analysis');
+const { hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport, factualVisualText } = require('../workers/evidence-ai-analysis');
 const { deriveTiming, safeUploadId, decodeMetadataHeader, decodeVisualHashHeader, sanitizeBrowserTabs, canonicalCaptureTime, screenshotReadQuery, canManageOrganizationEvidence } = require('../modules/v1-sessions');
 const { canReadOrganizationAnalyses } = require('../modules/v1-ai-analyses');
 
@@ -163,6 +163,7 @@ test('AI session reports keep deterministic telemetry ahead of model narrative',
   assert.doesNotMatch(report.summary, /no idle|high activity/i);
   assert.ok(report.highlights.some(item => /26m idle/i.test(item)));
   assert.equal(report.confidence, 0.75);
+  assert.equal(factualVisualText('User fixed a timing bug.'), 'screenshots contain a timing bug.');
 });
 
 test('screenshot upload metadata accepts only safe client event IDs and strips control characters', () => {

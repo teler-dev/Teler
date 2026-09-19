@@ -76,18 +76,26 @@ function factualHighlights(facts) {
   ];
 }
 
+function factualVisualText(value) {
+  return String(value || '')
+    .replace(/\buser\s+(?:worked|focused|fixed|adjusted|viewed|accessed)\b/gi, 'screenshots contain')
+    .replace(/\bthey\s+(?:worked|focused|fixed|adjusted|viewed|accessed)\b/gi, 'screenshots contain')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function buildHonestReport(aiReport, facts, analysedCount) {
   const contradictsTelemetry = text => facts.idle_percent >= 10 && /(no idle|without idle|continuous activity|continuously active|high activity)/i.test(text);
-  const visualSummary = String(aiReport?.summary || '')
+  const visualSummary = factualVisualText(String(aiReport?.summary || '')
     .split(/(?<=[.!?])\s+/)
     .filter(sentence => sentence && !contradictsTelemetry(sentence))
     .join(' ')
-    .slice(0, 360);
+    .slice(0, 360));
   const telemetrySummary = `Telemetry recorded ${compactMinutes(facts.duration_minutes)} total: ${compactMinutes(facts.active_minutes)} active and ${compactMinutes(facts.idle_minutes)} idle (${facts.idle_percent}% idle). Deep work was ${compactMinutes(facts.deep_work_minutes)} with ${facts.context_switches} context switches${facts.productivity_score === null ? '' : `; normalized score ${facts.productivity_score}/100`}.`;
   const summary = `${telemetrySummary}${visualSummary ? ` Screenshots show: ${visualSummary}` : ''}`.slice(0, 700);
   const visualHighlights = safeList(aiReport?.highlights, 2)
     .filter(item => !contradictsTelemetry(item))
-    .map(item => `Screenshots: ${item}`);
+    .map(item => `Screenshots: ${factualVisualText(item)}`);
   const highlights = [...factualHighlights(facts), ...visualHighlights].slice(0, 5);
   const modelConfidence = Number(aiReport?.confidence);
   const cap = analysedCount >= 4 ? 0.9 : analysedCount >= 2 ? 0.75 : 0.6;
@@ -141,15 +149,16 @@ async function processEvidenceAiAnalysis(payload) {
     }
     const metrics = await pool.query(`select productivity_score,active_minutes,idle_minutes,deep_work_minutes,app_switch_count from app.session_metrics where organization_id=$1 and session_id=$2`, [context.organization_id, context.session_id]);
     const facts = telemetryFacts(row, metrics.rows[0] || {});
-    const allFindings = await pool.query(`select summary,confidence,observed_signals from app.screenshot_ai_findings where organization_id=$1 and session_id=$2 and status='ready' order by created_at asc limit 20`, [context.organization_id, context.session_id]);
+    const allFindings = await pool.query(`select f.summary,f.confidence,f.observed_signals,s.visual_hash,s.captured_at from app.screenshot_ai_findings f join app.screenshots s on s.organization_id=f.organization_id and s.id=f.screenshot_id where f.organization_id=$1 and f.session_id=$2 and f.status='ready' order by f.created_at asc limit 20`, [context.organization_id, context.session_id]);
     const allEvidence = await pool.query(`select id,captured_at,visual_hash from app.screenshots where organization_id=$1 and session_id=$2 order by captured_at asc`, [context.organization_id, context.session_id]);
     const cumulativeUnique = groupVisualEvidence(allEvidence.rows).length;
+    const analysedUnique = Math.min(cumulativeUnique, groupVisualEvidence(allFindings.rows).length);
     const relayReport = allFindings.rowCount ? await relay({ mode: 'session', telemetry: facts, findings: allFindings.rows }) : null;
-    const report = relayReport ? buildHonestReport(relayReport, facts, allFindings.rowCount) : null;
+    const report = relayReport ? buildHonestReport(relayReport, facts, analysedUnique) : null;
     const highlights = report?.highlights || [];
     // Coverage is cumulative across the session. A later empty 15-minute batch
     // must never replace an earlier successful analysis with zero evidence.
-    const coverage = { captured: allEvidence.rowCount, unique: cumulativeUnique, duplicates_skipped: Math.max(0, allEvidence.rowCount - cumulativeUnique), analysed: allFindings.rowCount, latest_batch: { captured: candidates.rowCount, unique: uniqueShots.length, analysed: findings.length }, window_end: windowEnd.toISOString() };
+    const coverage = { captured: allEvidence.rowCount, unique: cumulativeUnique, duplicates_skipped: Math.max(0, allEvidence.rowCount - cumulativeUnique), analysed: analysedUnique, latest_batch: { captured: candidates.rowCount, unique: uniqueShots.length, analysed: findings.length }, window_end: windowEnd.toISOString() };
     await withTransaction(async client => {
       await client.query(`update app.session_ai_reports set status=$4,summary=$5,highlights=$6::jsonb,confidence=$7,evidence_coverage=$8::jsonb,error_message=null,updated_at=now() where organization_id=$1 and session_id=$2 and employee_id=$3`, [context.organization_id, context.session_id, context.employee_id, report ? 'ready' : 'insufficient_evidence', report ? report.summary : 'No unique, analysable screenshots were available for this session.', JSON.stringify(highlights), report ? report.confidence : null, JSON.stringify(coverage)]);
       await refreshDaily(client, context, reportDate);
@@ -161,4 +170,4 @@ async function processEvidenceAiAnalysis(payload) {
   }
 }
 
-module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport };
+module.exports = { processEvidenceAiAnalysis, hammingDistance, groupVisualEvidence, excludePreviouslyAnalysed, telemetryFacts, buildHonestReport, factualVisualText };
