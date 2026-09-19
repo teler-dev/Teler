@@ -1,7 +1,7 @@
 {
-  "version": "2026.9.20",
-  "download_url": "https://204-216-105-57.sslip.io/releases/TELER-2026.9.20.exe",
-  "sha256": "a14c3d0407a8bf6aea8a700309cf4f7cbbb9ffb4bdf8a29113035ad1ba336bb3",
-  "notes": "First TELER release with verified automatic updates.",
+  "version": "2026.9.21",
+  "download_url": "https://204-216-105-57.sslip.io/releases/TELER-2026.9.21.exe",
+  "sha256": "00fc3450522b0815ad6d34436bbda4689a2fcc240bd26e157c2233245d749e7d",
+  "notes": "Verified automatic updates and a Windows Qt runtime compatibility fix.",
   "mandatory": false
 }

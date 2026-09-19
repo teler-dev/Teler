@@ -2,6 +2,14 @@ import os
 import re
 import sys
 
+# In a PyInstaller one-file build, Windows may otherwise resolve Qt6Core.dll
+# from another application's Qt installation before it reaches TELER's bundled
+# PyQt runtime. Register TELER's exact Qt directory before importing PyQt6.
+if sys.platform == "win32" and getattr(sys, "frozen", False):
+    _qt_runtime_dir = os.path.join(getattr(sys, "_MEIPASS", ""), "PyQt6", "Qt6", "bin")
+    if os.path.isdir(_qt_runtime_dir):
+        os.add_dll_directory(_qt_runtime_dir)
+
 from PyQt6.QtCore import QObject, QEasingCurve, QPropertyAnimation, QRect, QTimer, Qt
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import (
