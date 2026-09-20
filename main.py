@@ -2,15 +2,37 @@ import os
 import re
 import sys
 
+_startup_log_path = os.environ.get("TELER_STARTUP_LOG", "")
+
+
+def _startup_log(message):
+    if not _startup_log_path:
+        return
+    try:
+        with open(_startup_log_path, "a", encoding="utf-8") as log:
+            log.write(f"{message}\n")
+    except OSError:
+        pass
+
+
 # In a PyInstaller one-file build, Windows may otherwise resolve Qt6Core.dll
 # from another application's Qt installation before it reaches TELER's bundled
 # PyQt runtime. Register TELER's exact Qt directory before importing PyQt6.
 if sys.platform == "win32" and getattr(sys, "frozen", False):
     _qt_runtime_dir = os.path.join(getattr(sys, "_MEIPASS", ""), "PyQt6", "Qt6", "bin")
     if os.path.isdir(_qt_runtime_dir):
-        os.add_dll_directory(_qt_runtime_dir)
+        # Keep the handle alive: its destructor removes the directory again.
+        # Put the bundled runtime ahead of a machine-wide Qt DLL. PATH alone
+        # is too late in the Windows dependency search order for a .pyd file.
+        import ctypes
 
+        ctypes.windll.kernel32.SetDllDirectoryW(_qt_runtime_dir)
+        os.environ["PATH"] = _qt_runtime_dir + os.pathsep + os.environ.get("PATH", "")
+        _qt_runtime_dll_directory = os.add_dll_directory(_qt_runtime_dir)
+
+_startup_log("before PyQt6.QtCore")
 from PyQt6.QtCore import QObject, QEasingCurve, QPropertyAnimation, QRect, QTimer, Qt
+_startup_log("PyQt6.QtCore loaded")
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
