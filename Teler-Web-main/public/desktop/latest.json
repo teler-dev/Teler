@@ -1,7 +1,7 @@
 {
-  "version": "2026.9.25",
-  "download_url": "https://204-216-105-57.sslip.io/releases/TELER-2026.9.25.exe",
-  "sha256": "376a38615bb2d5e7acb8d1ba7308a500b45ee230e87d77d4dbf6622fa181dcaf",
-  "notes": "Fixes Qt startup compatibility and checks for updates whenever TELER opens.",
+  "version": "2026.9.26",
+  "download_url": "https://204-216-105-57.sslip.io/releases/TELER-2026.9.26.exe",
+  "sha256": "b000aa630d98277b5345e9965a77e6944f1fb0d02d83a4560ac635255a89f7ef",
+  "notes": "Routine verified desktop update.",
   "mandatory": false
 }
